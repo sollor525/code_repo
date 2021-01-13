@@ -1,0 +1,168 @@
+#!/bin/bash
+
+## GLOBAL VARIABLES
+LOG="`basename ${0}`.log"
+
+## COMMON FUNCTIONS
+info_msg() {
+    local _msg="${1}"
+    echo -e "${_msg}"
+}
+
+warn_msg() {
+    local _msg="${1}"
+    echo -e "${_msg}"
+}
+
+error_msg() {
+    local _msg="${1}"
+    echo -e "${_msg}"
+    exit 1
+}
+
+check_root() {
+    if [[ "$(id -u)" != "0" ]]; then
+      error_msg "ERROR! You must execute the script as the 'root' user."
+    fi
+}
+
+check_os() {
+    if [[ ! -e /etc/centos-release ]]; then
+      error_msg "ERROR! You must execute the script on CentOS."
+    fi
+}
+
+check_folder() {
+	local _folder=${1}
+	if [[ ! -d ${_folder} ]]; then
+		error_msg "ERROR! ${_folder} is not exsist."
+		exit 1
+	fi
+}
+
+check_connection() {
+    connection_test() {
+      ping -q -w 1 -c 1 `ip r | grep default | awk 'NR==1 {print $3}'` &> /dev/null && return 1 || return 0
+    }
+
+    if connection_test; then
+        error_msg "Can't establish connection. exiting..."
+        exit 1
+    fi
+}
+
+add_repository() {
+    local _repo=${1}
+    local _name=${2}
+    local _url=${3}
+
+    local _check_repo=`yum repolist enabled | grep -F "${_repo}"`
+    if [[ -z $_check_repo ]]; then
+      echo -e "\n[${_repo}]\nname=${_name}\nmirrorlist=${_url}" > /etc/yum.repos.d/${_repo}.repo
+      system_update
+    fi
+}
+
+check_repository() {
+    local _repo=${1}
+    local _check_repo=`yum repolist enabled | grep "${_repo}"`
+    if [[ -z $_check_repo ]]; then
+	return 1
+    fi
+
+    return 0
+}
+
+add_line() {
+    local _add_line=${1}
+    local _filepath=${2}
+
+    local _has_line=`grep -ci "${_add_line}" ${_filepath} 2>&1`
+    [[ $_has_line -eq 0 ]] && echo "${_add_line}" >> ${_filepath}
+}
+
+replace_line() {
+    local _search=${1}
+    local _replace=${2}
+    local _filepath=${3}
+    local _filebase=`basename ${3}`
+
+    sed -e "s/${_search}/${_replace}/" ${_filepath} > /tmp/${_filebase} 2>"$LOG"
+    if [[ ${?} -eq 0 ]]; then
+      mv /tmp/${_filebase} ${_filepath}
+    else
+      warn_msg "failed: ${_search} - ${_filepath}"
+    fi
+}
+
+is_package_installed() {
+    #check if a package is already installed
+    for PKG in $1; do
+      rpm -q $PKG &> /dev/null && return 0;
+    done
+    return 1
+}
+
+package_install() {
+    #install packages using yum
+    yum install ${1} -y
+}
+
+package_localinstall() {
+    #install packages using yum
+    local _url="${1}"
+    local _file=$(basename ${1})
+
+    #curl -o ${_file} ${_url}
+    if ! is_package_installed "wget" ; then
+        package_install "wget"
+    fi
+    wget ${_url}
+    if [[ ! -e ${_file} ]]; then
+      error_msg "ERROR! download file ${_url} failed."
+    fi
+
+    yum localinstall ${_file} -y
+    rm -f ${_file}
+}
+
+is_service_installed() {
+    #check if a service is already installed
+    systemctl | grep $1 &> /dev/null && return 0;
+    return 1
+}
+
+service_install() {
+    systemctl enable $1
+    systemctl daemon-reload
+}
+
+service_start() {
+    systemctl start $1
+}
+
+service_stop() {
+    systemctl stop $1
+}
+
+system_update() {
+    yum update -y
+}
+
+run_as_user() {
+    sudo -H -u ${username} ${1}
+}
+
+add_user_to_group() {
+    local _user=${1}
+    local _group=${2}
+
+    if [[ -z ${_group} ]]; then
+      error_msg "ERROR! 'add_user_to_group' was not given enough parameters."
+    fi
+
+    groupadd ${_group} >>"$LOG" 2>&1 &
+    gpasswd -a ${_user} ${_group} >>"$LOG" 2>&1 &
+    pid=$!;progress $pid
+}
+
