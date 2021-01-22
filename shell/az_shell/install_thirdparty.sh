@@ -48,13 +48,6 @@ package_install "tcl"
 package_install "expect"
 package_install "lshw"
 package_install "kernel-devel-3.10.0-1127"
-package_install "lrzsz"
-package_install "lrzsz"
-package_install "lrzsz"
-package_install "lrzsz"
-package_install "lrzsz"
-package_install "lrzsz"
-package_install "lrzsz"
 
 
 
