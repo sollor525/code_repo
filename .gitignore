@@ -1,0 +1,19 @@
+# 忽略所有名为 `target` 的目录及其内容
+**/target/
+
+# Cargo 的调试信息和构建缓存
+Cargo.lock
+**/*.rs.bk
+**/Cargo.lock
+/.cargo/
+/.rustup/
+
+# 操作系统生成的文件
+.DS_Store
+Thumbs.db
+
+# 编辑器或 IDE 的配置文件
+.vscode/
+.idea/
+*.swp
+*.swo
