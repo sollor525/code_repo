@@ -1,0 +1,9 @@
+[package]
+name = "gen_pcap"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+pcap = "1.0" 
+pnet = "0.33"
+libc = "0.2"
