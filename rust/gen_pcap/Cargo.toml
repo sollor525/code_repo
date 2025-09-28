@@ -1,9 +1,17 @@
 [package]
 name = "gen_pcap"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
 pcap = "1.0" 
 pnet = "0.33"
 libc = "0.2"
+
+[[example]]
+name = "http_example"
+path = "examples/http_example.rs"
+
+[[example]]
+name = "encapsulated_functions_example"
+path = "examples/encapsulated_functions_example.rs"
