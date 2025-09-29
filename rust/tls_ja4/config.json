@@ -1,0 +1,6 @@
+{
+  "include_server_hello": false,
+  "max_packets_per_session": 10,
+  "verbose": true,
+  "include_ja3": true
+}
