@@ -12,6 +12,7 @@
 - 📊 **会话管理**: 基于Client Hello方向正确识别TLS会话
 - 🚫 **GREASE过滤**: 正确过滤GREASE值以提高指纹准确性
 - 📄 **JSON输出**: 结构化输出指纹数据和会话信息
+- 🔧 **VPP集成**: 提供C兼容API，支持VPP高性能集成
 
 ## 🛠️ 技术实现
 
@@ -32,6 +33,119 @@
 - 保持原始顺序（不排序）
 - 包含椭圆曲线组和点格式
 - MD5哈希计算
+
+## 🔧 VPP集成
+
+### C API 概述
+
+库提供了高性能的C兼容API，专为VPP集成设计：
+
+```c
+#include "tls_ja4.h"
+
+// 分析TCP payload
+TlsJa4Result result;
+int ret = tls_ja4_analyze_payload(NULL, tcp_payload, payload_len, &result);
+
+if (ret == 0 && result.is_client_hello) {
+    printf("JA4: %.*s\n", (int)result.ja4_len, result.ja4);
+    printf("JA3: %.*s\n", (int)result.ja3_len, result.ja3);
+}
+```
+
+### VPP集成特性
+
+- **线程私有设计**: 无需加锁，完美适配VPP多worker架构
+- **零拷贝分析**: 高性能，最小化内存分配
+- **快速检测**: 快速TLS记录检测，减少CPU开销
+- **内存安全**: C API包装了Rust的安全性保证
+- **分段TLS支持**: 支持多个TCP分段包的TLS Client Hello处理
+
+### VPP节点示例
+
+```c
+static uword
+tls_ja4_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  // 解析TCP头部获取payload和连接信息
+  tcp_header_t *tcp = (tcp_header_t*)(b->data + tcp_header_offset);
+  u8 *payload = (u8*)(tcp + 1);
+  u32 payload_len = tcp->length - sizeof(tcp_header_t);
+
+  // 提取IP地址（假设IPv4）
+  ip4_header_t *ip = (ip4_header_t*)(b->data + vnet_buffer(b)->l3_hdr_offset);
+  u8 src_ip[16] = {0}; // IPv4地址存储在最后4字节
+  u8 dst_ip[16] = {0};
+  memcpy(&src_ip[12], &ip->src_address, 4);
+  memcpy(&dst_ip[12], &ip->dst_address, 4);
+
+  // 分析TLS指纹（推荐方式）
+  TlsJa4Result result;
+  int ret = tls_ja4_analyze_tcp_flow(
+      NULL, src_ip, dst_ip, tcp->src_port, tcp->dst_port,
+      payload, payload_len, tcp->seq_number, &result
+  );
+
+  if (ret == 0 && result.is_client_hello) {
+    // 处理TLS指纹进行安全分析
+    process_fingerprint(result.ja4, result.ja3);
+  }
+
+  return frame->n_vectors;
+}
+```
+
+### 分段TLS处理
+
+对于分段的TLS Client Hello，VPP可以使用 `tls_ja4_analyze_tcp_flow` 函数（推荐）：
+
+```c
+// 推荐方式：传入完整的连接信息，内部处理分段
+u8 src_ip[16] = {0}; // IPv4地址存储在最后4字节
+u8 dst_ip[16] = {0};
+memcpy(&src_ip[12], &ip->src_address, 4);
+memcpy(&dst_ip[12], &ip->dst_address, 4);
+
+TlsJa4Result result;
+int ret = tls_ja4_analyze_tcp_flow(
+    NULL, src_ip, dst_ip, tcp->src_port, tcp->dst_port,
+    payload, payload_len, tcp->seq_number, &result
+);
+```
+
+或者使用 `tls_ja4_process_tcp_segment` 函数处理多个分段：
+
+```c
+// 处理多个分段包（复杂场景）
+TlsJa4Session segments[2];
+segments[0].src_ip = {192, 168, 1, 100}; // IPv4地址
+segments[0].dst_ip = {10, 0, 0, 1};
+segments[0].src_port = 12345;
+segments[0].dst_port = 443;
+segments[0].is_client_to_server = 1;
+segments[0].sequence = 1000;
+segments[0].payload = tcp_payload1;
+segments[0].payload_len = payload1_len;
+
+segments[1].sequence = 1016; // 续接第一个分段
+segments[1].payload = tcp_payload2;
+segments[1].payload_len = payload2_len;
+
+TlsJa4Result result;
+tls_ja4_process_tcp_segment(ctx, &segments[0], &result);
+```
+
+### 构建集成
+
+```bash
+# 构建库
+cargo build --release
+
+# 复制头文件到VPP路径
+cp include/tls_ja4.h /path/to/vpp/include/
+
+# 在VPP插件中链接库
+```
 
 ## 🚀 快速开始
 

@@ -1,0 +1,29 @@
+{
+  "analysis_time": 1759139423,
+  "total_sessions": 1,
+  "total_packets": 13,
+  "tls_packets": 6,
+  "sessions": [
+    {
+      "timestamp": 1759139423,
+      "src_ip": "10.105.108.128",
+      "dst_ip": "10.105.108.133",
+      "src_port": 19758,
+      "dst_port": 2443,
+      "ja4_fingerprints": [
+        "t13i3110h1_e8f1e7e78f70_7379471da272"
+      ],
+      "ja4b_fingerprints": [
+        "e8f1e7e78f70"
+      ],
+      "ja4c_fingerprints": [
+        "7379471da272"
+      ],
+      "ja3_fingerprints": [
+        "80a3384f654847a936ae650988665173"
+      ],
+      "client_hello_count": 1,
+      "server_hello_count": 0
+    }
+  ]
+}

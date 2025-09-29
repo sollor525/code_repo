@@ -1,7 +1,54 @@
 //! TLS JA4/JA3 Fingerprint Extractor Library
-//! 
+//!
 //! 这个库提供了从pcap文件中提取TLS协议的JA4和JA3指纹的功能。
+//!
+//! ## C API
+//!
+//! 库提供了C兼容的API，支持嵌入到VPP等C程序中：
+//!
+//! ```c
+//! // 初始化
+//! tls_ja4_context* ctx = tls_ja4_init();
+//!
+//! // 分析TCP payload
+//! tls_ja4_result result;
+//! int ret = tls_ja4_analyze_payload(ctx, tcp_payload, payload_len, &result);
+//!
+//! // 获取结果
+//! if (ret == 0) {
+//!     printf("JA4: %s\n", result.ja4);
+//!     printf("JA3: %s\n", result.ja3);
+//! }
+//!
+//! // 清理
+//! tls_ja4_cleanup(ctx);
+//! ```
+//!
+//! ## 线程安全
+//!
+//! C API是线程安全的，支持多线程并发调用。
 
+// 模块声明
+pub mod network;
+pub mod tls;
+pub mod fingerprint;
+pub mod cache;
+pub mod c_api;
+
+#[cfg(test)]
+mod tests;
+
+#[cfg(test)]
+mod integration_tests;
+
+// #[cfg(test)]
+// mod c_api_tests;
+
+// 重新导出主要类型和函数
+pub use c_api::*;
+pub use network::format_ip;
+
+// 保留原有的依赖，用于向后兼容
 use anyhow::Result;
 use pcap::Capture;
 use pnet::packet::ethernet::{EthernetPacket, EtherTypes};
@@ -549,6 +596,143 @@ pub fn is_tls_packet(packet: &[u8]) -> bool {
     true
 }
 
+/// 检测是否为TLS Client Hello报文
+pub fn is_client_hello(payload: &[u8]) -> bool {
+    if !is_tls_packet(payload) || payload.len() < 6 {
+        return false;
+    }
+    
+    // 检查Handshake消息类型 (0x01 = Client Hello)
+    payload[5] == 0x01
+}
+
+/// 将TlsVersion转换为u16
+#[allow(dead_code)]
+fn tls_version_to_u16(version: TlsVersion) -> u16 {
+    match version {
+        TlsVersion::Ssl30 => 0x0300,
+        TlsVersion::Tls10 => 0x0301,
+        TlsVersion::Tls11 => 0x0302,
+        TlsVersion::Tls12 => 0x0303,
+        TlsVersion::Tls13 => 0x0304,
+        _ => 0x0303, // 默认TLS 1.2
+    }
+}
+
+/// IP头解析结果
+#[allow(dead_code)]
+struct IpHeader {
+    version: u8,
+    src_ip: [u8; 16],
+    dst_ip: [u8; 16],
+    protocol: u8,
+    header_len: usize,
+}
+
+/// TCP头解析结果
+#[allow(dead_code)]
+struct TcpHeader {
+    src_port: u16,
+    dst_port: u16,
+    seq: u32,
+    ack: u32,
+    flags: u8,
+    header_len: usize,
+    payload_offset: usize,
+}
+
+/// 解析IP头
+#[allow(dead_code)]
+fn parse_ip_header(packet: &[u8]) -> Result<IpHeader, i32> {
+    if packet.len() < 20 {
+        return Err(TLS_JA4_INVALID_PACKET);
+    }
+    
+    let version = (packet[0] >> 4) & 0x0F;
+    
+    match version {
+        4 => {
+            // IPv4
+            let ihl = (packet[0] & 0x0F) as usize * 4;
+            if packet.len() < ihl {
+                return Err(TLS_JA4_INVALID_PACKET);
+            }
+            
+            let protocol = packet[9];
+            let mut src_ip = [0u8; 16];
+            let mut dst_ip = [0u8; 16];
+            
+            // IPv4地址存储在最后4字节
+            src_ip[12..16].copy_from_slice(&packet[12..16]);
+            dst_ip[12..16].copy_from_slice(&packet[16..20]);
+            
+            Ok(IpHeader {
+                version: 4,
+                src_ip,
+                dst_ip,
+                protocol,
+                header_len: ihl,
+            })
+        },
+        6 => {
+            // IPv6 - 暂不支持
+            Err(TLS_JA4_IPV6_NOT_SUPPORTED)
+        },
+        _ => Err(TLS_JA4_INVALID_PACKET)
+    }
+}
+
+/// 解析TCP头
+#[allow(dead_code)]
+fn parse_tcp_header(packet: &[u8], ip_header_len: usize) -> Result<TcpHeader, i32> {
+    let tcp_start = ip_header_len;
+    if packet.len() < tcp_start + 20 {
+        return Err(TLS_JA4_INVALID_PACKET);
+    }
+    
+    let src_port = u16::from_be_bytes([packet[tcp_start], packet[tcp_start + 1]]);
+    let dst_port = u16::from_be_bytes([packet[tcp_start + 2], packet[tcp_start + 3]]);
+    let seq = u32::from_be_bytes([
+        packet[tcp_start + 4], packet[tcp_start + 5],
+        packet[tcp_start + 6], packet[tcp_start + 7]
+    ]);
+    let ack = u32::from_be_bytes([
+        packet[tcp_start + 8], packet[tcp_start + 9],
+        packet[tcp_start + 10], packet[tcp_start + 11]
+    ]);
+    let flags = packet[tcp_start + 13];
+    
+    let data_offset = ((packet[tcp_start + 12] >> 4) & 0x0F) as usize * 4;
+    if data_offset < 20 {
+        return Err(TLS_JA4_INVALID_PACKET);
+    }
+    
+    Ok(TcpHeader {
+        src_port,
+        dst_port,
+        seq,
+        ack,
+        flags,
+        header_len: data_offset,
+        payload_offset: tcp_start + data_offset,
+    })
+}
+
+/// 生成流键
+#[allow(dead_code)]
+fn generate_flow_key(src_ip: &[u8; 16], dst_ip: &[u8; 16], src_port: u16, dst_port: u16) -> String {
+    // 确保流键的一致性（总是使用较小的IP:端口作为源）
+    let (ip1, port1, ip2, port2) = if src_ip < dst_ip || (src_ip == dst_ip && src_port <= dst_port) {
+        (src_ip, src_port, dst_ip, dst_port)
+    } else {
+        (dst_ip, dst_port, src_ip, src_port)
+    };
+    
+    format!("{}:{}->{}:{}", 
+        format_ip(ip1), port1,
+        format_ip(ip2), port2)
+}
+
 /// 解析VLAN标签
 pub fn parse_vlan_tags(data: &[u8]) -> (Vec<VlanTag>, usize, u16) {
     let mut vlan_tags = Vec::new();
@@ -590,11 +774,11 @@ pub fn extract_tcp_stream_from_packet(data: &[u8]) -> Option<(IpAddr, IpAddr, u1
     // 解析以太网头部
     let ethernet = EthernetPacket::new(data)?;
     let _ether_type = ethernet.get_ethertype();
-    let mut offset = 14; // 以太网头部长度
-    
+    let _offset = 14; // 以太网头部长度
+
     // 处理VLAN标签
     let (_vlan_tags, vlan_offset, final_ether_type) = parse_vlan_tags(&data[12..]);
-    offset = 12 + vlan_offset;
+    let offset = 12 + vlan_offset;
     let ether_type = match final_ether_type {
         0x0800 => EtherTypes::Ipv4,
         0x86DD => EtherTypes::Ipv6,
@@ -665,11 +849,11 @@ pub fn extract_tls_data_from_packet(data: &[u8]) -> Option<(IpAddr, IpAddr, u16,
     // 解析以太网头部
     let ethernet = EthernetPacket::new(data)?;
     let _ether_type = ethernet.get_ethertype();
-    let mut offset = 14; // 以太网头部长度
-    
+    let _offset = 14; // 以太网头部长度
+
     // 处理VLAN标签
     let (_vlan_tags, vlan_offset, final_ether_type) = parse_vlan_tags(&data[12..]);
-    offset = 12 + vlan_offset;
+    let offset = 12 + vlan_offset;
     let ether_type = match final_ether_type {
         0x0800 => EtherTypes::Ipv4,
         0x86DD => EtherTypes::Ipv6,
