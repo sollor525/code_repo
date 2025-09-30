@@ -1,0 +1,53 @@
+warning: unused variable: `elliptic_curves`
+    --> src/lib.rs:1710:108
+     |
+1710 | ...extensions: &[u16], elliptic_curves: &[u16], ec_point_formats: &[u8], signature_algorithms: &[u16], client_hello_data: &[u8]) -> String {
+     |                        ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_elliptic_curves`
+     |
+     = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `ec_point_formats`
+    --> src/lib.rs:1710:133
+     |
+1710 | ...ic_curves: &[u16], ec_point_formats: &[u8], signature_algorithms: &[u16], client_hello_data: &[u8]) -> String {
+     |                       ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_ec_point_formats`
+
+warning: function `parse_crypto_frame` is never used
+    --> src/lib.rs:1620:4
+     |
+1620 | fn parse_crypto_frame(frame_data: &[u8]) -> Option<Vec<u8>> {
+     |    ^^^^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(dead_code)]` on by default
+
+warning: function `calculate_simple_hash` is never used
+    --> src/lib.rs:1777:4
+     |
+1777 | fn calculate_simple_hash(data: &[u8]) -> u64 {
+     |    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: `tls_ja4` (lib) generated 4 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+     Running `target/debug/examples/test_executable`
+🔍 TLS JA4/JA3 指纹计算测试 - 直接调用可执行文件
+==================================================
+📁 处理文件: /root/workspace/code_repo/rust/tls_ja4/tls3.pcapng
+📁 对比文件: /root/workspace/code_repo/rust/tls_ja4/result.txt
+🚀 可执行文件: ./target/release/tls_ja4
+🔄 正在运行TLS JA4分析...
+✅ 程序执行成功
+📊 输出长度: 274334 字节
+📝 输出已保存到: test_output.txt
+📊 解析到 110 个JA4结果
+   1: JA4=t13d1516h2_8daaf6152771_d8a2da3f94cd, 五元组=10.108.20.68:60513 -> 20.189.173.16:443
+   2: JA4=t13d1516h2_8daaf6152771_d8a2da3f94cd, 五元组=10.108.20.68:60541 -> 150.171.29.11:443
+   3: JA4=t13d1516h2_8daaf6152771_d8a2da3f94cd, 五元组=10.108.20.68:60558 -> 223.109.82.146:443
+📊 比对结果:
+   总结果数: 110
+   匹配数: 108
+   不匹配数: 2
+   匹配率: 98.18%
+❌ 不匹配的结果:
+   1: 期望=未找到匹配的五元组, 实际=t13d1516h1_8daaf6152771_0d365e64def3 (五元组: 10.108.20.68:60490 -> 140.82.113.25:443)
+   2: 期望=q13d0312h3_55b375c5d22e_5a06198afb93 (五元组: :0 -> :0), 实际=t13d1516h2_8daaf6152771_d8a2da3f94cd (五元组: :0 -> :0)
+🏁 测试完成

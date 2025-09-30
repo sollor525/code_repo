@@ -20,6 +20,12 @@ hex = "0.4"
 md5 = "0.7"
 tls-parser = "0.12.2"
 pnet = "0.34"
+rayon = "1.8"
+parking_lot = "0.12"
+num_cpus = "1.16"
+quiche = { version = "0.20", default-features = false, features = ["boringssl-boring-crate"] }
+aes-gcm = "0.10"
+aes = "0.8"
 
 [lib]
 name = "tls_ja4"
@@ -30,22 +36,30 @@ crate-type = ["cdylib", "rlib"]
 criterion = "0.5"
 tempfile = "3.0"
 
-# [[bench]]
-# name = "tls_parsing_bench"
-# harness = false
+[[bench]]
+name = "fingerprint_performance"
+harness = false
 
-# [[bench]]
-# name = "simple_bench"
-# harness = false
+[[bench]]
+name = "comprehensive_performance"
+harness = false
 
-# [[bench]]
-# name = "quick_bench"
-# harness = false
+[[bench]]
+name = "simple_bench"
+harness = false
 
 
 [[example]]
 name = "test_new_c_api"
 path = "examples/test_new_c_api.rs"
+
+[[example]]
+name = "test_pcapng_processing"
+path = "examples/test_pcapng_processing.rs"
+
+[[example]]
+name = "test_executable"
+path = "examples/test_executable.rs"
 
 [[example]]
 name = "test_segmented_tls"

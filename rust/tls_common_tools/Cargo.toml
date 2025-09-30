@@ -1,0 +1,23 @@
+[package]
+name = "tls_common_tools"
+version = "0.1.0"
+edition = "2021"
+authors = ["TLS Tools Developer"]
+description = "A collection of common networking tools"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+byteorder = "1.4"
+hex = "0.4"
+pnet = "0.34"
+pcap-file = "2.0"
+hyperscan = "0.3"
+iced = { version = "0.10", default-features = false, features = ["smol"] }
+rfd = "0.12"
+chrono = "0.4"
+log = "0.4"
+env_logger = "0.10"
+
+[[bin]]
+name = "tls_tools"
+path = "src/main.rs"
