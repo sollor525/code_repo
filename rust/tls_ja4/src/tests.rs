@@ -71,8 +71,8 @@ mod tests {
     /// 测试TLS版本转换
     #[test]
     fn test_tls_version_conversion() {
-        use crate::fingerprint::utils::tls_version_to_u16;
-        
+        use crate::tls::parser::tls_version_to_u16;
+
         assert_eq!(tls_version_to_u16(TlsVersion::Ssl30), 0x0300);
         assert_eq!(tls_version_to_u16(TlsVersion::Tls10), 0x0301);
         assert_eq!(tls_version_to_u16(TlsVersion::Tls11), 0x0302);
@@ -83,21 +83,16 @@ mod tests {
     /// 测试GREASE检测
     #[test]
     fn test_grease_detection() {
-        use crate::tls::extensions::{is_grease_extension, is_grease_cipher};
-        
-        // 测试GREASE扩展
-        assert!(is_grease_extension(0x0a0a));
-        assert!(is_grease_extension(0x1a1a));
-        assert!(is_grease_extension(0x2a2a));
-        assert!(!is_grease_extension(0x000a)); // 正常扩展
-        assert!(!is_grease_extension(0x0010)); // ALPN扩展
-        
-        // 测试GREASE密码套件
-        assert!(is_grease_cipher(0x0a0a));
-        assert!(is_grease_cipher(0x1a1a));
-        assert!(is_grease_cipher(0x2a2a));
-        assert!(!is_grease_cipher(0x002f)); // 正常密码套件
-        assert!(!is_grease_cipher(0x1301)); // TLS 1.3密码套件
+        use crate::is_grease_value;
+
+        // 测试GREASE值
+        assert!(is_grease_value(0x0a0a));
+        assert!(is_grease_value(0x1a1a));
+        assert!(is_grease_value(0x2a2a));
+        assert!(!is_grease_value(0x000a)); // 正常扩展
+        assert!(!is_grease_value(0x0010)); // ALPN扩展
+        assert!(!is_grease_value(0x002f)); // 正常密码套件
+        assert!(!is_grease_value(0x1301)); // TLS 1.3密码套件
     }
 
     /// 测试空输入处理

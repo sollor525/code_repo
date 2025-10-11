@@ -1,0 +1,7827 @@
+[
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b0da82dd1658"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i181000_85036bcba153_d41ae481755e"
+  },
+  {
+    "application": "Chromium Browser",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chromium Browser",
+    "device": null,
+    "ja4_fingerprint": "q13d0312h3_55b375c5d22e_06cda9e17597"
+  },
+  {
+    "application": "Chromium Browser",
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b0da82dd1658"
+  },
+  {
+    "application": "Chromium Browser",
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d190900_9dc949149365_97f8aa674fd9"
+  },
+  {
+    "application": "Sliver Agent",
+    "device": null,
+    "ja4_fingerprint": "t13d190900_9dc949149365_97f8aa674fd9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_d339722ba4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0912h2_f91f431d341e_dc02626b439c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "IcedID ",
+    "device": null,
+    "ja4_fingerprint": "t13d201100_2b729b4bf6f3_9e7b989ebec8"
+  },
+  {
+    "application": "SoftEther VPN",
+    "device": null,
+    "ja4_fingerprint": "t13d880900_fcb5b95cb75a_b0d3b4ac2a14"
+  },
+  {
+    "application": "Cobalt Strike v4.9.1 beacon",
+    "device": null,
+    "ja4_fingerprint": "t12i190700_d83cc789557e_16bbda4055b2"
+  },
+  {
+    "application": "Cobalt Strike v4.9.1 beacon",
+    "device": null,
+    "ja4_fingerprint": "t12i210700_76e208dd3e22_16bbda4055b2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d330900_6170e2a7c060_686390af6b8e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d280500_4b3a0804f14b_84638dd34c7a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_550dd089df7a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d360600_b3158157a1d4_188bc74aacc5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714ht_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d300600_28df28bfa019_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_e903c750b005"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301100_1d37bd780c83_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711h2_5b57614c22b0_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_5c2c66f702b0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d120700_3bab475705cb_0f3b2bcde21d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301000_1d37bd780c83_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361200_c014a34ff1af_7c76daad20ec"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_c114573b7948"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d430600_4bb8e972a3c3_188bc74aacc5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h2_5b57614c22b0_ef7df7f74e48"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h2_5b57614c22b0_748f4c70de1c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d200800_22c523c4c553_16bbda4055b2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i080600_78842d3b5392_a87958d6d535"
+  },
+  {
+    "application": "ngrok 3.8.0",
+    "device": null,
+    "ja4_fingerprint": "t13d191000_9dc949149365_e7c285222651"
+  },
+  {
+    "application": "ngrok 3.8.0",
+    "device": null,
+    "ja4_fingerprint": "t13i190900_9dc949149365_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": "LIFX",
+    "ja4_fingerprint": "t12d520600_b380db6257eb_0a9c83bf8b96"
+  },
+  {
+    "application": null,
+    "device": "Nest Thermostat V2",
+    "ja4_fingerprint": "t12d8008h1_9cedc1f1428b_046e095b7c4a"
+  },
+  {
+    "application": null,
+    "device": "Phillips Hue Bridge V2",
+    "ja4_fingerprint": "t12d350600_9d4c96c0953b_0a9c83bf8b96"
+  },
+  {
+    "application": "Firefox 68.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Chrome 31.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1310sp_a571d07754c8_736b2a1ed4d3"
+  },
+  {
+    "application": "Chrome 94.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Edge 17.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1810h2_4b22cbed5bed_27793441e138"
+  },
+  {
+    "application": "Chrome 62.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Edge 111.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1616h2_e72c3b3287f1_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 56.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Edge 105.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1616h2_e72c3b3287f1_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 46.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1212ht_39b11509324c_c9eaec7dbab4"
+  },
+  {
+    "application": "Firefox 73.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Chrome 105.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 84.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d267a5f792d4"
+  },
+  {
+    "application": "Edge 95.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 108.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 43.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211ht_39b11509324c_c905abbc9856"
+  },
+  {
+    "application": "Chrome 41.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211ht_39b11509324c_c905abbc9856"
+  },
+  {
+    "application": "Chrome 109.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 57.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Chrome 97.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 81.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d267a5f792d4"
+  },
+  {
+    "application": "Firefox 61.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1313h2_07be0c029dc8_ad97e2351c08"
+  },
+  {
+    "application": "Firefox 101.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Firefox 78.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d267a5f792d4"
+  },
+  {
+    "application": "Firefox 109.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome 112.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 55.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1409h2_c877c20a043a_e70312a1ce2c"
+  },
+  {
+    "application": "Chrome 101.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 120.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Edge 84.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Edge 103.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 83.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Chrome 84.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Firefox 74.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Chrome 66.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Firefox 62.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1314h2_07be0c029dc8_d267a5f792d4"
+  },
+  {
+    "application": "Chrome 71.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_77989cba1f4a"
+  },
+  {
+    "application": "Edge 94.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171000_5b57614c22b0_78e6aca7449b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_eca864cca44a"
+  },
+  {
+    "application": "Firefox 113.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy A10",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 34.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1311sp_a571d07754c8_06a4338d0495"
+  },
+  {
+    "application": "Firefox 88.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d267a5f792d4"
+  },
+  {
+    "application": "Edge 99.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 58.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Chrome 72.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": "Chrome 95.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 54.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1409h2_c877c20a043a_e70312a1ce2c"
+  },
+  {
+    "application": "Chrome 92.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 32.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1310sp_a571d07754c8_736b2a1ed4d3"
+  },
+  {
+    "application": "Firefox 116.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Firefox 70.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 12 Pro Max",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome 38.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1311sp_a571d07754c8_06a4338d0495"
+  },
+  {
+    "application": "Chrome 110.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S10",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome 111.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 53.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1411h2_c866b44c5a26_de5ccbe16bdd"
+  },
+  {
+    "application": "Chrome 75.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": "Firefox 63.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy A51",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 67.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Edge 86.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Chrome 73.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": "Firefox 99.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Edge 85.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Edge 81.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": "Edge 100.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 94.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome 126.0 Beta ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome 64.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Firefox 127.0 Beta ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_6a09c78d0dc2"
+  },
+  {
+    "application": "Edge 107.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1616h2_e72c3b3287f1_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 75.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Chrome 87.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Chrome 77.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": "Edge 114.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i080500_78842d3b5392_e51b7354d87f"
+  },
+  {
+    "application": "Firefox 120.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_5c2c66f702b0"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 12 Mini",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Firefox 108.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Google Pixel 7",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome 55.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1411h2_c866b44c5a26_de5ccbe16bdd"
+  },
+  {
+    "application": "Chrome 80.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": "Chrome 36.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1311sp_a571d07754c8_06a4338d0495"
+  },
+  {
+    "application": "Chrome 78.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone SE 2020",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Firefox 72.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Firefox 121.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_5c2c66f702b0"
+  },
+  {
+    "application": "Chrome 85.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Chrome 86.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Chrome 63.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Chrome 36.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1011sp_41f4ea5be9c2_06a4338d0495"
+  },
+  {
+    "application": "Chrome 37.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1311sp_a571d07754c8_06a4338d0495"
+  },
+  {
+    "application": "Chrome 69.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1212h2_d34a8e72043a_b00751acaffa"
+  },
+  {
+    "application": "Chrome 70.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1212h2_d34a8e72043a_b00751acaffa"
+  },
+  {
+    "application": "Chrome 48.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1212h2_39b11509324c_c9eaec7dbab4"
+  },
+  {
+    "application": "Chrome 81.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": "Edge 110.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1616h2_e72c3b3287f1_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 110.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Edge 106.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1616h2_e72c3b3287f1_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S21 Plus",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Firefox 60.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1313h2_07be0c029dc8_ad97e2351c08"
+  },
+  {
+    "application": "Firefox 76.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Firefox 89.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome 114.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 117.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Firefox 58.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1409h2_c877c20a043a_e70312a1ce2c"
+  },
+  {
+    "application": "Chrome 74.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": "Edge 112.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1616h2_e72c3b3287f1_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 111.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Edge 101.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 95.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome 61.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Chrome 102.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 68.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Edge 83.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Edge 87.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Chrome 93.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 32.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1309sp_a571d07754c8_6bdcaa414218"
+  },
+  {
+    "application": "Edge 96.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 45.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211ht_39b11509324c_c905abbc9856"
+  },
+  {
+    "application": "Chrome 107.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 51.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1411h2_c866b44c5a26_de5ccbe16bdd"
+  },
+  {
+    "application": "Chrome 39.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1210ht_39b11509324c_ab57fa081356"
+  },
+  {
+    "application": "Chrome 31.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1309sp_a571d07754c8_6bdcaa414218"
+  },
+  {
+    "application": "Chrome 67.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Firefox 80.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d267a5f792d4"
+  },
+  {
+    "application": "Firefox 65.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Chrome 39.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1311sp_a571d07754c8_06a4338d0495"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Pro 12",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Firefox 92.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome 98.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Vivo Y50",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Edge 102.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 76.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": "Firefox 114.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome 44.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d0911ht_0a330963ad8f_c905abbc9856"
+  },
+  {
+    "application": "Firefox 59.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1409h2_c877c20a043a_e70312a1ce2c"
+  },
+  {
+    "application": "Edge 91.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad 8th",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Edge 97.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 90.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Firefox 107.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome 59.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Edge 80.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": "Edge 115.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Edge 98.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 42.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211ht_39b11509324c_c905abbc9856"
+  },
+  {
+    "application": "Chrome 103.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 54.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1411h2_c866b44c5a26_de5ccbe16bdd"
+  },
+  {
+    "application": "Firefox 66.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Chrome 45.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d0911ht_0a330963ad8f_c905abbc9856"
+  },
+  {
+    "application": "Chrome 30.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1510sp_49e15d6cf97a_736b2a1ed4d3"
+  },
+  {
+    "application": "Firefox 98.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Edge 16.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1810h2_4b22cbed5bed_27793441e138"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Google Pixel 8",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome 52.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1411h2_c866b44c5a26_de5ccbe16bdd"
+  },
+  {
+    "application": "Chrome 40.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1311sp_a571d07754c8_06a4338d0495"
+  },
+  {
+    "application": "Edge 18.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1810h2_4b22cbed5bed_27793441e138"
+  },
+  {
+    "application": "Firefox 105.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_5c2c66f702b0"
+  },
+  {
+    "application": "Edge 93.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 113.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Mini 2019",
+    "ja4_fingerprint": "t13d2314h2_24fc43eb1c96_c5b8c5b1cdcb"
+  },
+  {
+    "application": "Edge 109.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1616h2_e72c3b3287f1_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 104.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Firefox 82.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d267a5f792d4"
+  },
+  {
+    "application": "Chrome 99.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S9",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 118.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Google Pixel 5",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Firefox 115.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome 96.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Mini 2019",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Firefox 71.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Firefox 106.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Firefox 83.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d267a5f792d4"
+  },
+  {
+    "application": "Edge 89.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Firefox 112.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy Note 20",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome 79.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711h2_5b57614c22b0_86ae21f8795b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy Tab S8",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Chrome 88.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy Tab S9",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Firefox 93.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome 47.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1212ht_39b11509324c_c9eaec7dbab4"
+  },
+  {
+    "application": "Firefox 86.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d267a5f792d4"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy M32",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome 115.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 49.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1112h2_c45550529adf_c9eaec7dbab4"
+  },
+  {
+    "application": "Chrome 40.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211ht_39b11509324c_c905abbc9856"
+  },
+  {
+    "application": "Chrome 91.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 89.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Edge 113.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1616h2_e72c3b3287f1_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S20 Ultra",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome 106.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Edge 88.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Chrome 60.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Firefox 100.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Firefox 103.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_5c2c66f702b0"
+  },
+  {
+    "application": "Chrome 33.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1312sp_a571d07754c8_ed5eb0a3fdc3"
+  },
+  {
+    "application": "Chrome 30.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1509sp_49e15d6cf97a_6bdcaa414218"
+  },
+  {
+    "application": "Chrome 29.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d150900_49e15d6cf97a_736b2a1ed4d3"
+  },
+  {
+    "application": "Firefox 103.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Edge 92.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1310h2_00f390d99b96_8846e450cd95"
+  },
+  {
+    "application": "Firefox 64.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Chrome 37.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1011sp_41f4ea5be9c2_06a4338d0495"
+  },
+  {
+    "application": "Firefox 77.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 14 Pro Max",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 12 Pro",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Firefox 118.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 14",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S23",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1511h2_8daaf6152771_6d021c4c45cd"
+  },
+  {
+    "application": "Chrome 40.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1011sp_41f4ea5be9c2_06a4338d0495"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 11 Pro",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome 35.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1311sp_a571d07754c8_06a4338d0495"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPad Pro 12",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Firefox 87.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d267a5f792d4"
+  },
+  {
+    "application": "Chrome 50.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1112h2_c45550529adf_ce3753e6c77f"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Google Pixel 4",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S20 Plus",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy A51",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 15 Pro",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Xiaomi Redmi Note 9",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1409h1_c866b44c5a26_e08eabe7240f"
+  },
+  {
+    "application": "Chrome 116.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy Note 10",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 96.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome 65.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": "Chrome 44.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1211ht_39b11509324c_c905abbc9856"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone X",
+    "ja4_fingerprint": "t12d2010h2_2a284e3b0c56_f05fdf8c38a9"
+  },
+  {
+    "application": "Edge 104.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone XS",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Xiaomi Redmi Note 11",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Chrome 30.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1210sp_02e81d9f7c9f_736b2a1ed4d3"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 15 Plus",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome 117.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1311h2_00f390d99b96_fab7f7ed1680"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0910h2_e58ff226e52e_a1aaf22d73e2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d421200_49900ac2774e_d339722ba4af"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad 9th",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Edge 90.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 14 Pro Max",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad 10th",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Firefox 97.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Motorola Moto G9 Play",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Firefox 104.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_5c2c66f702b0"
+  },
+  {
+    "application": "Chrome 48.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d0912h2_0a330963ad8f_c9eaec7dbab4"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy M32",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 29.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d150800_49e15d6cf97a_6bdcaa414218"
+  },
+  {
+    "application": "Chrome 100.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy A52",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 102.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Firefox 119.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_5c2c66f702b0"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone XR",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome 32.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1010sp_41f4ea5be9c2_736b2a1ed4d3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7412ht_a97353c36de0_24695f2957a7"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy Tab S6",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy Tab S7",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 38.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1011sp_41f4ea5be9c2_06a4338d0495"
+  },
+  {
+    "application": "Firefox 91.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Firefox 90.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S8",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 53.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1409h2_c877c20a043a_e70312a1ce2c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d400600_9f32fed32fcc_a1e935682795"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone SE 2020",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d250900_5c8d56705cd1_188c7f576dcd"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy Tab S6",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 11 Pro",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Pro 11 2020",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Air 5",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome 121.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Firefox 85.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d267a5f792d4"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S20 Ultra",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Firefox 69.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Huawei P30",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d270700_a2460661a67a_a8cc486ca5dc"
+  },
+  {
+    "application": "Chrome 119.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPad Pro 12",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome 119.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Pro 11 2021",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Edge 108.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1616h2_e72c3b3287f1_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPad Pro 11 2021",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 12",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone SE 2020",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome 41.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d0911ht_0a330963ad8f_c905abbc9856"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 11 Pro Max",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S20 Plus",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 15 Pro Max",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Firefox 122.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_5c2c66f702b0"
+  },
+  {
+    "application": "Firefox 105.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3d5424432f57"
+  },
+  {
+    "application": "Chrome 121.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1309h2_00f390d99b96_78a2b149a2c3"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 13 Mini",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1310h2_00f390d99b96_a1aaf22d73e2"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Google Pixel 8 Pro",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 12 Mini",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 12 Pro Max",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy Note 10",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome 104.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1310h2_00f390d99b96_4c1ab0552904"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPad 8th",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome 39.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1011sp_41f4ea5be9c2_06a4338d0495"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 15 Pro",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad 7th",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Firefox 57.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1409h2_c877c20a043a_e70312a1ce2c"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 14 Pro",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1510h2_8daaf6152771_560390466015"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Pro 11 2020",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d341200_df64f88a34ac_550dd089df7a"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 12 Pro",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Motorola Moto G7 Play",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome ",
+    "device": "OnePlus 7",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome 43.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d0911ht_0a330963ad8f_c905abbc9856"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 12",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Firefox 79.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d267a5f792d4"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S8",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1511h2_8daaf6152771_884670258d07"
+  },
+  {
+    "application": "Chrome 120.0 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Edge 15.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1810h2_4b22cbed5bed_27793441e138"
+  },
+  {
+    "application": "Firefox 56.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1409h2_c877c20a043a_e70312a1ce2c"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S21",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 11 Pro Max",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 11",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Google Pixel 6 Pro",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone XS",
+    "ja4_fingerprint": "t12d2010h2_2a284e3b0c56_12b7a1cb7c36"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy M52",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 11",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S22",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S21 Plus",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d300500_28df28bfa019_0a9e4f040ead"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Google Pixel 4 XL",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1006h2_75366a718a82_151c0a07749b"
+  },
+  {
+    "application": "Chrome 34.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1011sp_41f4ea5be9c2_06a4338d0495"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S20",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 7",
+    "ja4_fingerprint": "t12d1809ht_4b22cbed5bed_2cdefc264be7"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 14 Plus",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Google Pixel 7 Pro",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S22 Ultra",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome 33.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1012sp_41f4ea5be9c2_ed5eb0a3fdc3"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Google Pixel 6",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari 10.1 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1809h2_4b22cbed5bed_2cdefc264be7"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy M52",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy Tab S5e",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 13 Pro Max",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 12 Pro",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 14",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy Tab S8",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S21 Ultra",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome 31.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1010sp_41f4ea5be9c2_736b2a1ed4d3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d360600_b3158157a1d4_57ba8164522c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012ht_1d37bd780c83_b26ce05bbdd6"
+  },
+  {
+    "application": "Safari 13.1 ",
+    "device": null,
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone XS",
+    "ja4_fingerprint": "t13d2314h2_24fc43eb1c96_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d100500_75366a718a82_151c0a07749b"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad 7th",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 12 Mini",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy A11",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S10 Plus",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "OnePlus 7T",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S21",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Mini 2021",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPad 8th",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy Note 20 Ultra",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 14 Pro",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d430600_4bb8e972a3c3_3eb67bb060c1"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 12",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad 8th",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 11 Pro",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S23 Ultra",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy A10",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S22 Plus",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 14 Plus",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Motorola Moto G71 5G",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Pro 12",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d360600_b3158157a1d4_003524bb8820"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 12 Pro",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Google Pixel 5",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 15",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "OnePlus 11R",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Safari 11.1 ",
+    "device": null,
+    "ja4_fingerprint": "t12d2010h2_2a284e3b0c56_f05fdf8c38a9"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S10 Plus",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 12 Pro Max",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone XS",
+    "ja4_fingerprint": "t13d2314h2_24fc43eb1c96_14788d8d241b"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Pro 11 2022",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome 35.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d1011sp_41f4ea5be9c2_06a4338d0495"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 12 Pro Max",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy Tab S7",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad 6th",
+    "ja4_fingerprint": "t12d2010h2_2a284e3b0c56_f05fdf8c38a9"
+  },
+  {
+    "application": "Safari 14.1 ",
+    "device": null,
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPad 10th",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 15 Pro Max",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 8",
+    "ja4_fingerprint": "t12d2010h2_2a284e3b0c56_f05fdf8c38a9"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Oppo A96",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S24",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy Tab S5e",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d360600_b3158157a1d4_3eb67bb060c1"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy Tab S9",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone XS",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Chrome 42.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d0911ht_0a330963ad8f_c905abbc9856"
+  },
+  {
+    "application": "Chrome 49.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d0712h2_ccb88ad3c00d_c9eaec7dbab4"
+  },
+  {
+    "application": "Safari 12.1 ",
+    "device": null,
+    "ja4_fingerprint": "t13d2314h2_24fc43eb1c96_c5b8c5b1cdcb"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S21",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 11",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPad Pro 11 2020",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome 29.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d120900_02e81d9f7c9f_736b2a1ed4d3"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Vivo Y21",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 13 Pro Max",
+    "ja4_fingerprint": "t13d2314h2_24fc43eb1c96_14788d8d241b"
+  },
+  {
+    "application": "Safari 16.5 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171000_5b57614c22b0_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i030800_55b375c5d22e_97f8aa674fd9"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Vivo V21",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d181000_5d04281c6031_78e6aca7449b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1314h2_f57a46bbacb6_14788d8d241b"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy Note 20",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPad Pro 11 2022",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Google Pixel 3",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S23",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Air 4",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1710h2_5b57614c22b0_97f8aa674fd9"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S9",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013ht_1d37bd780c83_ce5650b735ce"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone SE 2022",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S21 Ultra",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S23 Ultra",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 8",
+    "ja4_fingerprint": "t13d2314h2_24fc43eb1c96_c5b8c5b1cdcb"
+  },
+  {
+    "application": "Chrome 47.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d0912ht_0a330963ad8f_c9eaec7dbab4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d080600_78842d3b5392_e51b7354d87f"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 13",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Safari 17.3 ",
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPad Mini 2021",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2211h2_231e334592e8_29829a46703f"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S22 Ultra",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPad 9th",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d300600_28df28bfa019_36aea2269ab5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2406ht_a57d86c8052b_22a92d800fe4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712ht_ab0a1bf427ad_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d091100_08d6d9b33cd7_6d6c278f61f2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d3908ht_752ec48053c1_046e095b7c4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_adb3fbb29c1a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713ht_5b57614c22b0_eca864cca44a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0606h2_915bc7144b37_151c0a07749b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d351200_bfa337485184_50e40c227d09"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171300_5b57614c22b0_43ade6aba3df"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d180700_4b22cbed5bed_f28add8e7af0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3612ht_bcee18a5b459_6bebaf5329ac"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d581000_363f866c7444_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301100_1d37bd780c83_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515ht_8daaf6152771_de216e0ff992"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1809h2_4b22cbed5bed_7af1ed941c26"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d231200_2617ba16f8c2_ccd0985badbe"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i170800_5b57614c22b0_97f8aa674fd9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1514h2_8daaf6152771_a5b99884f7f5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2510h2_5c8d56705cd1_188c7f576dcd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171100_ab0a1bf427ad_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4212ht_fc32d1a3ba62_6012e25465e0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0012h2_®ßÂ³å¥g\b8I\u0010È_abe594c0d58a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d360900_bcee18a5b459_561f15df05b2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1515h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1515h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301000_1d37bd780c83_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711ht_5b57614c22b0_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1410h2_c866b44c5a26_a6913cb1f049"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1312h2_d27ee6a641af_6b314db333b6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d581000_363f866c7444_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1511h2_8daaf6152771_78e6aca7449b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0008h2_,@_½¹Ê\u0002µXçé_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4212ht_49900ac2774e_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d170900_5b57614c22b0_97f8aa674fd9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d140800_c866b44c5a26_da1760d18e18"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d300600_28df28bfa019_ead284e5d3ae"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301000_1d37bd780c83_a29327ec888c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1409h2_c866b44c5a26_f9c1bad5661c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d741100_a97353c36de0_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1311h2_f57a46bbacb6_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d231100_24fc43eb1c96_ecbbeb3a4960"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4213ht_49900ac2774e_d339722ba4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i4211ht_49900ac2774e_b26ce05bbdd6"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S20",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S22 Plus",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 12 Mini",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301300_1d37bd780c83_60f9c9cc85a6"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy Note 20 Ultra",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S24",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 13 Pro",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 13 Mini",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Oppo Reno 6",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy Note 9",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone 13",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Google Pixel 3a",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S24 Ultra",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 15 Plus",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Xiaomi Redmi Note 8",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 11",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone SE 2022",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Air 2019",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPad Pro 12",
+    "ja4_fingerprint": "t13d2314h2_24fc43eb1c96_c5b8c5b1cdcb"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 11 Pro Max",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy Note 9",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 13 Pro",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "OnePlus 9",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPad Air 5",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPad Air 4",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1005ht_75366a718a82_e7085efe60d1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S24 Ultra",
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy S10e",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 15",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": "Chrome 46.0 ",
+    "device": null,
+    "ja4_fingerprint": "t12d0912ht_0a330963ad8f_c9eaec7dbab4"
+  },
+  {
+    "application": "Chrome ",
+    "device": "OnePlus 8",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Chrome ",
+    "device": "iPhone 12",
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S22",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Chrome ",
+    "device": "Samsung Galaxy A52",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_02713d6af862"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S10e",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Samsung Internet ",
+    "device": "Samsung Galaxy S10",
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": "Safari ",
+    "device": "iPhone XR",
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d320900_47c5e39c651d_9da38b6fd1bc"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h2_1d37bd780c83_ce5650b735ce"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0008h2_(\u0005\u000fý1:e\n?¤]®_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h2_1d37bd780c83_1b3407e2c936"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012ht_1d37bd780c83_f4b9272caa35"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_32693acc3aed"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i080500_78842d3b5392_021165082e1c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d510400_721806814079_1e2a54cae03f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i210500_9d99ce2cacbd_021165082e1c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4212ht_49900ac2774e_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712ht_95e1cefdbe28_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d300700_28df28bfa019_269097225c9f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d231100_2617ba16f8c2_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3011h2_1d37bd780c83_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1311h2_00f390d99b96_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d5811h2_363f866c7444_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d5811ht_363f866c7444_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d180600_1eaab662e24f_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1310ht_00f390d99b96_8846e450cd95"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4212ht_49900ac2774e_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d150900_dad3e448d43e_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i230900_24fc43eb1c96_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_6a09c78d0dc2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711h2_5b57614c22b0_d811adc85aab"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361200_c014a34ff1af_f8a5deec6cc4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d180400_4b22cbed5bed_1ea9011b3dfa"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2007h2_db8b008725ba_d68e5f8924a0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d781000_5f3c3264e0ca_7379471da272"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d6114h2_47cfe07f7159_d75bc63958da"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_466870fee612"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d200700_22c523c4c553_f28add8e7af0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d131000_f57a46bbacb6_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d240600_a57d86c8052b_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0910h2_e58ff226e52e_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d200700_22c523c4c553_e52a70c5eba9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712ht_ec4eb8433aa1_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0909h2_e58ff226e52e_a96a7604a82f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d300700_f3176e901f78_e74d7d97755c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d331000_6170e2a7c060_1f7ae294493e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3612ht_c014a34ff1af_fa269c3d986d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d200600_db8b008725ba_d68e5f8924a0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i481000_c08b26b7ea02_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d260700_3f6785ec0b62_8c06664c3ac5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d291100_4de943165faa_801c830e80cf"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d091000_f91f431d341e_3fcd1a44f3e3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2212h2_231e334592e8_49e063487882"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1206h2_3bab475705cb_151c0a07749b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_8b8ad545d541"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301000_1d37bd780c83_7379471da272"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d221100_231e334592e8_49e063487882"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d501000_38844ea826fd_24611a1bfa3f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1710ht_5b57614c22b0_1b18b669d02d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_c114573b7948"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d271300_505c0c17c3e4_7ab4cb0d9bfd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d130600_a571d07754c8_3eafcbe19126"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d221000_231e334592e8_29829a46703f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i170900_5b57614c22b0_18e8a06d9b2d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361100_c014a34ff1af_fa269c3d986d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151100_8daaf6152771_ef7df7f74e48"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1511h2_8daaf6152771_b9003e5c3fb3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h2_1d37bd780c83_f6eeaf393d2e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361300_c014a34ff1af_588fa7aed259"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1710h2_5b57614c22b0_1b18b669d02d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i300700_28df28bfa019_e59803268f14"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7414h2_a97353c36de0_d75bc63958da"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1314ht_f57a46bbacb6_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i170900_5b57614c22b0_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_65df7edfe3b3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013ht_1d37bd780c83_1b3407e2c936"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012ht_1d37bd780c83_1d8619447c8d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_eb7c9aabf852"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h2_5b57614c22b0_f81080dfc557"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d300400_28df28bfa019_017f05e53f6d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d280400_4b3a0804f14b_6187caf48b78"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d741100_a97353c36de0_fb8d5ffd48c1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d180800_4b22cbed5bed_7af1ed941c26"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d5811h2_363f866c7444_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_a1e3e77d4450"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1205ht_3bab475705cb_6ee80548f076"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712ht_ab0a1bf427ad_6bebaf5329ac"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i4211ht_49900ac2774e_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h2_5b57614c22b0_02c8e53ee398"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2310h2_759e8558bdf6_86c71188d998"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d080700_0df93f53a2f9_f28add8e7af0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d180800_4b22cbed5bed_16bbda4055b2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2508h2_11b0a6e26a3b_65c95ed6af2c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1711ht_ab0a1bf427ad_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012ht_1d37bd780c83_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d570700_0e349dcb6bab_4446390ac224"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d400700_9f32fed32fcc_4446390ac224"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_16224013ddfa"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1710h2_5b57614c22b0_147b4839f6f5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_0b98fc1457ab"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301000_01455d0db58d_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711ht_ab0a1bf427ad_7379471da272"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1512h2_8daaf6152771_6f9e9b12b7f2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d360700_b95247b88125_4446390ac224"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1009h2_75366a718a82_9d38f905c14d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3011ht_1d37bd780c83_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i290500_9a99e357c31e_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171000_ab0a1bf427ad_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3011h2_1d37bd780c83_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i260800_399c8018fe05_8d2a93c08613"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d060500_915bc7144b37_151c0a07749b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d481100_c08b26b7ea02_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i170900_5b57614c22b0_78e6aca7449b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i270500_a2460661a67a_e51b7354d87f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i301000_1d37bd780c83_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1514ht_8daaf6152771_a5b99884f7f5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151000_8daaf6152771_86dd91ae2a36"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i2312h2_24fc43eb1c96_1b3407e2c936"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_80ae8ef52bf0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2016h2_c55ce1e16a28_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515ht_8daaf6152771_4769d65a485e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171100_5b57614c22b0_be53661681a4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d270600_a2460661a67a_e51b7354d87f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1210h2_d34a8e72043a_e69ac49eb88f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1310ht_00f390d99b96_33b773d5362d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_0d7ed806c34c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i400600_9f32fed32fcc_4446390ac224"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d220600_64bc163bcd3a_8b5687d2b2b8"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1516h2_8daaf6152771_b1ff8ab2d16f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h2_5b57614c22b0_d5fe2c511efa"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711ht_5b57614c22b0_d703f319e8ff"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1510ht_8daaf6152771_560390466015"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d150400_889134784a9b_352d62b41124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i4211ht_49900ac2774e_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d420900_49900ac2774e_c9e58cc61e36"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1512h2_8daaf6152771_315ff31aef4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d161200_2aed5d11fa82_b11171733d3d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3513h2_bfa337485184_2d28e58b241f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1113h2_47af8f603342_f81080dfc557"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d311100_fac32fb19219_ceb115833b1d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2712h2_bd9791dd9fd6_20b022ed4c69"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3011ht_1d37bd780c83_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_ccd0985badbe"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0808h2_78842d3b5392_7381f9cc9f84"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1914h2_4d8ed5baf28e_2f1338c5def5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1311ht_f81d88ceb44f_7379471da272"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i220900_231e334592e8_29829a46703f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4007h2_731077d8320c_7395dae3b2f3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151200_8daaf6152771_b11171733d3d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d481000_c08b26b7ea02_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d240400_a57d86c8052b_46dc1bab6854"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d290900_9ac3848deeb6_b0d3b4ac2a14"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1916h2_4d8ed5baf28e_24493f92c498"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1916h2_4d8ed5baf28e_5a91a4f1accc"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2011ht_314f1408a5a6_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d080800_723ebca51f63_9d38f905c14d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d781200_5f3c3264e0ca_75287bbf5dc4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516ht_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516ht_8daaf6152771_80ae8ef52bf0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d130600_a571d07754c8_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_23269edf5b19"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i130900_f57a46bbacb6_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301000_1d37bd780c83_e1d1bdc3e2a2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i300900_1d37bd780c83_a29327ec888c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i301100_1d37bd780c83_ccd0985badbe"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d131000_0968ec391e9e_25d297215460"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d260800_4d854c96511b_16bbda4055b2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d300500_28df28bfa019_0dfbe928fe2b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d191200_55b2a4fede3e_830561eb1039"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i171100_5b57614c22b0_173e58c88f4d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d080600_78842d3b5392_021165082e1c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i171000_5b57614c22b0_be53661681a4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0907ht_f0ae467b63d4_ed727256b201"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7412ht_a97353c36de0_9f7275f58be6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d781200_5f3c3264e0ca_04abfad71dc9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d3308h2_f24f354999c5_4446390ac224"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d3308ht_f24f354999c5_4446390ac224"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d231000_24fc43eb1c96_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d741200_a97353c36de0_b11171733d3d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i580900_363f866c7444_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d267a5f792d4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h2_5b57614c22b0_28652fe741a1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h2_1d37bd780c83_2f24fdae5cbc"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i301000_1d37bd780c83_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0916h2_f91f431d341e_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d100600_75366a718a82_ead284e5d3ae"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d341200_b356f9c7fb61_37be181fddef"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d111000_c5d436628c5c_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1710ht_5b57614c22b0_97f8aa674fd9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1512h2_8daaf6152771_1195e4b04c4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1514h2_8daaf6152771_66e0f5a089f1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i421100_49900ac2774e_d339722ba4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3012ht_1d37bd780c83_1b3407e2c936"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171000_5b57614c22b0_18e8a06d9b2d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012ht_1d37bd780c83_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301000_1d37bd780c83_518fb456ca59"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d130700_4748d61ff607_e74d7d97755c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d000800_e7}k¬niå8P|\u0012_8ebfdaddfa31"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i260900_399c8018fe05_7cda7a7a9c22"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1514h2_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3513h2_bfa337485184_10734c531abe"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i300900_1d37bd780c83_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i140600_c866b44c5a26_18dd7303c4a5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d390600_752ec48053c1_14e0afd5c388"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d321100_47c5e39c651d_fa269c3d986d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d111200_c5d436628c5c_2f24fdae5cbc"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d300900_28df28bfa019_686390af6b8e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d741100_a97353c36de0_9f7275f58be6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013ht_1d37bd780c83_2f24fdae5cbc"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3010h2_1d37bd780c83_566aa39ed3f1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3012ht_1d37bd780c83_d339722ba4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i2010h2_314f1408a5a6_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d221100_a3988f242d56_b9249812b67b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h2_1d37bd780c83_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1615h2_73198292b10d_5c2c66f702b0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711ht_ab0a1bf427ad_a29327ec888c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3512ht_bfa337485184_89b78339ac4c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i221000_a3988f242d56_b9249812b67b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712ht_ab0a1bf427ad_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301100_1d37bd780c83_009f82a63104"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_f8a5deec6cc4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i140800_c866b44c5a26_824bd91ab3e2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2912ht_723694b0fccc_288f874c93d6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d090800_08d6d9b33cd7_9d38f905c14d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h2_1d37bd780c83_0e6324ab8254"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d4008ht_9f32fed32fcc_046e095b7c4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d250700_63461df8c1ab_6b16546de802"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7814h2_5f3c3264e0ca_16f77b3c5188"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151000_8daaf6152771_b9003e5c3fb3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_b68114bf320e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d331100_7a9914b3f026_6d9c2a445a6d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1512h2_8daaf6152771_6acbe59d8432"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i2911h2_723694b0fccc_288f874c93d6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2407ht_a57d86c8052b_8587f467d9ea"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3513h2_bfa337485184_03eb65375a95"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h2_5b57614c22b0_13e227fd0d91"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361100_c014a34ff1af_7ca1f6f6bf38"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d351100_bfa337485184_e8b3fe21f08b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0911ht_f91f431d341e_3a8073edd8ef"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_0c2151eeb530"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715ht_5b57614c22b0_5c2c66f702b0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d300800_f3176e901f78_885b9fcb631e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1512h2_8daaf6152771_d8929e3a3a62"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i171000_ab0a1bf427ad_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h2_5b57614c22b0_6f9e9b12b7f2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i260600_4d854c96511b_f28add8e7af0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h2_5b57614c22b0_6acbe59d8432"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i240500_a57d86c8052b_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d380700_8c0c8a1f2cfc_460f73f9cefb"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i201100_314f1408a5a6_9249cab70c77"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_3f847bc60f9a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2315h2_24fc43eb1c96_855b30ae25f8"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711ht_5b57614c22b0_5894756fee65"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d000700_Õ/0=6JH\\å\u0012P_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h2_1d37bd780c83_6bebaf5329ac"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_e42f34c56612"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1314h2_f57a46bbacb6_e42f34c56612"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d120900_0ed44715e6cd_95ca0cbbc74b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1616h2_e72c3b3287f1_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1514h2_8daaf6152771_7cf49082e343"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d220600_a3b026342201_8587f467d9ea"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d521000_b262b3658495_518fb456ca59"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i2405ht_a57d86c8052b_22a92d800fe4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_d8a2da3f94cd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i220400_a3b026342201_22a92d800fe4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2314h2_24fc43eb1c96_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1514h2_8daaf6152771_fddc3888abdf"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i300900_1d37bd780c83_518fb456ca59"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_04abfad71dc9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h2_5b57614c22b0_1fa4d607ede0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7411ht_a97353c36de0_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i170900_ab0a1bf427ad_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d260700_4d854c96511b_f28add8e7af0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i741000_a97353c36de0_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i4210ht_49900ac2774e_a29327ec888c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i400500_9f32fed32fcc_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d140700_bd1080ed644b_34e421c2ef05"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d220700_64bc163bcd3a_c66d2ff098b4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_46b8896bec77"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i250600_63461df8c1ab_6b16546de802"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d091000_08d6d9b33cd7_36110f2f4fd1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3513h2_bfa337485184_e7e754ef087b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h2_5b57614c22b0_174951044e42"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i481000_c08b26b7ea02_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_4769d65a485e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0911h2_f91f431d341e_3a8073edd8ef"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d130900_00f390d99b96_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d390500_752ec48053c1_22a92d800fe4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i361100_c014a34ff1af_7c76daad20ec"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d201100_2b729b4bf6f3_9e7b989ebec8"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i270600_a2460661a67a_e7e480e5a997"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_0e91ddefd58d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d210600_9d99ce2cacbd_021165082e1c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3613h2_c014a34ff1af_70ae44219175"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361200_c014a34ff1af_70ae44219175"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2312h2_24fc43eb1c96_d8929e3a3a62"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d351000_bfa337485184_992340a1a229"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d291300_723694b0fccc_899037bd0b8c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i570600_0e349dcb6bab_4446390ac224"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171100_5b57614c22b0_d5bb3253484b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1514h2_8daaf6152771_45f260be83e2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d240600_9769a1d1b44f_8b5687d2b2b8"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d501200_3b915b22b11b_d57fffc49aed"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7714h2_352555b7c677_d75bc63958da"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i220500_64bc163bcd3a_1f2465c447a9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361300_c014a34ff1af_867a32efce91"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_37205ffde759"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d391000_19d148aeea79_a82ad8aaaa0c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0807ht_ff090ef38a8f_ed727256b201"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i280500_4b3a0804f14b_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d220600_64bc163bcd3a_1f2465c447a9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d240700_9769a1d1b44f_e52a70c5eba9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1012h2_3f58cce082e2_ecbbeb3a4960"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1509h2_dad3e448d43e_0484ec23139a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1616h2_e72c3b3287f1_80ae8ef52bf0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2213ht_88f1929cfc5e_ce5650b735ce"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d481100_c08b26b7ea02_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_cd0d7e757748"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d170700_1ff01c554330_da301434ac5b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i990900_bddf78fb5ae1_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012ht_1d37bd780c83_6bebaf5329ac"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d180700_4b22cbed5bed_2dae41c691ec"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d4007h2_9f32fed32fcc_8587f467d9ea"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d741100_a97353c36de0_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i420900_49900ac2774e_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d000700_YZ¼\u0004åð0æ\nÕ_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d340700_7a15ab419a11_e74d7d97755c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1709h2_5b57614c22b0_e967ce4ae740"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1613ht_f051c7d685ed_db37a3522ecd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3011h2_1d37bd780c83_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1512h2_8daaf6152771_ef7df7f74e48"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1512ht_8daaf6152771_315ff31aef4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d130900_00f390d99b96_a1aaf22d73e2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d111100_c5d436628c5c_f6eeaf393d2e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1313h2_07be0c029dc8_28652fe741a1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171300_95e1cefdbe28_2546f7722235"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d190600_1762ed00458f_9efcf929aef7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d390700_752ec48053c1_4446390ac224"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2212h2_231e334592e8_36bf25f296df"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i301000_1d37bd780c83_5635d0cdb6df"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d431200_36cd39a4fcc1_b7ee5e09e9b3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_b1651ce38669"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7814h2_5f3c3264e0ca_7fe57f86189f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d200700_22c523c4c553_2dae41c691ec"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d631200_6346feee4282_db37a3522ecd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_de9982248aa6"
+  },
+  {
+    "application": "Anydesk",
+    "device": null,
+    "ja4_fingerprint": "t12i550500_168bb377f8c8_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d681100_13e0e9e1c501_4a0154eed145"
+  },
+  {
+    "application": "Anydesk",
+    "device": null,
+    "ja4_fingerprint": "t12d550600_168bb377f8c8_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d190700_9541fc5f35d0_e74d7d97755c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1510h2_dad3e448d43e_717c4a4e74c3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_68c5a8c2958d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515ht_8daaf6152771_0a20fe35d3a5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516ht_8daaf6152771_bd8756fc6073"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3015h2_a58de1b83dbe_3d5424432f57"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1410h2_c877c20a043a_b44afb9f0e6a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1111ht_8658d626b39c_7379471da272"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i200900_314f1408a5a6_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171000_5b57614c22b0_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713ht_5b57614c22b0_84e5d5db657c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i390500_752ec48053c1_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0911h2_f91f431d341e_3fcd1a44f3e3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1716h2_5b57614c22b0_eeeea6562960"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d200800_22c523c4c553_7af1ed941c26"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2311ht_759e8558bdf6_fab7f7ed1680"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_f0fc7018f8e8"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1314h2_07be0c029dc8_d267a5f792d4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1313h2_07be0c029dc8_8b9e9388062b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d200600_05d476ae50b9_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d581100_363f866c7444_9f7275f58be6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d300800_f3176e901f78_2234aac7a3b0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151100_8daaf6152771_1195e4b04c4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d421000_49900ac2774e_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1510h2_8daaf6152771_147b4839f6f5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d381100_765413786415_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_36110f2f4fd1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_a5b99884f7f5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_de216e0ff992"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d400700_9f32fed32fcc_046e095b7c4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3112h2_21087b465e88_20b022ed4c69"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7414h2_a97353c36de0_7fe57f86189f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_06d48f16c111"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3613h2_c014a34ff1af_aac333855136"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361200_c014a34ff1af_aac333855136"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d121000_0ed44715e6cd_78e6aca7449b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_5713ffdeb7a1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3012h2_1d37bd780c83_1b3407e2c936"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d221100_231e334592e8_36bf25f296df"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515ht_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_3d5424432f57"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d350600_9344c54d1498_a66d5f4bc140"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012ht_1d37bd780c83_f6eeaf393d2e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i361000_c014a34ff1af_fa269c3d986d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2314h2_24fc43eb1c96_c5b8c5b1cdcb"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i741000_a97353c36de0_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_f81080dfc557"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d331000_7a9914b3f026_732eec4d3d2d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d000700_5²\u001dì<z%ß~\u0016T~_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1309h2_00f390d99b96_a96a7604a82f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d090600_08d6d9b33cd7_ead284e5d3ae"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7412h1_a97353c36de0_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7412h1_a97353c36de0_9f7275f58be6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4212h1_49900ac2774e_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301100_1d37bd780c83_7452fd1b1717"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h1_5b57614c22b0_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i2007h1_22c523c4c553_f28add8e7af0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h1_5b57614c22b0_eca864cca44a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3612h1_c014a34ff1af_fa269c3d986d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h1_1d37bd780c83_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h1_ab0a1bf427ad_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i4211h1_49900ac2774e_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2213h1_88f1929cfc5e_ce5650b735ce"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i4210h1_49900ac2774e_a29327ec888c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i4211h1_49900ac2774e_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h1_1d37bd780c83_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1716h2_5b57614c22b0_cc464264ebd5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2811h2_a01be8c064b6_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1514h1_8daaf6152771_a5b99884f7f5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_748f4c70de1c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i961100_08cc7bc45986_87b33ccefea8"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h1_8daaf6152771_e5627efa2ab1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4312h1_36cd39a4fcc1_89b78339ac4c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1716h2_5b57614c22b0_5713ffdeb7a1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d020700_8e6a03d994ba_3304d8368043"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3012h1_1d37bd780c83_d339722ba4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d240800_e1fe1376eca1_16bbda4055b2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1711h1_ab0a1bf427ad_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h2_5b57614c22b0_5491d1ae5f31"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h1_8daaf6152771_de216e0ff992"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711h1_ab0a1bf427ad_a29327ec888c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h2_1d37bd780c83_e10b9050f4c9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d5013h2_38844ea826fd_9dc9266fc2fa"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d220700_64bc163bcd3a_da301434ac5b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4212h1_49900ac2774e_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7414h2_a97353c36de0_16f77b3c5188"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d220500_1372253f72b4_5aafb6b650ff"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d291300_723694b0fccc_2cc26d266019"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d440700_97e2267fbfb7_046e095b7c4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i4211h1_49900ac2774e_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d9012h2_c6771aded2ed_e55bc47abe96"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_3dd24b5ebec4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3611h1_bcee18a5b459_6bebaf5329ac"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d130800_00f390d99b96_a96a7604a82f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d471200_8f969033cf35_e1b9aa7d9ac3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h1_1d37bd780c83_970f0cd0a61f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h1_1d37bd780c83_1b3407e2c936"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d091000_f91f431d341e_f9531d972513"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171100_5b57614c22b0_1195e4b04c4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1111h1_8658d626b39c_7379471da272"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1213h2_b6e0f558a6da_0c2151eeb530"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2011h1_314f1408a5a6_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h1_5b57614c22b0_e42f34c56612"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d5811h1_363f866c7444_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2311h1_759e8558bdf6_fab7f7ed1680"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h2_5b57614c22b0_b2c23852c975"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h1_1d37bd780c83_2f24fdae5cbc"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d090900_e58ff226e52e_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3612h1_bcee18a5b459_8d4036f0cf4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1717h2_5b57614c22b0_f0fc7018f8e8"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3011h2_1d37bd780c83_970f0cd0a61f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d330700_f24f354999c5_4446390ac224"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2811h2_a01be8c064b6_518fb456ca59"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_6feedaa227c1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i100800_a8cf61a50a39_824bd91ab3e2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d000700_kX(º¦¯]ª%WÚ_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1005h1_75366a718a82_e7085efe60d1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0907h1_f0ae467b63d4_ed727256b201"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1510h2_dad3e448d43e_a1aaf22d73e2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1807h2_4b22cbed5bed_350d2de2742e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_830561eb1039"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1411h1_c866b44c5a26_77989cba1f4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_3fb10893fbe6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_69aff460ab99"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2311h2_759e8558bdf6_fab7f7ed1680"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_a4d24ab5a95e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3010h1_1d37bd780c83_c9e58cc61e36"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3610h1_bcee18a5b459_561f15df05b2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4210h1_49900ac2774e_c9e58cc61e36"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7814h2_5f3c3264e0ca_d75bc63958da"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d201100_2b729b4bf6f3_36bf25f296df"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2013h1_2b729b4bf6f3_e24568c0d440"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1311h2_f57a46bbacb6_b726b330b617"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d070800_04ca88ad2b9b_a96a7604a82f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3613h1_c014a34ff1af_f8a5deec6cc4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1511h2_8daaf6152771_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1511h2_8daaf6152771_7379471da272"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2310h1_759e8558bdf6_86c71188d998"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_5c2c66f702b0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h1_1d37bd780c83_0e6324ab8254"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d100600_afff46af2ca1_021165082e1c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d221200_a3988f242d56_144321f44052"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d631200_722525bb713a_e1b9aa7d9ac3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d631200_722525bb713a_04abfad71dc9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1314h1_f57a46bbacb6_e42f34c56612"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h1_1d37bd780c83_ce5650b735ce"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1311h1_f57a46bbacb6_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d430700_4bb8e972a3c3_fa93173ac126"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d200600_a8e60199704f_cba70b6c385d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d430700_4bb8e972a3c3_78a613864d9e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301300_1d37bd780c83_24c2850b41b3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i410500_6e4bd3960281_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d351100_bfa337485184_69d33394209e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0910h2_6a94827c0504_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i221100_a3988f242d56_144321f44052"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2912h1_723694b0fccc_288f874c93d6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1511h1_8daaf6152771_884670258d07"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1510h2_dad3e448d43e_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1510h1_8daaf6152771_560390466015"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h1_8daaf6152771_de4a06bb82e3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1717h2_5b57614c22b0_3cbfd9057e0d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0312h2_55b375c5d22e_85302d7e289e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d250600_63461df8c1ab_e4066bfb94a3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_87e72e8c75e3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d3908h1_752ec48053c1_046e095b7c4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d200700_a8e60199704f_78a613864d9e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4212h1_49900ac2774e_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1711h1_ab0a1bf427ad_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1716h2_5b57614c22b0_0c27189014cf"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i150300_889134784a9b_352d62b41124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d200500_2a284e3b0c56_e5c9f813b5f0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1717h2_5b57614c22b0_1cbff9e4452c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0912h1_f91f431d341e_d5fe2c511efa"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0912h1_f91f431d341e_ef7df7f74e48"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0913h1_f91f431d341e_02c8e53ee398"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0911h1_f91f431d341e_78e6aca7449b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0912h1_f91f431d341e_6f9e9b12b7f2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1711h1_ab0a1bf427ad_6bebaf5329ac"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h1_1d37bd780c83_f6eeaf393d2e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h1_ab0a1bf427ad_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h2_1d37bd780c83_7452fd1b1717"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d240800_9769a1d1b44f_0fd084b116a9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3011h1_1d37bd780c83_44631c9b694d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h2_1d37bd780c83_f4b9272caa35"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_ad97e2351c08"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h2_1d37bd780c83_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7411h1_a97353c36de0_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301100_1d37bd780c83_4df47d6b5700"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1410h2_c866b44c5a26_b5b8faed2b99"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d300800_28df28bfa019_e59803268f14"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2407h1_a57d86c8052b_8587f467d9ea"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0914h1_f91f431d341e_3dd24b5ebec4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_7542649f71ec_eeeea6562960"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3011h1_1d37bd780c83_f4b9272caa35"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i291200_723694b0fccc_899037bd0b8c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1715h2_5b57614c22b0_eeeea6562960"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h1_ab0a1bf427ad_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d390900_da59b885d53c_147b4839f6f5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d270500_a2460661a67a_67a080e8974e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2212h2_0ba30522257d_cbb9361b6bf9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i360500_b95247b88125_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h1_8daaf6152771_246833c5720e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171200_5b57614c22b0_748f4c70de1c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711h2_5b57614c22b0_d88c7dbd3ee4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2013h2_2b729b4bf6f3_e24568c0d440"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3613h2_c014a34ff1af_d57fffc49aed"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d240700_9769a1d1b44f_71440d09e7ee"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0312h2_55b375c5d22e_0c0a35297ea6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1514h2_8daaf6152771_827b515c4f52"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i080900_78842d3b5392_cf7e24e7f1c1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3011h1_1d37bd780c83_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h2_1d37bd780c83_89992bd7bbd7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3011h1_1d37bd780c83_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3613h2_c014a34ff1af_7c76daad20ec"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d000700_5a\u0010RdÙd}g#¦_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d330700_79816efab8f9_e74d7d97755c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h1_ec4eb8433aa1_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1716h1_5b57614c22b0_eeeea6562960"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h1_5b57614c22b0_3dd24b5ebec4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1716h1_5b57614c22b0_5713ffdeb7a1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1116h2_89313a029bc2_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d351100_bfa337485184_53312b8d909f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361300_c014a34ff1af_3a411efc3e5a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2006h2_2a284e3b0c56_e5c9f813b5f0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1514h2_8daaf6152771_6393b72a78bd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_2d59276eb8ee"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_f01ca5995445"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_e802cdec6a7f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h1_ab0a1bf427ad_6bebaf5329ac"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1310h1_00f390d99b96_33b773d5362d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2406h1_a57d86c8052b_22a92d800fe4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4211h1_49900ac2774e_7379471da272"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1511h1_8daaf6152771_78e6aca7449b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i361200_c014a34ff1af_588fa7aed259"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_598b4460cd97"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3012h1_1d37bd780c83_8d4036f0cf4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0810h2_40905cacb22d_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h1_8daaf6152771_0a20fe35d3a5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d311000_94fda040ea48_ae42fbc8cc61"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3713h1_91ec122131b4_144321f44052"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h2_5b57614c22b0_be53661681a4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3612h1_bcee18a5b459_6bebaf5329ac"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_a54fffd0eb61"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d360600_b95247b88125_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3513h1_bfa337485184_2d28e58b241f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d220500_64bc163bcd3a_1f12db4bd51f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d000700_9Á\u0007xù&9\t\u0006Äùo_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d400600_9f32fed32fcc_14e0afd5c388"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d4008h1_9f32fed32fcc_046e095b7c4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4213h1_49900ac2774e_d339722ba4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1509h2_dad3e448d43e_f91d406d9859"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4511h2_8297b4867ce6_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361200_c014a34ff1af_d57fffc49aed"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1514h2_8daaf6152771_1373f8d28b4c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d111300_9d3654eb36d2_a5b99884f7f5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d741000_a97353c36de0_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d500600_5ebc01d2511e_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d5811h1_363f866c7444_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d561100_c19c562a80bc_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171100_5b57614c22b0_afa5e15c0627"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d080700_0df93f53a2f9_2dae41c691ec"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d221200_231e334592e8_eb37aa626263"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i131000_f57a46bbacb6_e5728521abd4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d201200_2b729b4bf6f3_e24568c0d440"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i180600_4b22cbed5bed_2dae41c691ec"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1315h2_00f390d99b96_de4a06bb82e3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1315h1_00f390d99b96_b68114bf320e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1315h1_00f390d99b96_de4a06bb82e3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1717h2_5b57614c22b0_3e9721a6796e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_fca9c764716e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2213h2_4086fcc262d9_76c504cb7c80"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i221000_231e334592e8_49e063487882"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7412h1_a97353c36de0_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_0b298858d6c1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i200600_22c523c4c553_2dae41c691ec"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d520600_03eadd3bac93_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_f37e75b10bcc"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1011h2_75366a718a82_36110f2f4fd1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3011h1_1d37bd780c83_68d68211fb08"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_1fa661d57f79"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i410500_2a2e8e665c84_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d410600_2a2e8e665c84_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1716h2_5b57614c22b0_ca3c9f312770"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1718h2_5b57614c22b0_1ae7ba31360c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_22334254f9f7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_3110f8453c7c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_b6f405a00624"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1408h1_1257f90867e7_e7e480e5a997"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3713h1_91ec122131b4_03eb65375a95"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d321000_47c5e39c651d_7cda7a7a9c22"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i771000_352555b7c677_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_9249cab70c77"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1710h1_ab0a1bf427ad_a29327ec888c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1312h2_f57a46bbacb6_ab7e3b40a677"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d781200_5f3c3264e0ca_e1b9aa7d9ac3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_7ede4ab895f0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_1a63afa7c478"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0912h2_f91f431d341e_ecbbeb3a4960"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1311h2_00f390d99b96_ef4b9b248d72"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0816h2_cfad89827a62_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0817h2_cfad89827a62_e903c750b005"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0917h2_f91f431d341e_e903c750b005"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_0a20fe35d3a5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_bd8756fc6073"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1717h2_5b57614c22b0_3cbfd9057e0d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1717h1_5b57614c22b0_3cbfd9057e0d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d080800_723ebca51f63_5a95de72b769"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i361000_c014a34ff1af_3bbb4ef4e27c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d901300_c6771aded2ed_62c1c1f10828"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h2_5b57614c22b0_93f65c6c1207"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1617h2_73198292b10d_3cbfd9057e0d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i200800_314f1408a5a6_97f8aa674fd9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d681200_13e0e9e1c501_5b0f5aef55e1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1917h2_4d8ed5baf28e_3cbfd9057e0d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h1_5b57614c22b0_be53661681a4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151000_8daaf6152771_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d390600_752ec48053c1_8587f467d9ea"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d351200_bfa337485184_30bfd9b043de"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1714h2_95e1cefdbe28_d267a5f792d4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1514h2_8daaf6152771_7bdcd1fc0afb"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i0910h2_f91f431d341e_3a8073edd8ef"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1712h1_ab0a1bf427ad_0b298858d6c1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d180500_ef9a2ca01d41_5aafb6b650ff"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d100900_a8cf61a50a39_824bd91ab3e2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d440600_97e2267fbfb7_3eafcbe19126"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2408h1_9769a1d1b44f_e52a70c5eba9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1312h2_00f390d99b96_ef4b9b248d72"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d651000_3b98c8410b1e_4837e640254d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4614h2_495d8e296564_d75bc63958da"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d421200_49900ac2774e_550dd089df7a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3611h1_8de0e2abedd0_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1311h1_f81d88ceb44f_7379471da272"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d220800_64bc163bcd3a_0fd084b116a9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h1_5b57614c22b0_830561eb1039"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d110900_cafd58515627_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h1_8daaf6152771_d8a2da3f94cd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d390600_752ec48053c1_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2008h1_22c523c4c553_2dae41c691ec"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d180500_ef9a2ca01d41_7f99a6c05071"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i201100_2b729b4bf6f3_e24568c0d440"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151100_8daaf6152771_afa5e15c0627"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d320500_f7f9d0517eb9_d940db78b793"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301100_1d37bd780c83_ef4b9b248d72"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2211h1_231e334592e8_29829a46703f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d741200_a97353c36de0_e1b9aa7d9ac3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d120900_b6e0f558a6da_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h1_1d37bd780c83_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i980900_4e04da4164c6_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301100_1d37bd780c83_ea55d4dd83c9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1310h1_f57a46bbacb6_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_7a71f78daad8"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2914h2_723694b0fccc_2cc26d266019"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h1_8daaf6152771_cc38aef784ae"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711h2_5b57614c22b0_78e6aca7449b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h1_ab0a1bf427ad_e10b9050f4c9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d550700_ca3c2017f0c8_3c5a66c06c35"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d170700_36078c6b7bf1_e74d7d97755c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d440600_97e2267fbfb7_14e0afd5c388"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2812h2_a01be8c064b6_ef4b9b248d72"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4311h1_36cd39a4fcc1_4837e640254d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2713h2_bd9791dd9fd6_9e3f5f872097"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2209s3_64bc163bcd3a_2d206ff7819f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i150800_8daaf6152771_97f8aa674fd9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1612h2_bfa624ef8ac3_8833813ad988"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1116h2_89313a029bc2_d8a2da3f94cd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1117h2_89313a029bc2_46b8896bec77"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d150900_8daaf6152771_97f8aa674fd9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d120700_39b11509324c_d38218922478"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d280600_4b3a0804f14b_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1416h2_8e2606995da7_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1416h2_15c1305fa4d5_02713d6af862"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1417h2_8e2606995da7_e903c750b005"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d581000_523b860aa618_1f22a2ca17c4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_fc7345549f1c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171400_5b57614c22b0_de216e0ff992"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1110h1_47af8f603342_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1309h2_a4d495c5bc65_ed50b7db2c26"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_b11171733d3d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_a66db7f775f8"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151100_8daaf6152771_d83eb4e16f1d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d400600_9f32fed32fcc_8587f467d9ea"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d101100_01be160bb49b_36bf25f296df"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d401200_8d237a8d70c3_23269edf5b19"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1512h2_8daaf6152771_fb8bcde88af0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3513h1_bfa337485184_e7e754ef087b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i220500_64bc163bcd3a_8b5687d2b2b8"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i320800_47c5e39c651d_9da38b6fd1bc"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1310h2_f57a46bbacb6_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_7c02c728306a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2313h1_24fc43eb1c96_845d286b0d67"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711h2_5b57614c22b0_5894756fee65"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3514h2_bfa337485184_fa3dc1457c3a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h2_5b57614c22b0_1fa661d57f79"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i570500_0e349dcb6bab_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0710h2_04ca88ad2b9b_8846e450cd95"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1416h2_ec45a0f89deb_d8a2da3f94cd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d300700_28df28bfa019_8e0f4fc16317"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1308h2_da3cf33a15cf_2f14b2736520"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d180700_4b22cbed5bed_3304d8368043"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0711h2_04ca88ad2b9b_fab7f7ed1680"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1515h2_8daaf6152771_d8a2da3f94cd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3011h1_1d37bd780c83_8d633dac7124"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2011h2_314f1408a5a6_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d240600_a57d86c8052b_fc6a3d562584"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3009h1_1d37bd780c83_c9e58cc61e36"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d781000_5f3c3264e0ca_5ac7197df9d2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1609h2_5eefec2cf5d3_7fda023ca168"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1514h2_8daaf6152771_de216e0ff992"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h1_ab0a1bf427ad_7452fd1b1717"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1510h1_dad3e448d43e_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d300500_28df28bfa019_c70a3c84db07"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d750800_3f3e2be2704c_5929b441733b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4514h2_8297b4867ce6_d75bc63958da"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2312h2_24fc43eb1c96_ecbbeb3a4960"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h1_1d37bd780c83_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_cdf593ef9121_d57fffc49aed"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4312h1_36cd39a4fcc1_58ed7828516f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h2_5b57614c22b0_3f847bc60f9a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1807h1_4b22cbed5bed_350d2de2742e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d201000_314f1408a5a6_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d240500_a57d86c8052b_22a92d800fe4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d170600_1ff01c554330_a1e935682795"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1915h2_4d8ed5baf28e_a54fffd0eb61"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1210h2_29167c9b9092_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d741100_a97353c36de0_f7b080c6e20f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h1_5b57614c22b0_7baf387fc6ff"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h1_5b57614c22b0_e8ed158c4d85"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h1_5b57614c22b0_a1cc6aafef61"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h2_5b57614c22b0_a1cc6aafef61"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0810h2_40905cacb22d_a1aaf22d73e2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2207h1_64bc163bcd3a_3ca778f33b42"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361000_bcee18a5b459_489e9573238a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_91b187c34d40"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d000700_Rïö\u001b1Aß6³Õ\u0007V_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i771100_352555b7c677_ccd0985badbe"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0809h2_40905cacb22d_a96a7604a82f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d080800_40905cacb22d_a96a7604a82f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d320900_47c5e39c651d_371c70bbb337"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d521100_b262b3658495_ef4b9b248d72"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h1_8daaf6152771_1eb89897b454"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1211h1_d34a8e72043a_36110f2f4fd1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_cc38aef784ae"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d131100_0968ec391e9e_514a5e4ca88d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d000600_91ec122131b4_e28d05d9ca73"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d000600_\u0003\nPCNÅ§à-¾_e28d05d9ca73"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1311h2_00f390d99b96_9ced094328c9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d211000_25f8fe54a594_2185b6a843ae"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0911h1_f91f431d341e_3a8073edd8ef"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_d0a99439f9b1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_b68114bf320e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d300700_28df28bfa019_4446390ac224"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3113h2_21087b465e88_9e3f5f872097"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301000_1d37bd780c83_c3976d268853"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h1_8daaf6152771_4769d65a485e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d351300_bfa337485184_bbb7ef8c1ffd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1514h1_8daaf6152771_c5ab883861b3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2913h2_723694b0fccc_5671b5df5029"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1710h2_5b57614c22b0_95ca0cbbc74b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d201000_2b729b4bf6f3_29829a46703f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d421000_49900ac2774e_a29327ec888c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d6812h1_13e0e9e1c501_c50a3655fff1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d6812h1_13e0e9e1c501_9f7275f58be6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d360700_90ae94e0425e_e74d7d97755c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0911h2_e58ff226e52e_78e6aca7449b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d681100_13e0e9e1c501_c50a3655fff1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_7542649f71ec_3cbfd9057e0d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h2_5b57614c22b0_9249cab70c77"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_a54fffd0eb61"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1512h2_8daaf6152771_1eb89897b454"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h2_5b57614c22b0_7f0f34a4126d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2313h2_24fc43eb1c96_24a8803e0691"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1514h2_8daaf6152771_9003585aabd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151100_8daaf6152771_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151100_8daaf6152771_d41ae481755e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d200900_314f1408a5a6_97f8aa674fd9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d220800_64bc163bcd3a_206c619ea85b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301100_1d37bd780c83_b14c9c0b5032"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1406h2_dc8bca8c1754_b47a5869c9af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711h1_5b57614c22b0_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d110800_f5575969dd08_85357e2591c3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4213h1_49900ac2774e_5f6f6054ae0a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361000_bcee18a5b459_c3976d268853"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d681200_13e0e9e1c501_f38915bb5087"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1416h2_8d02cddff4d4_d8a2da3f94cd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_1fc04c40e2aa"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d741200_a97353c36de0_75287bbf5dc4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3612h1_bcee18a5b459_7452fd1b1717"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0311h1_55b375c5d22e_78f1d400d464"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361200_c014a34ff1af_771b308a775a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h2_8daaf6152771_00f39f1acc97"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1512h1_8daaf6152771_6f9e9b12b7f2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h2_5b57614c22b0_c1eccb039341"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3012h2_1d37bd780c83_882d495ac381"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d111100_c5d436628c5c_801c830e80cf"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d550700_ca3c2017f0c8_e7e480e5a997"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_2f24fdae5cbc"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301100_1d37bd780c83_f6eeaf393d2e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1315h2_f4ad024020fe_24d9a185522e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d371100_66f35f2ad7c0_6d9c2a445a6d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d371100_66f35f2ad7c0_5491d1ae5f31"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711h2_5b57614c22b0_884670258d07"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d291200_dc38afafcfec_d339722ba4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301300_1d37bd780c83_5ae85263eb3b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1516h1_8daaf6152771_5fbd7a92a6dc"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151000_8daaf6152771_9ced094328c9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d351300_bfa337485184_7bc957b68363"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d7513h1_0300cfff09b4_144321f44052"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h1_5b57614c22b0_7f0f34a4126d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d000700_\u001fx²ñ\u001cù\u0006°\u0017Æ_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1316h2_f4ad024020fe_f55cfc7f5d2f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1715h1_5b57614c22b0_a54fffd0eb61"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h1_8daaf6152771_a1cc6aafef61"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_a1cc6aafef61"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d071000_c7abf191d1e4_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1712h2_5b57614c22b0_7f0f34a4126d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3012h1_1d37bd780c83_1b3407e2c936"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d331100_7a9914b3f026_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i070900_c7abf191d1e4_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2710h1_3841a7177d1d_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h1_ab0a1bf427ad_8e6e362c5eac"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d371300_91ec122131b4_7bc957b68363"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0510h2_8ed445bfb6ba_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d4209h2_c42fff42e4e8_052beb4ae089"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d020500_cdfff64b53ec_c70a3c84db07"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d181400_a084713d4cde_de216e0ff992"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d291300_723694b0fccc_cbc5258318c5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0915h2_f91f431d341e_24d9a185522e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3011h1_1d37bd780c83_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1513h2_8daaf6152771_fde00304da56"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1411h2_c866b44c5a26_810e2f290f6f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3512h1_bfa337485184_58ed7828516f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d010800_0f2cb44170f4_c1c26d69a8d8"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d020900_62ed6f6ca7ad_7d01cb85ed02"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d210900_25f8fe54a594_4c1ab0552904"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171400_5b57614c22b0_dc2dae41c192"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_a19150430a99"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d771200_352555b7c677_ccd0985badbe"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d320600_f7f9d0517eb9_0df5073e753e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d081200_a572d5f12f44_9249cab70c77"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i301000_1d37bd780c83_009f82a63104"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1211h2_d34a8e72043a_77989cba1f4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1716h2_5b57614c22b0_60e8a95ece10"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d681100_13e0e9e1c501_9f7275f58be6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2009h1_22c523c4c553_7af1ed941c26"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151300_8daaf6152771_fc7345549f1c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2714h2_bd9791dd9fd6_84e5b51ada77"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d741100_a97353c36de0_b14c9c0b5032"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3514h1_bfa337485184_af6a7c1c9809"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d150900_8daaf6152771_c06d14d7e8f6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1411h1_533b4bd7e162_7379471da272"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d080800_0df93f53a2f9_0f0eab847d69"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0916h2_f91f431d341e_f55cfc7f5d2f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2812h1_a01be8c064b6_ef4b9b248d72"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1212h1_39b11509324c_c9eaec7dbab4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h2_cdf593ef9121_d57fffc49aed"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d131200_f57a46bbacb6_9249cab70c77"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d2207h1_64bc163bcd3a_1f2465c447a9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3011h1_1d37bd780c83_c3976d268853"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1112h2_c5d436628c5c_f6eeaf393d2e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1113h2_c5d436628c5c_2f24fdae5cbc"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d310700_4b2b6b592ffe_3c5a66c06c35"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d330600_6170e2a7c060_e51b7354d87f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2212h1_231e334592e8_36bf25f296df"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d861100_5177063c590b_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d091000_f91f431d341e_05ab82c7b2ab"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d771200_352555b7c677_b11171733d3d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1711h1_ab0a1bf427ad_882d495ac381"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1517h2_8daaf6152771_dcad5a053991"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1518h2_8daaf6152771_072cf4bea939"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d611200_47cfe07f7159_e1b9aa7d9ac3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1312h1_f57a46bbacb6_b26ce05bbdd6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_b97800ac64b6"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171100_5b57614c22b0_ef7df7f74e48"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1416h2_8e2606995da7_d8a2da3f94cd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0007h1_33dac7124f29_4a5fcc8158d4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171200_5b57614c22b0_173e58c88f4d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1314h1_f57a46bbacb6_14788d8d241b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i171100_5b57614c22b0_3886699cfdc4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1712h1_ab0a1bf427ad_ecd0401ec68b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0809h2_0df93f53a2f9_7af1ed941c26"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1712h2_5b57614c22b0_d2c0cc1cf7b4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3013h1_1d37bd780c83_c5cfab342c59"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1710h1_5b57614c22b0_1b18b669d02d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1516h2_8daaf6152771_46b8896bec77"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3612h1_bcee18a5b459_882d495ac381"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i131000_f57a46bbacb6_ab7e3b40a677"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1312h2_f57a46bbacb6_e5728521abd4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d4212h1_49900ac2774e_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i070900_04ca88ad2b9b_e7c285222651"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d5613h2_c19c562a80bc_03aaa766dde5"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301200_1d37bd780c83_89ab6efea773"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1211h1_9c0fecc8826b_7379471da272"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h1_ab0a1bf427ad_ecd0401ec68b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d201100_314f1408a5a6_e5728521abd4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i200600_22c523c4c553_f28add8e7af0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2812h2_a01be8c064b6_8e6e362c5eac"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1717h2_5b57614c22b0_e6dcd7ae0a9e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d240800_3978be1299d1_c30bacfb08b4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1410h2_ef70881171ec_8846e450cd95"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1411h2_ef70881171ec_fab7f7ed1680"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1206h1_3bab475705cb_151c0a07749b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0010h2_\u0005ÞOþ\u0011@ºÚgÐ_862a56020b4b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0012h2_\u0005ÞOþ?´rÒ\u001f_abe594c0d58a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d681000_13e0e9e1c501_71f3a2441023"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d1810h2_4b22cbed5bed_27793441e138"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0012h2_\u00072<)eï\u0005è_abe594c0d58a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_c7dcd826f998"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0012h2_\u0005ÞOþÇâ\u0015ONØ_abe594c0d58a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i150900_8daaf6152771_18e8a06d9b2d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1714h2_5b57614c22b0_6393b72a78bd"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i3012h2_1d37bd780c83_ce5650b735ce"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d131100_f57a46bbacb6_ab7e3b40a677"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d131300_f57a46bbacb6_fb48f8b98a29"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2813h2_a01be8c064b6_4375406afd5e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i201000_314f1408a5a6_e5728521abd4"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d521100_b262b3658495_8e6e362c5eac"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d151000_8daaf6152771_18e8a06d9b2d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d320900_47c5e39c651d_a76b087b7d16"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1812h1_5d04281c6031_ef7df7f74e48"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d371100_66f35f2ad7c0_1195e4b04c4a"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1310h1_00f390d99b96_8846e450cd95"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d301000_1d37bd780c83_68d68211fb08"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d340800_7a15ab419a11_2234aac7a3b0"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i131100_f57a46bbacb6_9249cab70c77"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1713h1_ab0a1bf427ad_8537cf56674e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2914h2_9ac3848deeb6_16f77b3c5188"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1310h2_00f390d99b96_8b66748fd0db"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d5211h1_b262b3658495_518fb456ca59"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d270700_a2460661a67a_65c95ed6af2c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d150400_889134784a9b_c27888be5c97"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d681100_13e0e9e1c501_4df47d6b5700"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d0818h2_5141276e849d_1ae7ba31360c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1313h2_f57a46bbacb6_7f0f34a4126d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3112h1_8c1ae1bbf969_58ed7828516f"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d581200_c3b39ede55af_e1b9aa7d9ac3"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0008h2_N­4Sç©»\r]\u0014Ò_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1417h1_15c1305fa4d5_68c5a8c2958d"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1417h1_15c1305fa4d5_f0fc7018f8e8"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1711h2_5b57614c22b0_d8bcfadce809"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0008h2_D¹'ó\u0013x]tôv_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h2_1d37bd780c83_8537cf56674e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3612h2_c014a34ff1af_df9e74b49842"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12d0008h2_Mé°\u000bhØ{}§\u0013+_d7ff7c8fd4af"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d181200_5103eae14fdb_144321f44052"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d361100_c014a34ff1af_df9e74b49842"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t12i180700_4b22cbed5bed_16bbda4055b2"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3011h2_1d37bd780c83_518fb456ca59"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1515h2_8daaf6152771_9f98846b2310"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d6813h1_13e0e9e1c501_f38915bb5087"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d6815h2_13e0e9e1c501_9fa07b4a9e5e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3013h1_1d37bd780c83_8537cf56674e"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1716h2_5b57614c22b0_e66002de8a8b"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i1709h2_5b57614c22b0_97f8aa674fd9"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d2012h2_2b729b4bf6f3_36bf25f296df"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d3408h2_7a15ab419a11_e74d7d97755c"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d171400_5b57614c22b0_92fa5749e0c1"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d5212h1_b262b3658495_ef4b9b248d72"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13i781000_5f3c3264e0ca_24695f2957a7"
+  },
+  {
+    "application": null,
+    "device": null,
+    "ja4_fingerprint": "t13d1011h2_9a30925095c0_e7c285222651"
+  }
+]

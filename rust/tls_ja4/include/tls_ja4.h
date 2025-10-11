@@ -83,6 +83,28 @@ struct TlsJa4Context {
 TlsJa4Context* tls_ja4_init(void);
 
 /**
+ * 检测是否为TLS报文
+ * @param tcp_payload TCP载荷数据
+ * @param payload_len 载荷长度
+ * @return 状态码：TLS_JA4_SUCCESS(是TLS), TLS_JA4_NOT_TLS(非TLS)
+ */
+int tls_ja4_is_tls_packet(
+    const unsigned char* tcp_payload,
+    unsigned int payload_len
+);
+
+/**
+ * 检测是否为Client Hello报文
+ * @param tcp_payload TCP载荷数据
+ * @param payload_len 载荷长度
+ * @return 状态码：TLS_JA4_SUCCESS(是Client Hello), TLS_JA4_NOT_CLIENT_HELLO(非Client Hello)
+ */
+int tls_ja4_is_client_hello(
+    const unsigned char* tcp_payload,
+    unsigned int payload_len
+);
+
+/**
  * 统一报文分析接口 - 处理从IP头开始的完整报文
  * 内部自动处理TCP分段、TLS解析和指纹计算
  * @param ctx 上下文指针（可为NULL，内部自动管理）

@@ -2,38 +2,31 @@
 
 use tls_parser::{parse_tls_plaintext, TlsMessage, TlsMessageHandshake, TlsVersion};
 
+/// Client Hello解析结果类型别名
+pub type ClientHelloData = (TlsVersion, Vec<u16>, Vec<u16>, Vec<u16>, Vec<u8>, Vec<u16>);
+
 /// 解析Client Hello并提取指纹数据
-pub fn parse_client_hello_with_tls_parser(payload: &[u8]) -> Option<(TlsVersion, Vec<u16>, Vec<u16>, Vec<u16>, Vec<u8>, Vec<u16>)> {
+pub fn parse_client_hello_with_tls_parser(payload: &[u8]) -> Option<ClientHelloData> {
     match parse_tls_plaintext(payload) {
         Ok((_, tls_plaintext)) => {
             // 简化实现，直接返回基本数据
-            if let Some(handshake) = tls_plaintext.msg.first() {
-                match handshake {
-                    TlsMessage::Handshake(handshake_msg) => {
-                        match handshake_msg {
-                            TlsMessageHandshake::ClientHello(client_hello) => {
-                                let version = client_hello.version;
-                                
-                                // 提取密码套件
-                                let ciphers: Vec<u16> = client_hello.ciphers.iter()
-                                    .map(|&c| u16::from(c))
-                                    .collect();
-                                
-                                // 提取扩展
-                                let (extensions, elliptic_curves, ec_point_formats, signature_algorithms) = 
-                                    if let Some(extensions_data) = &client_hello.ext {
-                                        parse_tls_extensions_correctly(extensions_data)
-                                    } else {
-                                        (Vec::new(), Vec::new(), Vec::new(), Vec::new())
-                                    };
-                                
-                                Some((version, ciphers, extensions, elliptic_curves, ec_point_formats, signature_algorithms))
-                            },
-                            _ => None
-                        }
-                    },
-                    _ => None
-                }
+            if let Some(TlsMessage::Handshake(TlsMessageHandshake::ClientHello(client_hello))) = tls_plaintext.msg.first() {
+                let version = client_hello.version;
+
+                // 提取密码套件
+                let ciphers: Vec<u16> = client_hello.ciphers.iter()
+                    .map(|&c| u16::from(c))
+                    .collect();
+
+                // 提取扩展
+                let (extensions, elliptic_curves, ec_point_formats, signature_algorithms) =
+                    if let Some(extensions_data) = &client_hello.ext {
+                        parse_tls_extensions_correctly(extensions_data)
+                    } else {
+                        (Vec::new(), Vec::new(), Vec::new(), Vec::new())
+                    };
+
+                Some((version, ciphers, extensions, elliptic_curves, ec_point_formats, signature_algorithms))
             } else {
                 None
             }

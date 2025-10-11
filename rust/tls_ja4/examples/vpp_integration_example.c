@@ -16,14 +16,10 @@
  * 模拟VPP节点处理函数
  * 在实际VPP集成中，这将是节点的主要处理函数
  */
-static int process_packet(
-    const uint8_t* src_ip,
-    const uint8_t* dst_ip,
-    uint16_t src_port,
-    uint16_t dst_port,
-    const uint8_t* tcp_payload,
-    uint32_t payload_len,
-    uint32_t sequence __attribute__((unused))
+static int process_packet(const uint8_t* src_ip, const uint8_t* dst_ip,
+                    uint16_t src_port, uint16_t dst_port,
+                    const uint8_t* tcp_payload, uint32_t payload_len,
+                    uint32_t sequence __attribute__((unused))
 ) {
     // 创建完整的IP包（简化版本，实际中应该从VPP获取完整包）
     uint8_t ip_packet[1500];
@@ -123,15 +119,11 @@ static int process_packet(
  * 模拟VPP节点处理函数（支持分段TLS）
  * 用于处理可能被分段的TLS Client Hello
  */
-static int process_packet_with_segments(
-    const uint8_t* src_ip,
-    const uint8_t* dst_ip,
-    uint16_t src_port,
-    uint16_t dst_port,
-    const uint8_t* tcp_payload,
-    uint32_t payload_len,
-    uint32_t sequence
-) {
+static int process_packet_with_segments(const uint8_t* src_ip, const uint8_t* dst_ip,
+                                    uint16_t src_port, uint16_t dst_port, const uint8_t* tcp_payload,
+                                    uint32_t payload_len, uint32_t sequence
+) 
+{
     // 初始化上下文（在实际VPP中，这应该在节点初始化时完成）
     static TlsJa4Context* ctx = NULL;
     if (ctx == NULL) {
@@ -239,7 +231,8 @@ static int process_packet_with_segments(
 /**
  * 模拟便捷函数使用
  */
-static void test_convenient_functions(const uint8_t* tcp_payload, uint32_t payload_len) {
+static void test_convenient_functions(const uint8_t* tcp_payload, uint32_t payload_len) 
+{
     printf("\n🔧 Testing convenient functions:\n");
     
     // 创建上下文

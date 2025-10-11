@@ -14,7 +14,7 @@ pub fn is_tls_packet(payload: &[u8]) -> bool {
     let version_minor = payload[2];
     
     // TLS内容类型：0x16 = Handshake, 0x14 = ChangeCipherSpec, 0x15 = Alert, 0x17 = Application
-    let is_tls_content_type = matches!(content_type, 0x14 | 0x15 | 0x16 | 0x17);
+    let is_tls_content_type = (0x14..=0x17).contains(&content_type);
     
     // TLS版本检查（3.x系列）
     let is_tls_version = version_major == 0x03 && version_minor <= 0x04;

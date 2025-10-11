@@ -53,9 +53,6 @@ harness = false
 name = "test_new_c_api"
 path = "examples/test_new_c_api.rs"
 
-[[example]]
-name = "test_pcapng_processing"
-path = "examples/test_pcapng_processing.rs"
 
 [[example]]
 name = "test_executable"

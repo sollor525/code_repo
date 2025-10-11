@@ -3,12 +3,15 @@
 //! 使用SIMD、内存池和并行处理来优化JA3/JA4指纹计算
 
 use tls_parser::TlsVersion;
-use crate::tls::extensions::{is_grease_extension, is_grease_cipher};
+use crate::is_grease_value;
 use sha2::{Digest, Sha256};
 use std::fmt::Write;
 // use std::collections::hash_map::DefaultHasher;
 // use std::hash::{Hash, Hasher};
 use std::sync::Arc;
+
+#[cfg(target_arch = "x86_64")]
+use crate::performance::simd_utils::filter_grease_simd;
 
 /// 超高性能JA4指纹计算器
 pub struct UltraFastJa4Calculator {
@@ -78,18 +81,22 @@ impl UltraFastJa4Calculator {
     /// SIMD优化的GREASE过滤
     #[inline]
     fn filter_grease_simd(&mut self, ciphers: &[u16], extensions: &[u16]) {
-        // 密码套件过滤
-        for &cipher in ciphers {
-            if !is_grease_cipher(cipher) {
-                self.cipher_buffer.push(cipher);
+        #[cfg(target_arch = "x86_64")]
+        {
+            // 使用SIMD优化的批量过滤
+            unsafe {
+                let filtered_ciphers = filter_grease_simd(ciphers);
+                let filtered_extensions = filter_grease_simd(extensions);
+
+                self.cipher_buffer.extend_from_slice(&filtered_ciphers);
+                self.extension_buffer.extend_from_slice(&filtered_extensions);
             }
         }
-        
-        // 扩展过滤
-        for &extension in extensions {
-            if !is_grease_extension(extension) {
-                self.extension_buffer.push(extension);
-            }
+
+        #[cfg(not(target_arch = "x86_64"))]
+        {
+            // 非x86_64架构使用标量过滤
+            self.filter_grease_scalar(ciphers, extensions);
         }
     }
     
@@ -98,14 +105,14 @@ impl UltraFastJa4Calculator {
     fn filter_grease_scalar(&mut self, ciphers: &[u16], extensions: &[u16]) {
         // 密码套件过滤
         for &cipher in ciphers {
-            if !is_grease_cipher(cipher) {
+            if !is_grease_value(cipher) {
                 self.cipher_buffer.push(cipher);
             }
         }
-        
+
         // 扩展过滤
         for &extension in extensions {
-            if !is_grease_extension(extension) {
+            if !is_grease_value(extension) {
                 self.extension_buffer.push(extension);
             }
         }
@@ -264,6 +271,8 @@ pub struct UltraFastJa3Calculator {
     string_buffer: String,
     // 预计算的版本字符串
     version_strings: [&'static str; 6],
+    // SIMD优化标志
+    simd_enabled: bool,
 }
 
 impl UltraFastJa3Calculator {
@@ -275,6 +284,7 @@ impl UltraFastJa3Calculator {
             format_buffer: Vec::with_capacity(16),
             string_buffer: String::with_capacity(2048),
             version_strings: ["769", "770", "771", "772", "772", "0"],
+            simd_enabled: cfg!(target_arch = "x86_64"),
         }
     }
     
@@ -305,14 +315,47 @@ impl UltraFastJa3Calculator {
     /// JA3 GREASE过滤
     #[inline]
     fn filter_grease_ja3(&mut self, ciphers: &[u16], extensions: &[u16]) {
+        // 使用SIMD优化的过滤
+        if self.simd_enabled {
+            self.filter_grease_ja3_simd(ciphers, extensions);
+        } else {
+            self.filter_grease_ja3_scalar(ciphers, extensions);
+        }
+    }
+
+    /// SIMD优化的JA3 GREASE过滤
+    #[inline]
+    fn filter_grease_ja3_simd(&mut self, ciphers: &[u16], extensions: &[u16]) {
+        #[cfg(target_arch = "x86_64")]
+        {
+            // 使用SIMD优化的批量过滤
+            unsafe {
+                let filtered_ciphers = filter_grease_simd(ciphers);
+                let filtered_extensions = filter_grease_simd(extensions);
+
+                self.cipher_buffer.extend_from_slice(&filtered_ciphers);
+                self.extension_buffer.extend_from_slice(&filtered_extensions);
+            }
+        }
+
+        #[cfg(not(target_arch = "x86_64"))]
+        {
+            // 非x86_64架构使用标量过滤
+            self.filter_grease_ja3_scalar(ciphers, extensions);
+        }
+    }
+
+    /// 标量JA3 GREASE过滤
+    #[inline]
+    fn filter_grease_ja3_scalar(&mut self, ciphers: &[u16], extensions: &[u16]) {
         for &cipher in ciphers {
-            if !is_grease_cipher(cipher) {
+            if !is_grease_value(cipher) {
                 self.cipher_buffer.push(cipher);
             }
         }
-        
+
         for &extension in extensions {
-            if !is_grease_extension(extension) {
+            if !is_grease_value(extension) {
                 self.extension_buffer.push(extension);
             }
         }
