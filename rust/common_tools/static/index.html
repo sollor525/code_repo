@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>开发者工具箱 - 免费在线工具集合</title>
+    <meta name="description" content="开发者工具箱提供丰富的在线开发工具，包括网络转换、报文分析、正则匹配等功能。完全免费，界面美观，功能强大。">
+    <meta name="keywords" content="开发者工具,在线工具,网络工具,正则表达式,报文分析,IP转换,端口转换">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛠️</text></svg>">
+
+    <!-- 添加一些额外的CSS动画库 -->
+    <style>
+        /* 自定义动画 */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.6); }
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(4);
+                opacity: 0;
+            }
+        }
+
+        @keyframes slideInFromTop {
+            0% {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40%, 43% {
+                transform: translateY(-10px);
+            }
+            70% {
+                transform: translateY(-5px);
+            }
+            90% {
+                transform: translateY(-2px);
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -1000px 0;
+            }
+            100% {
+                background-position: 1000px 0;
+            }
+        }
+
+        .shimmer-effect {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shimmer-effect::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            transform: translateX(-100%);
+            animation: shimmer 2s infinite;
+        }
+
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            padding: 2.5rem 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.05)"/><circle cx="10" cy="50" r="0.5" fill="rgba(255,255,255,0.05)"/><circle cx="90" cy="30" r="0.5" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.1;
+        }
+
+        .search-bar {
+            max-width: 600px;
+            margin: 2rem auto;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 3rem 1rem 1.5rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .search-btn {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--primary-color);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .search-btn:hover {
+            background: var(--secondary-color);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .tool-card-enhanced {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-card-enhanced::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .tool-card-enhanced:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+        }
+
+        .tool-card-enhanced:hover::before {
+            transform: scaleX(1);
+        }
+
+        .tool-icon-large {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+            float-animation;
+        }
+
+        .category-section {
+            margin: 2.5rem 0;
+        }
+
+        .category-title {
+            font-size: 1.6rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            color: var(--text-primary);
+        }
+
+        .feature-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .feature-tag {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .stats-section {
+            background: var(--background);
+            padding: 2rem 0;
+            margin: 2rem 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-item {
+            padding: 1rem;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            display: block;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 0.4rem;
+        }
+
+        .quick-actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+
+        .quick-action-btn {
+            background: white;
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .quick-action-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+        }
+
+        .recent-tools {
+            background: white;
+            border-radius: 10px;
+            padding: 1.2rem;
+            margin: 1.5rem 0;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .recent-tools h3 {
+            color: var(--text-primary);
+            margin-bottom: 0.8rem;
+            font-size: 1.1rem;
+        }
+
+        .recent-tool-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .recent-tool-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.6rem;
+            background: var(--background);
+            border-radius: 6px;
+            text-decoration: none;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .recent-tool-item:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateX(8px);
+        }
+
+        .back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+            transition: all 0.3s ease;
+            opacity: 0;
+            visibility: hidden;
+            z-index: 1000;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            background: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .hero-section {
+                padding: 1.5rem 0;
+            }
+
+            .hero-section h1 {
+                font-size: 2rem;
+            }
+
+            .tools-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+
+            .quick-actions {
+                flex-direction: column;
+                align-items: center;
+                gap: 0.8rem;
+            }
+
+            .category-section {
+                margin: 1.5rem 0;
+            }
+
+            .category-title {
+                font-size: 1.4rem;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <span style="font-size: 1.5rem; margin-right: 0.5rem;">🛠️</span>
+                <span>开发者工具箱</span>
+            </a>
+            <nav class="nav">
+                <a href="/" class="nav-link active">首页</a>
+                <a href="/network.html" class="nav-link">网络转换</a>
+                <a href="/packet.html" class="nav-link">报文分析</a>
+                <a href="/regex.html" class="nav-link">正则匹配</a>
+                <a href="#api-docs" class="nav-link">API文档</a>
+                <a href="#about" class="nav-link">关于</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- 英雄区域 -->
+        <section class="hero-section">
+            <div class="container">
+                <div style="position: relative; z-index: 1;">
+                    <h1 style="font-size: 3rem; margin-bottom: 1rem; color: white; font-weight: 800;">
+                        🛠️ 开发者工具箱
+                    </h1>
+                    <p style="font-size: 1.3rem; margin-bottom: 2rem; color: rgba(255, 255, 255, 0.9);">
+                        免费在线开发工具集合，让开发工作更高效
+                    </p>
+
+                    <!-- 搜索栏 -->
+                    <div class="search-bar">
+                        <input type="text" class="search-input" placeholder="搜索工具..." id="toolSearch">
+                        <button class="search-btn" onclick="searchTools()">
+                            <span>🔍</span>
+                        </button>
+                    </div>
+
+                    <!-- 快捷操作 -->
+                    <div class="quick-actions">
+                        <a href="/network.html" class="quick-action-btn">
+                            <span>🌐</span>
+                            <span>网络转换</span>
+                        </a>
+                        <a href="/packet.html" class="quick-action-btn">
+                            <span>📦</span>
+                            <span>报文分析</span>
+                        </a>
+                        <a href="/regex.html" class="quick-action-btn">
+                            <span>🔍</span>
+                            <span>正则匹配</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="container">
+            <!-- 主要工具 -->
+            <section class="category-section">
+                <h2 class="category-title">🚀 核心工具</h2>
+                <div class="tools-grid">
+                    <div class="tool-card-enhanced" onclick="navigateToTool('/network.html')">
+                        <span class="tool-icon-large">🌐</span>
+                        <h3>网络转换工具</h3>
+                        <p style="color: var(--text-secondary); margin: 1rem 0;">
+                            支持IP地址、端口、整数的主机序与网络序相互转换。网络开发必备工具。
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">IP转换</span>
+                            <span class="feature-tag">端口转换</span>
+                            <span class="feature-tag">字节序</span>
+                        </div>
+                    </div>
+
+                    <div class="tool-card-enhanced" onclick="navigateToTool('/packet.html')">
+                        <span class="tool-icon-large">📦</span>
+                        <h3>报文分析工具</h3>
+                        <p style="color: var(--text-secondary); margin: 1rem 0;">
+                            强大的网络报文分析功能，支持Hex数据解析、协议分析和PCAP文件导出。
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">Hex解析</span>
+                            <span class="feature-tag">协议分析</span>
+                            <span class="feature-tag">PCAP导出</span>
+                        </div>
+                    </div>
+
+                    <div class="tool-card-enhanced" onclick="navigateToTool('/regex.html')">
+                        <span class="tool-icon-large">🔍</span>
+                        <h3>正则匹配工具</h3>
+                        <p style="color: var(--text-secondary); margin: 1rem 0;">
+                            强大的正则表达式匹配和捕获组功能，支持多种匹配模式和实时预览。
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">实时匹配</span>
+                            <span class="feature-tag">捕获组</span>
+                            <span class="feature-tag">常用模式</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 平台统计和最近使用合并 -->
+            <section class="category-section">
+                <div class="container">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start;">
+                        <!-- 统计数据 -->
+                        <div>
+                            <h3 class="category-title" style="font-size: 1.3rem; margin-bottom: 1rem;">📊 平台统计</h3>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <span class="stat-number" data-target="3">0</span>
+                                    <div class="stat-label">核心工具</div>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number" data-target="100">0</span>
+                                    <div class="stat-label">毫秒响应</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 最近使用 -->
+                        <div>
+                            <div class="recent-tools">
+                                <h3>🕐 最近使用</h3>
+                                <div class="recent-tool-list">
+                                    <a href="/network.html" class="recent-tool-item">
+                                        <span>🌐</span>
+                                        <span>网络转换</span>
+                                    </a>
+                                    <a href="/regex.html" class="recent-tool-item">
+                                        <span>🔍</span>
+                                        <span>正则匹配</span>
+                                    </a>
+                                    <a href="/packet.html" class="recent-tool-item">
+                                        <span>📦</span>
+                                        <span>报文分析</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 功能特性 -->
+            <section class="category-section">
+                <div class="container">
+                    <h2 class="category-title">✨ 平台特性</h2>
+                    <div class="tools-grid">
+                        <div class="tool-card-enhanced">
+                            <span class="tool-icon-large">⚡</span>
+                            <h3>极速响应</h3>
+                            <p style="color: var(--text-secondary); margin: 1rem 0;">
+                                基于Rust和Tokio异步架构，提供毫秒级响应速度，支持高并发处理。
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">高性能</span>
+                                <span class="feature-tag">异步处理</span>
+                            </div>
+                        </div>
+
+                        <div class="tool-card-enhanced">
+                            <span class="tool-icon-large">🛡️</span>
+                            <h3>安全可靠</h3>
+                            <p style="color: var(--text-secondary); margin: 1rem 0;">
+                                Rust内存安全保证，避免常见编程错误，确保工具运行稳定可靠。
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">内存安全</span>
+                                <span class="feature-tag">零成本抽象</span>
+                            </div>
+                        </div>
+
+                        <div class="tool-card-enhanced">
+                            <span class="tool-icon-large">🌍</span>
+                            <h3>跨平台支持</h3>
+                            <p style="color: var(--text-secondary); margin: 1rem 0;">
+                                支持Windows、Linux、macOS等多种平台，Docker容器化部署。
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">多平台</span>
+                                <span class="feature-tag">容器化</span>
+                            </div>
+                        </div>
+
+                        <div class="tool-card-enhanced">
+                            <span class="tool-icon-large">🎨</span>
+                            <h3>精美界面</h3>
+                            <p style="color: var(--text-secondary); margin: 1rem 0;">
+                                现代化设计风格，响应式布局，支持深色模式，提供优秀的用户体验。
+                            </p>
+                            <div class="feature-tags">
+                                <span class="feature-tag">响应式</span>
+                                <span class="feature-tag">深色模式</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- API文档 -->
+            <section id="api-docs" class="category-section">
+                <div class="container">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">📡 API 接口</h2>
+                            <p class="card-description">
+                                提供完整的RESTful API接口，支持程序化调用所有工具功能
+                            </p>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                            <div>
+                                <h4 style="color: var(--primary-color); margin-bottom: 1rem;">🌐 网络转换 API</h4>
+                                <div class="result-container" style="background: #1e293b; color: #f1f5f9; font-size: 0.85rem;">
+curl -X POST http://localhost:3030/api/network/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "value": "192.168.1.1",
+    "conversion_type": "ip_to_network"
+  }'</div>
+                            </div>
+                            <div>
+                                <h4 style="color: var(--primary-color); margin-bottom: 1rem;">📦 报文分析 API</h4>
+                                <div class="result-container" style="background: #1e293b; color: #f1f5f9; font-size: 0.85rem;">
+curl -X POST http://localhost:3030/api/packet/analyze \
+  -H "Content-Type: application/json" \
+  -d '{
+    "hex_data": "0800271234560800271234560800"
+  }'</div>
+                            </div>
+                            <div>
+                                <h4 style="color: var(--primary-color); margin-bottom: 1rem;">🔍 正则匹配 API</h4>
+                                <div class="result-container" style="background: #1e293b; color: #f1f5f9; font-size: 0.85rem;">
+curl -X POST http://localhost:3030/api/regex/match \
+  -H "Content-Type: application/json" \
+  -d '{
+    "pattern": "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b",
+    "test_string": "test@example.com",
+    "case_sensitive": false,
+    "multi_line": false,
+    "dot_all": false
+  }'</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 2rem;">
+                            <a href="/health" class="btn btn-primary">
+                                🏥 健康检查
+                            </a>
+                            <a href="/" class="btn btn-outline" style="margin-left: 1rem;">
+                                📊 API 状态
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 关于我们 -->
+            <section id="about" class="category-section">
+                <div class="container">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">🎯 关于我们</h2>
+                            <p class="card-description">
+                                专注于为开发者提供高质量、易用的在线工具
+                            </p>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">🦀</div>
+                                <h3>Rust 技术栈</h3>
+                                <p style="color: var(--text-secondary);">
+                                    采用高性能Rust语言开发，确保工具的执行效率和安全性
+                                </p>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">💡</div>
+                                <h3>持续创新</h3>
+                                <p style="color: var(--text-secondary);">
+                                    不断添加新工具和功能，满足开发者日益增长的需求
+                                </p>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">🤝</div>
+                                <h3>开源精神</h3>
+                                <p style="color: var(--text-secondary);">
+                                    拥抱开源，欢迎社区贡献，共同打造更好的开发工具
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 页脚 -->
+            <footer style="text-align: center; margin-top: 4rem; padding: 2rem 0; border-top: 1px solid var(--border-color); color: var(--text-secondary);">
+                <div class="container">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
+                        <div>
+                            <h4 style="color: var(--text-primary); margin-bottom: 1rem;">🛠️ 工具</h4>
+                            <ul style="list-style: none; padding: 0;">
+                                <li><a href="/network.html" style="color: var(--text-secondary); text-decoration: none;">网络转换</a></li>
+                                <li><a href="/packet.html" style="color: var(--text-secondary); text-decoration: none;">报文分析</a></li>
+                                <li><a href="/regex.html" style="color: var(--text-secondary); text-decoration: none;">正则匹配</a></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--text-primary); margin-bottom: 1rem;">📊 资源</h4>
+                            <ul style="list-style: none; padding: 0;">
+                                <li><a href="/health" style="color: var(--text-secondary); text-decoration: none;">健康检查</a></li>
+                                <li><a href="/" style="color: var(--text-secondary); text-decoration: none;">API 文档</a></li>
+                                <li><a href="/static/API.md" style="color: var(--text-secondary); text-decoration: none;">使用指南</a></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--text-primary); margin-bottom: 1rem;">🌟 关于</h4>
+                            <ul style="list-style: none; padding: 0;">
+                                <li><a href="#about" style="color: var(--text-secondary); text-decoration: none;">关于我们</a></li>
+                                <li><a href="https://github.com" style="color: var(--text-secondary); text-decoration: none;">GitHub</a></li>
+                                <li><a href="mailto:support@example.com" style="color: var(--text-secondary); text-decoration: none;">联系我们</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 2rem;">
+                        <p>构建于 ❤️ 之上 | 版本 v0.1.0 | 基于高性能 Rust 技术栈</p>
+                        <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+                            © 2024 开发者工具箱. 保留所有权利.
+                        </p>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </main>
+
+    <!-- 返回顶部按钮 -->
+    <button class="back-to-top" id="backToTop" onclick="scrollToTop()">
+        <span>↑</span>
+    </button>
+
+    <script>
+        // 页面加载动画
+        document.addEventListener('DOMContentLoaded', function() {
+            // 工具卡片动画
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '0';
+                        entry.target.style.transform = 'translateY(30px)';
+                        entry.target.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+
+                        setTimeout(() => {
+                            entry.target.style.opacity = '1';
+                            entry.target.style.transform = 'translateY(0)';
+                        }, 100);
+                        observer.unobserve(entry.target);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.tool-card-enhanced').forEach(card => {
+                observer.observe(card);
+            });
+
+            // 数字统计动画
+            const statNumbers = document.querySelectorAll('.stat-number');
+            const statsObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const target = parseInt(entry.target.getAttribute('data-target'));
+                        let current = 0;
+                        const increment = target / 50;
+                        const timer = setInterval(() => {
+                            current += increment;
+                            if (current >= target) {
+                                current = target;
+                                clearInterval(timer);
+                            }
+                            entry.target.textContent = Math.floor(current);
+                        }, 30);
+                        statsObserver.unobserve(entry.target);
+                    }
+                });
+            });
+
+            statNumbers.forEach(stat => {
+                statsObserver.observe(stat);
+            });
+
+            // 服务器状态检查
+            checkServerHealth();
+        });
+
+        // 导航到工具页面
+        function navigateToTool(url) {
+            window.location.href = url;
+        }
+
+        // 搜索工具
+        function searchTools() {
+            const searchTerm = document.getElementById('toolSearch').value.toLowerCase();
+            if (searchTerm.includes('网络') || searchTerm.includes('转换') || searchTerm.includes('ip')) {
+                window.location.href = '/network.html';
+            } else if (searchTerm.includes('报文') || searchTerm.includes('包') || searchTerm.includes('hex')) {
+                window.location.href = '/packet.html';
+            } else if (searchTerm.includes('正则') || searchTerm.includes('regex') || searchTerm.includes('匹配')) {
+                window.location.href = '/regex.html';
+            } else {
+                alert('未找到相关工具，请尝试其他关键词');
+            }
+        }
+
+        // 回车搜索
+        document.getElementById('toolSearch').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchTools();
+            }
+        });
+
+        // 返回顶部
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        // 显示/隐藏返回顶部按钮
+        window.addEventListener('scroll', function() {
+            const backToTopBtn = document.getElementById('backToTop');
+            if (window.pageYOffset > 300) {
+                backToTopBtn.classList.add('visible');
+            } else {
+                backToTopBtn.classList.remove('visible');
+            }
+        });
+
+        // 检查服务器健康状态
+        async function checkServerHealth() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                console.log('✅ 服务器状态正常:', data);
+            } catch (error) {
+                console.error('❌ 无法连接到服务器:', error);
+            }
+        }
+
+        // 平滑滚动到锚点
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 添加键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + K 聚焦搜索
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                document.getElementById('toolSearch').focus();
+            }
+            // ESC 取消搜索
+            if (e.key === 'Escape') {
+                document.getElementById('toolSearch').blur();
+                document.getElementById('toolSearch').value = '';
+            }
+        });
+    </script>
+</body>
+</html>

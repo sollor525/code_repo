@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网络转换工具 - 开发者工具箱</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
+
+    <style>
+        /* 网络转换页面专用样式 */
+        .compact-card {
+            margin-bottom: 1.5rem;
+        }
+
+        .compact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .result-container {
+            min-height: 80px !important;
+        }
+
+        .form-textarea, .form-input {
+            padding: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .compact-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <span style="font-size: 1.5rem; margin-right: 0.5rem;">🛠️</span>
+                <span>开发者工具箱</span>
+            </a>
+            <nav class="nav">
+                <a href="/" class="nav-link">主页</a>
+                <a href="/network.html" class="nav-link active">网络转换</a>
+                <a href="/packet.html" class="nav-link">报文分析</a>
+                <a href="/regex.html" class="nav-link">正则匹配</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 面包屑导航 -->
+    <nav style="background: var(--background); padding: 1rem 0; border-bottom: 1px solid var(--border-color);">
+        <div class="container">
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                <a href="/" style="color: var(--primary-color); text-decoration: none;">🏠 首页</a>
+                <span>›</span>
+                <span style="color: var(--text-primary); font-weight: 500;">网络转换工具</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main">
+        <div class="container">
+            <!-- 页面标题 -->
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="card-title">🌐 网络序转换工具</h1>
+                    <p class="card-description">
+                        支持 IP地址、端口、整数的主机序与网络序相互转换，适用于网络编程和数据分析
+                    </p>
+                </div>
+            </div>
+
+            <!-- IP地址转换 -->
+            <div class="card compact-card">
+                <div class="card-header">
+                    <h2 class="card-title">📍 IP地址转换</h2>
+                </div>
+                <div class="compact-grid">
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">输入IP地址</label>
+                            <input type="text" id="ipInput" class="form-input"
+                                   placeholder="例如: 192.168.1.1 或 2001:db8::1">
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="convertIP('ip_to_network')">
+                                🔄 转换为网络序
+                            </button>
+                            <button class="btn btn-secondary" onclick="convertIP('ip_to_host')">
+                                🔙 转换为主机序
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">转换结果</label>
+                            <div id="ipResult" class="result-container">
+                                等待转换...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 端口转换 -->
+            <div class="card compact-card">
+                <div class="card-header">
+                    <h2 class="card-title">🔌 端口转换</h2>
+                </div>
+                <div class="compact-grid">
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">输入端口</label>
+                            <input type="text" id="portInput" class="form-input"
+                                   placeholder="例如: 8080 或 0x1F90">
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="convertPort('port_to_network')">
+                                🔄 转换为网络序
+                            </button>
+                            <button class="btn btn-secondary" onclick="convertPort('port_to_host')">
+                                🔙 转换为主机序
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">转换结果</label>
+                            <div id="portResult" class="result-container">
+                                等待转换...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 整数转换 -->
+            <div class="card compact-card">
+                <div class="card-header">
+                    <h2 class="card-title">🔢 整数转换</h2>
+                </div>
+                <div class="compact-grid">
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">输入整数</label>
+                            <input type="text" id="intInput" class="form-input"
+                                   placeholder="例如: 123456789 或 0x075BCD15">
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="convertInt('int_to_network')">
+                                🔄 转换为网络序
+                            </button>
+                            <button class="btn btn-secondary" onclick="convertInt('int_to_host')">
+                                🔙 转换为主机序
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">转换结果</label>
+                            <div id="intResult" class="result-container">
+                                等待转换...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 使用说明 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📖 使用说明</h2>
+                </div>
+                <div class="compact-grid">
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">📍 IP地址格式</h3>
+                        <ul style="line-height: 1.8; color: var(--text-secondary);">
+                            <li><strong>IPv4:</strong> 192.168.1.1</li>
+                            <li><strong>IPv6:</strong> 2001:db8::1</li>
+                            <li><strong>十六进制:</strong> 0xC0A80101 (IPv4网络序)</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">🔌 端口格式</h3>
+                        <ul style="line-height: 1.8; color: var(--text-secondary);">
+                            <li><strong>十进制:</strong> 8080</li>
+                            <li><strong>十六进制:</strong> 0x1F90</li>
+                            <li><strong>范围:</strong> 0-65535</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">🔢 整数格式</h3>
+                        <ul style="line-height: 1.8; color: var(--text-secondary);">
+                            <li><strong>十进制:</strong> 123456789</li>
+                            <li><strong>十六进制:</strong> 0x075BCD15</li>
+                            <li><strong>支持:</strong> 32位和64位整数</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快捷操作提示 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">⌨️ 快捷操作</h2>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--background); border-radius: 8px;">
+                        <kbd style="background: var(--primary-color); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-family: monospace;">Enter</kbd>
+                        <span style="color: var(--text-secondary);">在输入框中按回车执行转换</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--background); border-radius: 8px;">
+                        <kbd style="background: var(--primary-color); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-family: monospace;">Esc</kbd>
+                        <span style="color: var(--text-secondary);">清空当前输入框内容</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--background); border-radius: 8px;">
+                        <kbd style="background: var(--primary-color); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-family: monospace;">Ctrl + Home</kbd>
+                        <span style="color: var(--text-secondary);">返回主页</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快速示例 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">⚡ 快速示例</h2>
+                </div>
+                <div style="display: grid; gap: 1rem;">
+                    <div class="message message-info">
+                        <strong>示例1:</strong> IP地址 192.168.1.1 → 网络序 0xC0A80101
+                    </div>
+                    <div class="message message-info">
+                        <strong>示例2:</strong> 端口 8080 → 网络序 0x1F90 (8080)
+                    </div>
+                    <div class="message message-info">
+                        <strong>示例3:</strong> 整数 123456789 → 网络序 0x075BCD15 (123456789)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 页面加载动画
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+
+            // 添加输入框回车事件
+            document.getElementById('ipInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    convertIP('ip_to_network');
+                }
+            });
+
+            document.getElementById('portInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    convertPort('port_to_network');
+                }
+            });
+
+            document.getElementById('intInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    convertInt('int_to_network');
+                }
+            });
+        });
+
+        // 通用转换函数
+        async function performConversion(type, value, conversionType) {
+            if (!value.trim()) {
+                showResult(type, '请输入要转换的值', 'error');
+                return;
+            }
+
+            showLoading(type);
+
+            try {
+                const response = await fetch('/api/network/convert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        value: value,
+                        conversion_type: conversionType
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showResult(type, data.data.result, 'success');
+                } else {
+                    showResult(type, data.error || '转换失败', 'error');
+                }
+            } catch (error) {
+                showResult(type, '网络请求失败: ' + error.message, 'error');
+            }
+        }
+
+        // IP地址转换
+        function convertIP(type) {
+            const input = document.getElementById('ipInput').value;
+            performConversion('ip', input, type);
+        }
+
+        // 端口转换
+        function convertPort(type) {
+            const input = document.getElementById('portInput').value;
+            performConversion('port', input, type);
+        }
+
+        // 整数转换
+        function convertInt(type) {
+            const input = document.getElementById('intInput').value;
+            performConversion('int', input, type);
+        }
+
+        // 显示加载状态
+        function showLoading(type) {
+            const resultElement = document.getElementById(type + 'Result');
+            resultElement.innerHTML = '<div class="loading"></div> 正在转换...';
+            resultElement.className = 'result-container';
+        }
+
+        // 显示结果
+        function showResult(type, result, status) {
+            const resultElement = document.getElementById(type + 'Result');
+            resultElement.textContent = result;
+            resultElement.className = `result-container result-${status}`;
+        }
+
+        // 清除结果
+        function clearResult(type) {
+            const resultElement = document.getElementById(type + 'Result');
+            resultElement.textContent = '等待转换...';
+            resultElement.className = 'result-container';
+        }
+
+        // 添加清除按钮功能
+        document.getElementById('ipInput').addEventListener('input', function() {
+            if (this.value === '') {
+                clearResult('ip');
+            }
+        });
+
+        document.getElementById('portInput').addEventListener('input', function() {
+            if (this.value === '') {
+                clearResult('port');
+            }
+        });
+
+        document.getElementById('intInput').addEventListener('input', function() {
+            if (this.value === '') {
+                clearResult('int');
+            }
+        });
+
+        // 添加ESC键清空当前输入框
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (document.activeElement.id === 'ipInput') {
+                    document.getElementById('ipInput').value = '';
+                    clearResult('ip');
+                } else if (document.activeElement.id === 'portInput') {
+                    document.getElementById('portInput').value = '';
+                    clearResult('port');
+                } else if (document.activeElement.id === 'intInput') {
+                    document.getElementById('intInput').value = '';
+                    clearResult('int');
+                }
+            }
+
+            // Ctrl + Home 返回主页
+            if (e.ctrlKey && e.key === 'Home') {
+                e.preventDefault();
+                window.location.href = '/';
+            }
+        });
+
+        // 添加输入框聚焦效果
+        ['ipInput', 'portInput', 'intInput'].forEach(id => {
+            const input = document.getElementById(id);
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'scale(1.02)';
+                this.parentElement.style.transition = 'transform 0.2s ease';
+            });
+
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body>
+</html>

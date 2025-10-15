@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>报文分析工具 - 开发者工具箱</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <span style="font-size: 1.5rem; margin-right: 0.5rem;">🛠️</span>
+                <span>开发者工具箱</span>
+            </a>
+            <nav class="nav">
+                <a href="/" class="nav-link">主页</a>
+                <a href="/network.html" class="nav-link">网络转换</a>
+                <a href="/packet.html" class="nav-link active">报文分析</a>
+                <a href="/regex.html" class="nav-link">正则匹配</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 面包屑导航 -->
+    <nav style="background: var(--background); padding: 1rem 0; border-bottom: 1px solid var(--border-color);">
+        <div class="container">
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                <a href="/" style="color: var(--primary-color); text-decoration: none;">🏠 首页</a>
+                <span>›</span>
+                <span style="color: var(--text-primary); font-weight: 500;">报文分析工具</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main">
+        <div class="container">
+            <!-- 页面标题 -->
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="card-title">📦 报文分析工具</h1>
+                    <p class="card-description">
+                        支持 Hex 数据解析、网络协议分析和 PCAP 文件导出，适用于网络调试和数据分析
+                    </p>
+                </div>
+            </div>
+
+            <!-- Hex数据输入 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🔍 Hex数据输入</h2>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">输入Hex数据</label>
+                    <textarea id="hexInput" class="form-textarea" rows="6"
+                              placeholder="请输入十六进制数据，例如：
+08002712345608002712345608000450000283c7c4000400643c2c0a80101c0a801c8
+
+支持的格式：
+- 连续的十六进制字符
+- 带空格的格式 (08 00 27 12 34 56)
+- 带换行的格式"></textarea>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="analyzePacket()">
+                        🔍 分析数据包
+                    </button>
+                    <button class="btn btn-success" onclick="downloadPCAP()">
+                        ⬇️ 下载PCAP文件
+                    </button>
+                    <button class="btn btn-outline" onclick="exportPCAP()">
+                        💾 导出PCAP到服务器
+                    </button>
+                    <button class="btn btn-outline" onclick="clearInput()">
+                        🗑️ 清空输入
+                    </button>
+                </div>
+            </div>
+
+            <!-- 分析结果 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📊 分析结果</h2>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">解析结果</label>
+                    <div id="analysisResult" class="result-container" style="min-height: 200px;">
+                        等待分析...
+                    </div>
+                </div>
+            </div>
+
+            <!-- 使用说明 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📖 使用说明</h2>
+                </div>
+                <div class="grid">
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">📝 支持的协议</h3>
+                        <ul style="line-height: 1.8; color: var(--text-secondary);">
+                            <li><strong>以太网帧:</strong> MAC地址、EtherType</li>
+                            <li><strong>IPv4:</strong> 源/目标IP、协议类型</li>
+                            <li><strong>TCP:</strong> 源/目标端口</li>
+                            <li><strong>UDP:</strong> 源/目标端口</li>
+                            <li><strong>ICMP:</strong> 类型、代码</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">🎯 分析功能</h3>
+                        <ul style="line-height: 1.8; color: var(--text-secondary);">
+                            <li>自动识别数据包类型</li>
+                            <li>解析网络层头部信息</li>
+                            <li>提取传输层端口信息</li>
+                            <li>显示数据包长度</li>
+                            <li>导出标准PCAP格式</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快速示例 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">⚡ 快速示例</h2>
+                </div>
+                <div style="display: grid; gap: 1rem;">
+                    <div class="message message-info">
+                        <button class="btn btn-outline" onclick="loadExample('tcp')" style="margin-right: 10px;">
+                            📋 加载TCP示例
+                        </button>
+                        TCP数据包示例 - 包含完整的以太网、IP和TCP头部
+                    </div>
+                    <div class="message message-info">
+                        <button class="btn btn-outline" onclick="loadExample('udp')" style="margin-right: 10px;">
+                            📋 加载UDP示例
+                        </button>
+                        UDP数据包示例 - 展示UDP协议解析功能
+                    </div>
+                    <div class="message message-info">
+                        <button class="btn btn-outline" onclick="loadExample('icmp')" style="margin-right: 10px;">
+                            📋 加载ICMP示例
+                        </button>
+                        ICMP数据包示例 - 展示网络诊断报文
+                    </div>
+                </div>
+            </div>
+
+            <!-- 示例数据 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📚 示例数据格式</h2>
+                </div>
+                <div style="display: grid; gap: 1rem;">
+                    <div>
+                        <h4>TCP数据包示例：</h4>
+                        <div class="result-container" style="background: #1e293b; color: #f1f5f9; font-size: 0.85rem;">
+08002712345608002712345608000450000283c7c4000400643c2c0a80101c0a801c8
+                        </div>
+                    </div>
+                    <div>
+                        <h4>包含的协议信息：</h4>
+                        <ul style="color: var(--text-secondary); line-height: 1.6;">
+                            <li>以太网头部：MAC地址、EtherType (0x0800 = IPv4)</li>
+                            <li>IPv4头部：源IP、目标IP、协议 (6 = TCP)</li>
+                            <li>TCP头部：源端口、目标端口</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 示例数据
+        const examples = {
+            tcp: '08002712345608002712345608000450000283c7c4000400643c2c0a80101c0a801c8',
+            udp: '080027123456080027123456080004500001c3c7d4000400643c8c0a80101c0a801c8',
+            icmp: '080027123456080027123456080004500003c3c7e4000400643c01c0a80101c0a801c8'
+        };
+
+        // 页面加载动画
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+
+            // 添加输入框自动高度调整
+            const hexInput = document.getElementById('hexInput');
+            hexInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+        });
+
+        // 加载示例
+        function loadExample(type) {
+            const hexInput = document.getElementById('hexInput');
+            hexInput.value = examples[type];
+
+            // 触发input事件来调整高度
+            hexInput.dispatchEvent(new Event('input'));
+
+            // 显示加载提示
+            showResult('正在加载示例数据...', 'info');
+
+            // 自动分析示例
+            setTimeout(() => analyzePacket(), 500);
+        }
+
+        // 分析数据包
+        async function analyzePacket() {
+            const hexInput = document.getElementById('hexInput').value.trim();
+
+            if (!hexInput) {
+                showResult('请输入要分析的Hex数据', 'error');
+                return;
+            }
+
+            showLoading('正在分析数据包...');
+
+            try {
+                const response = await fetch('/api/packet/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        hex_data: hexInput
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const result = `📊 数据包分析结果
+══════════════════════════════════════════════════════════
+
+📏 数据包信息:
+${data.data.analysis}
+
+📦 数据包长度: ${data.data.packet_length} 字节
+⏰ 分析时间: ${new Date().toLocaleString()}
+══════════════════════════════════════════════════════════`;
+                    showResult(result, 'success');
+                } else {
+                    showResult('分析失败: ' + (data.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showResult('网络请求失败: ' + error.message, 'error');
+            }
+        }
+
+        // 下载PCAP文件
+        async function downloadPCAP() {
+            const hexInput = document.getElementById('hexInput').value.trim();
+
+            if (!hexInput) {
+                showResult('请输入要下载的Hex数据', 'error');
+                return;
+            }
+
+            showLoading('正在准备下载PCAP文件...');
+
+            try {
+                const response = await fetch('/api/packet/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        hex_data: hexInput
+                    })
+                });
+
+                if (response.ok) {
+                    // 创建Blob并下载文件
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `packet_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pcap`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    showResult('✅ PCAP文件下载成功！\n\n文件已保存到您的下载文件夹，可以使用Wireshark等工具打开进行详细分析。', 'success');
+                } else {
+                    const errorData = await response.json();
+                    showResult('下载失败: ' + (errorData.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showResult('网络请求失败: ' + error.message, 'error');
+            }
+        }
+
+        // 导出PCAP文件到服务器
+        async function exportPCAP() {
+            const hexInput = document.getElementById('hexInput').value.trim();
+
+            if (!hexInput) {
+                showResult('请输入要导出的Hex数据', 'error');
+                return;
+            }
+
+            showLoading('正在导出PCAP文件到服务器...');
+
+            try {
+                const response = await fetch('/api/packet/export', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        hex_data: hexInput
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showResult('✅ PCAP文件导出成功！\n\n文件已保存到服务器，文件名: packet.pcap\n\n💡 提示: 您可以使用Wireshark等工具打开PCAP文件进行详细分析。', 'success');
+                } else {
+                    showResult('导出失败: ' + (data.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showResult('网络请求失败: ' + error.message, 'error');
+            }
+        }
+
+        // 清空输入
+        function clearInput() {
+            document.getElementById('hexInput').value = '';
+            document.getElementById('hexInput').style.height = 'auto';
+            showResult('等待分析...', 'info');
+        }
+
+        // 显示加载状态
+        function showLoading(message) {
+            const resultElement = document.getElementById('analysisResult');
+            resultElement.innerHTML = `<div class="loading"></div> ${message}`;
+            resultElement.className = 'result-container';
+        }
+
+        // 显示结果
+        function showResult(result, status) {
+            const resultElement = document.getElementById('analysisResult');
+            resultElement.textContent = result;
+            resultElement.className = `result-container result-${status}`;
+
+            // 滚动到结果区域
+            resultElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // 添加快捷键支持
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Enter 分析数据包
+            if (e.ctrlKey && e.key === 'Enter') {
+                analyzePacket();
+            }
+            // Ctrl+D 下载PCAP文件
+            if (e.ctrlKey && e.key === 'd') {
+                e.preventDefault();
+                downloadPCAP();
+            }
+            // Ctrl+S 导出PCAP到服务器
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                exportPCAP();
+            }
+            // Ctrl+L 清空输入
+            if (e.ctrlKey && e.key === 'l') {
+                e.preventDefault();
+                clearInput();
+            }
+        });
+
+        // 添加拖拽文件支持
+        const hexInput = document.getElementById('hexInput');
+
+        hexInput.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.borderColor = 'var(--primary-color)';
+            this.style.backgroundColor = 'rgba(37, 99, 235, 0.05)';
+        });
+
+        hexInput.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '';
+            this.style.backgroundColor = '';
+        });
+
+        hexInput.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '';
+            this.style.backgroundColor = '';
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'text/plain' || file.name.endsWith('.hex') || file.name.endsWith('.txt')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        hexInput.value = e.target.result;
+                        hexInput.dispatchEvent(new Event('input'));
+                        showResult('文件已加载，点击"分析数据包"开始分析', 'info');
+                    };
+                    reader.readAsText(file);
+                } else {
+                    showResult('请拖拽文本文件或.hex文件', 'error');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
