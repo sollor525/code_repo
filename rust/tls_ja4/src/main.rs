@@ -50,7 +50,7 @@ fn main() -> Result<()> {
     println!("Processing time: {:.2?}", processing_time);
     
     // 保存结果
-    save_fingerprints_to_file(&sessions, total_packets, tls_packets, &args.output)?;
+    save_fingerprints_to_file(&sessions, total_packets, tls_packets, &args.output, &config)?;
     println!("Fingerprint data saved to: {}", args.output);
     
     // 显示会话详情

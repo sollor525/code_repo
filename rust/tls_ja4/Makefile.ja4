@@ -1,0 +1,158 @@
+# Makefile for JA4 Fingerprint Demo
+# 用于构建和测试JA4指纹计算的演示程序
+
+# 基本设置
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c99 -g -O2
+TARGET = ja4_demo
+SRC = ja4_demo.c
+
+# Rust库路径
+RUST_LIB_DIR = target/release
+RUST_LIB_NAME = libtls_ja4.so
+RUST_SO_LIB = libtls_ja4.so
+
+# 默认目标
+all: build-rust-lib $(TARGET)
+
+# 构建Rust静态库
+build-rust-lib:
+	@echo "构建Rust JA4库..."
+	cargo build --release
+	@echo "Rust库构建完成"
+
+# 编译C程序（链接动态库）
+$(TARGET): $(SRC) $(RUST_LIB_DIR)/$(RUST_LIB_NAME)
+	@echo "编译JA4演示程序..."
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRC) -L$(RUST_LIB_DIR) -ltls_ja4 -Wl,-rpath,$(PWD)/$(RUST_LIB_DIR) -ldl -lpthread
+	@echo "编译完成"
+
+# 编译C程序（链接动态库）
+$(TARGET)-shared: $(SRC) $(RUST_LIB_DIR)/$(RUST_SO_LIB)
+	@echo "编译JA4演示程序（动态链接）..."
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRC) -L$(RUST_LIB_DIR) -ltls_ja4 -Wl,-rpath,$(PWD)/$(RUST_LIB_DIR) -ldl -lpthread
+	@echo "编译完成"
+
+# 运行程序
+run: $(TARGET)
+	@echo "运行JA4指纹演示程序..."
+	./$(TARGET)
+
+# 运行程序（动态链接版本）
+run-shared: $(TARGET)-shared)
+	@echo "运行JA4指纹演示程序（动态链接）..."
+	LD_LIBRARY_PATH=$(PWD)/$(RUST_LIB_DIR):$$LD_LIBRARY_PATH ./$(TARGET)
+
+# 调试版本
+debug: CFLAGS += -DDEBUG -O0 -g3
+debug: build-rust-debug-lib $(TARGET)
+
+# 构建调试版Rust库
+build-rust-debug-lib:
+	cargo build
+
+# 优化版本
+release: CFLAGS += -DNDEBUG -O3 -march=native
+release: clean build-rust-lib $(TARGET)
+
+# 清理生成的文件
+clean:
+	@echo "清理生成的文件..."
+	rm -f $(TARGET) $(TARGET)-shared *.o
+	cargo clean
+	@echo "清理完成"
+
+# 测试程序功能
+test: $(TARGET)
+	@echo "运行JA4功能测试..."
+	./$(TARGET) > test_output.txt 2>&1
+	@echo "测试输出已保存到 test_output.txt"
+
+# 验证C API可用性
+verify-api:
+	@echo "验证C API可用性..."
+	@echo "检查导出的C函数..."
+	nm -D $(RUST_LIB_DIR)/$(RUST_LIB_NAME) | grep tls_ja4 || echo "⚠️  可能需要检查C API导出"
+
+# 性能测试
+benchmark: $(TARGET)
+	@echo "运行性能基准测试..."
+	time ./$(TARGET)
+
+# 内存泄漏检查（需要valgrind）
+memcheck: $(TARGET)
+	@echo "运行内存泄漏检查..."
+	valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET)
+
+# 安装（可选）
+install: $(TARGET)
+	@echo "安装JA4演示程序..."
+	sudo cp $(TARGET) /usr/local/bin/
+	sudo mkdir -p /usr/local/lib/ja4_demo
+	sudo cp $(RUST_LIB_DIR)/$(RUST_LIB_NAME) /usr/local/lib/ja4_demo/
+	@echo "安装完成"
+
+# 卸载（可选）
+uninstall:
+	@echo "卸载JA4演示程序..."
+	sudo rm -f /usr/local/bin/$(TARGET)
+	sudo rm -rf /usr/local/lib/ja4_demo
+	@echo "卸载完成"
+
+# 生成测试报告
+report: test
+	@echo "生成测试报告..."
+	@echo "JA4 Fingerprint Demo Test Report" > test_report.md
+	@echo "=================================" >> test_report.md
+	@echo "" >> test_report.md
+	@echo "Generated on: $$(date)" >> test_report.md
+	@echo "" >> test_report.md
+	@echo "## Test Output" >> test_report.md
+	@echo '```' >> test_report.md
+	@cat test_output.txt >> test_report.md
+	@echo '```' >> test_report.md
+	@echo "测试报告已生成: test_report.md"
+
+# 检查依赖
+check-deps:
+	@echo "检查构建依赖..."
+	@which gcc > /dev/null || (echo "❌ 需要安装gcc" && exit 1)
+	@which cargo > /dev/null || (echo "❌ 需要安装Rust和Cargo" && exit 1)
+	@echo "✅ 所有依赖已满足"
+
+# 帮助信息
+help:
+	@echo "JA4指纹演示程序 Makefile"
+	@echo "========================="
+	@echo ""
+	@echo "可用目标:"
+	@echo "  all           - 构建Rust库和C程序（默认）"
+	@echo "  build-rust-lib - 仅构建Rust库"
+	@echo "  $(TARGET)        - 编译C程序（链接静态库）"
+	@echo "  $(TARGET)-shared - 编译C程序（链接动态库）"
+	@echo "  run           - 编译并运行程序"
+	@echo "  run-shared    - 编译并运行程序（动态链接）"
+	@echo "  debug         - 构建调试版本"
+	@echo "  release       - 构建优化版本"
+	@echo "  test          - 运行功能测试"
+	@echo "  benchmark     - 运行性能基准测试"
+	@echo "  memcheck      - 运行内存泄漏检查"
+	@echo "  verify-api    - 验证C API导出"
+	@echo "  report        - 生成测试报告"
+	@echo "  check-deps    - 检查构建依赖"
+	@echo "  clean         - 清理生成的文件"
+	@echo "  install       - 安装到系统"
+	@echo "  uninstall     - 从系统卸载"
+	@echo "  help          - 显示此帮助信息"
+	@echo ""
+	@echo "示例用法:"
+	@echo "  make              # 构建所有组件"
+	@echo "  make run          # 构建并运行"
+	@echo "  make test         # 运行测试"
+	@echo "  make benchmark    # 性能测试"
+
+# 声明伪目标
+.PHONY: all build-rust-lib run run-shared debug release clean test verify-api benchmark memcheck install uninstall report check-deps help build-rust-debug-lib
+
+# 默认目标
+.DEFAULT_GOAL := all

@@ -1,4 +1,4 @@
-use tls_ja4::*;
+use tls_ja4::c_api::*;
 
 /// 测试分段TLS处理功能
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -100,6 +100,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         cached_bytes: 0,
         flow_id: 0,
         timestamp: 0,
+        is_match: 0,
     };
 
     let ret1 = tls_ja4_analyze_packet(

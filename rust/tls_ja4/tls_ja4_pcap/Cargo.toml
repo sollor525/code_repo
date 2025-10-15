@@ -1,0 +1,32 @@
+[package]
+name = "tls_ja4_pcap"
+version = "0.1.0"
+edition = "2024"
+description = "PCAP parsing extension for TLS JA4/JA3 fingerprint extraction"
+authors = ["sollor525@hotmail.com"]
+license = "MIT OR Apache-2.0"
+keywords = ["tls", "ja4", "ja3", "fingerprint", "pcap"]
+categories = ["network-programming", "parsing"]
+
+[lib]
+name = "tls_ja4_pcap"
+path = "src/lib.rs"
+
+[dependencies]
+tls_ja4_core = { path = "../tls_ja4_core" }
+pcap = "1.0"
+pnet = "0.34"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3.0"
+criterion = "0.5"
+
+[[bench]]
+name = "pcap_performance_benchmarks"
+harness = false
+

@@ -1,4 +1,4 @@
-use tls_ja4::*;
+use tls_ja4::c_api::*;
 
 fn main() {
     println!("Testing C API functionality...");
@@ -59,6 +59,7 @@ fn main() {
         cached_bytes: 0,
         flow_id: 0,
         timestamp: 0,
+        is_match: 0,
     };
     
     // 创建上下文

@@ -23,9 +23,12 @@ pnet = "0.34"
 rayon = "1.8"
 parking_lot = "0.12"
 num_cpus = "1.16"
+lazy_static = "1.4"
 quiche = { version = "0.20", default-features = false, features = ["boringssl-boring-crate"] }
 aes-gcm = "0.10"
 aes = "0.8"
+tls_ja4_core = { path = "tls_ja4_core" }
+tls_ja4_pcap = { path = "tls_ja4_pcap" }
 
 [lib]
 name = "tls_ja4"
@@ -33,31 +36,17 @@ path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
 [dev-dependencies]
-criterion = "0.5"
 tempfile = "3.0"
 
-[[bench]]
-name = "fingerprint_performance"
-harness = false
-
-[[bench]]
-name = "comprehensive_performance"
-harness = false
-
-[[bench]]
-name = "simple_bench"
-harness = false
-
 
 [[example]]
-name = "test_new_c_api"
-path = "examples/test_new_c_api.rs"
-
-
-[[example]]
-name = "test_executable"
-path = "examples/test_executable.rs"
+name = "simple_pcap_test"
+path = "examples/simple_pcap_test.rs"
 
 [[example]]
-name = "test_segmented_tls"
-path = "examples/test_segmented_tls.rs"
+name = "performance_comparison"
+path = "examples/performance_comparison.rs"
+
+[[example]]
+name = "performance_chart"
+path = "examples/performance_chart.rs"
