@@ -3,11 +3,23 @@ mod packet_analyzer;
 mod regex_matcher;
 mod web_api;
 
+use axum::{
+    body::Body,
+    extract::Path,
+    http::{StatusCode, header},
+    response::{IntoResponse, Response},
+    routing::get,
+    Json, Router,
+};
+use tracing::info;
+use tracing_subscriber::EnvFilter;
+
 use clap::Parser;
-use log::info;
 use std::env;
 use std::net::SocketAddr;
-use warp::Filter;
+use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
 
 #[derive(Parser)]
 #[command(name = "common_tools")]
@@ -15,7 +27,7 @@ use warp::Filter;
 #[command(version = "0.1.0")]
 struct Args {
     /// Server port to listen on
-    #[arg(short, long, default_value = "3030")]
+    #[arg(short, long, default_value = "8080")]
     port: u16,
 
     /// Server host to bind to
@@ -23,10 +35,32 @@ struct Args {
     host: String,
 }
 
+#[derive(Clone)]
+struct AppState {
+    // 可以在这里添加共享状态
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct HealthResponse {
+    status: String,
+    timestamp: String,
+    service: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ApiInfoResponse {
+    name: String,
+    version: String,
+    endpoints: serde_json::Value,
+    description: String,
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    env_logger::init();
-    info!("启动通用工具集 Web 服务");
+    // 初始化日志
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
 
     let args = Args::parse();
 
@@ -35,82 +69,122 @@ async fn main() -> anyhow::Result<()> {
         env::set_var("RUST_LOG", "info");
     }
 
+    info!("启动开发者工具箱 Axum 服务");
     info!("服务器启动在 http://{}:{}", args.host, args.port);
 
-    // 创建 Web API 路由
-    let api = web_api::create_routes();
-    info!("API 路由创建完成");
+    // 创建应用状态
+    let app_state = Arc::new(AppState {});
 
-    // 健康检查端点
-    let health = warp::path("health")
-        .and(warp::get())
-        .map(|| {
-            warp::reply::json(&serde_json::json!({
-                "status": "ok",
-                "timestamp": chrono::Utc::now().to_rfc3339(),
-                "service": "common_tools"
-            }))
-        });
-
-    // CORS 支持
-    let cors = warp::cors()
-        .allow_any_origin()
-        .allow_headers(vec!["content-type"])
-        .allow_methods(vec!["GET", "POST", "OPTIONS"]);
-
-    // 静态文件服务 - 优先处理HTML页面
-    let index = warp::path::end()
-        .and(warp::fs::file("static/index.html"));
-
-    let html_files = warp::path("network.html")
-        .and(warp::fs::file("static/network.html"))
-        .or(warp::path("packet.html")
-            .and(warp::fs::file("static/packet.html")))
-        .or(warp::path("regex.html")
-            .and(warp::fs::file("static/regex.html")));
-
-    let static_files = warp::path("static")
-        .and(warp::fs::dir("static"))
-        .or(index)
-        .or(html_files);
-
-    info!("静态文件路由配置完成");
-
-      // API信息路由 - 返回JSON API信息
-    let api_info = warp::path("api")
-        .and(warp::path::end())
-        .and(warp::get())
-        .map(|| {
-            warp::reply::json(&serde_json::json!({
-                "name": "Common Tools Web API",
-                "version": "0.1.0",
-                "endpoints": {
-                    "health": "/health",
-                    "network": "/api/network",
-                    "packet": "/api/packet",
-                    "regex": "/api/regex"
-                },
-                "description": "A collection of common utility tools"
-            }))
-        });
-
-    // 组合所有路由 - 重要：静态文件路由优先级最高
-    let routes = health
-        .or(api_info)
-        .or(api)
-        .or(static_files)
-        .with(cors)
-        .with(warp::log("common_tools"));
-
-    info!("所有路由配置完成");
+    // 创建路由
+    let app = create_router(app_state);
 
     // 启动服务器
     let addr: SocketAddr = format!("{}:{}", args.host, args.port).parse()?;
     info!("服务器正在监听: {}", addr);
 
-    warp::serve(routes)
-        .run(addr)
-        .await;
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+fn create_router(app_state: Arc<AppState>) -> Router {
+    Router::new()
+        // API路由
+        .nest("/api", create_api_routes(app_state.clone()))
+        // 健康检查
+        .route("/health", get(health_check))
+        // API信息
+        .route("/api", get(api_info))
+        // 静态文件服务
+        .route("/static/*file_path", get(serve_static_file))
+        // 静态页面路由
+        .route("/network.html", get(serve_network_page))
+        .route("/packet.html", get(serve_packet_page))
+        .route("/regex.html", get(serve_regex_page))
+        // 默认路由 - 重定向到index.html
+        .route("/", get(|| async {
+            axum::response::Html(
+                std::fs::read_to_string("static/index.html")
+                    .unwrap_or_else(|_| "<h1>服务正在启动...</h1>".to_string())
+            )
+        }))
+        .fallback(|| async {
+            (StatusCode::NOT_FOUND, "页面未找到")
+        })
+}
+
+fn create_api_routes(_app_state: Arc<AppState>) -> Router {
+    Router::new()
+        .nest("/network", web_api::create_network_routes())
+        .nest("/packet", web_api::create_packet_routes())
+        .nest("/regex", web_api::create_regex_routes())
+}
+
+async fn health_check() -> impl IntoResponse {
+    let response = HealthResponse {
+        status: "ok".to_string(),
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        service: "common_tools".to_string(),
+    };
+    Json(response)
+}
+
+async fn api_info() -> impl IntoResponse {
+    let response = ApiInfoResponse {
+        name: "开发者工具箱 Web API".to_string(),
+        version: "0.1.0".to_string(),
+        endpoints: serde_json::json!({
+            "health": "/health",
+            "network": "/api/network",
+            "packet": "/api/packet",
+            "regex": "/api/regex"
+        }),
+        description: "A collection of common utility tools for developers".to_string(),
+    };
+    Json(response)
+}
+
+// 静态文件处理函数
+async fn serve_static_file(Path(file_path): Path<String>) -> impl IntoResponse {
+    let path = format!("static/{}", file_path);
+
+    match std::fs::read(&path) {
+        Ok(contents) => {
+            let mime_type = mime_guess::from_path(&path)
+                .first_or_octet_stream()
+                .to_string();
+
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, mime_type)
+                .header(header::CACHE_CONTROL, "no-cache")
+                .body(axum::body::Body::from(contents))
+                .unwrap()
+        }
+        Err(_) => {
+            (StatusCode::NOT_FOUND, "文件未找到").into_response()
+        }
+    }
+}
+
+async fn serve_network_page() -> impl IntoResponse {
+    match std::fs::read_to_string("static/network.html") {
+        Ok(contents) => axum::response::Html(contents).into_response(),
+        Err(_) => (StatusCode::NOT_FOUND, "页面未找到").into_response(),
+    }
+}
+
+async fn serve_packet_page() -> impl IntoResponse {
+    match std::fs::read_to_string("static/packet.html") {
+        Ok(contents) => axum::response::Html(contents).into_response(),
+        Err(_) => (StatusCode::NOT_FOUND, "页面未找到").into_response(),
+    }
+}
+
+async fn serve_regex_page() -> impl IntoResponse {
+    match std::fs::read_to_string("static/regex.html") {
+        Ok(contents) => axum::response::Html(contents).into_response(),
+        Err(_) => (StatusCode::NOT_FOUND, "页面未找到").into_response(),
+    }
 }
