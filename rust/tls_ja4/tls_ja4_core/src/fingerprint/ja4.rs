@@ -2,7 +2,6 @@
 
 use tls_parser::TlsVersion;
 use crate::tls::extensions::{is_grease_extension, is_grease_cipher};
-use sha2::{Digest, Sha256};
 
 /// 计算JA4指纹
 pub fn calculate_ja4_from_parsed_data(
@@ -75,59 +74,6 @@ pub fn calculate_ja4_from_parsed_data(
     format!("{}_{}_{}",  part1, ja4_b, ja4_c)
 }
 
-/// 提取ALPN哈希
-fn extract_alpn_hash(payload: &[u8]) -> String {
-    use tls_parser::{TlsMessage, TlsMessageHandshake};
-
-    // 尝试从缓存获取解析结果
-    if let Some(cached_result) = crate::parse_tls_plaintext_cached(payload) {
-        if let Some(client_hello_data) = cached_result.client_hello_data {
-            if let Some(alpn_protocols) = client_hello_data.alpn_protocols {
-                if !alpn_protocols.is_empty() {
-                    // 计算ALPN哈希
-                    let alpn_str = alpn_protocols.iter()
-                        .map(|s| s.as_str())
-                        .collect::<Vec<_>>()
-                        .join(",");
-
-                    let mut hasher = Sha256::new();
-                    hasher.update(alpn_str.as_bytes());
-                    let hash = hasher.finalize();
-                    return format!("{:x}", hash)[..12].to_string();
-                }
-            }
-        }
-    }
-
-    // 缓存未命中，使用原始解析方式
-    use tls_parser::parse_tls_plaintext;
-
-    // 解析TLS包
-    if let Ok((_, tls_plaintext)) = parse_tls_plaintext(payload)
-        && let Some(handshake) = tls_plaintext.msg.first()
-        && let TlsMessage::Handshake(handshake_msg) = handshake
-        && let TlsMessageHandshake::ClientHello(client_hello) = handshake_msg
-        && let Some(extensions_data) = &client_hello.ext
-        && let Ok((_, parsed_extensions)) = tls_parser::parse_tls_extensions(extensions_data) {
-        for extension in parsed_extensions {
-            if let tls_parser::TlsExtension::ALPN(alpn_protocols) = extension
-                && !alpn_protocols.is_empty() {
-                // 计算ALPN哈希
-                let alpn_str = alpn_protocols.iter()
-                    .map(|s| std::str::from_utf8(s).unwrap_or(""))
-                    .collect::<Vec<_>>()
-                    .join(",");
-
-                let mut hasher = Sha256::new();
-                hasher.update(alpn_str.as_bytes());
-                let hash = hasher.finalize();
-                return format!("{:x}", hash)[..12].to_string();
-            }
-        }
-    }
-
-    "0".to_string()
-}
 
 /// 从原始TLS Client Hello数据中提取ALPN
 pub fn extract_alpn_from_client_hello(client_hello_data: &[u8]) -> Option<String> {

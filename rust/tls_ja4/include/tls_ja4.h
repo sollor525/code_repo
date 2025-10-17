@@ -35,28 +35,35 @@ extern "C" {
 /* 前向声明 */
 typedef struct TlsJa4Context TlsJa4Context;
 typedef struct TlsJa4Result TlsJa4Result;
+typedef struct TlsJa3Result TlsJa3Result;
 typedef struct TlsJa4Fingerprint TlsJa4Fingerprint;
 
-/* JA4指纹结果结构体 */
+/* 指纹结果结构体 */
 struct TlsJa4Fingerprint {
-    char ja4[64];           /* JA4指纹，固定长度缓冲区 */
-    unsigned int ja4_len;   /* JA4指纹实际长度 */
-    char ja3[64];           /* JA3指纹，固定长度缓冲区 */
-    unsigned int ja3_len;   /* JA3指纹实际长度 */
-    unsigned short tls_version;    /* TLS版本 */
-    unsigned short cipher_count;   /* 密码套件数量 */
+    char fingerprint[64];      /* 指纹，固定长度缓冲区 */
+    unsigned int fingerprint_len; /* 指纹实际长度 */
+    unsigned short tls_version;   /* TLS版本 */
+    unsigned short cipher_count;  /* 密码套件数量 */
     unsigned short extension_count; /* 扩展数量 */
 };
 
-/* 统一分析结果结构体 */
-struct TlsJa4Result {
-    TlsJa4Fingerprint fingerprint; /* 指纹数据 */
+/* JA3分析结果结构体 */
+struct TlsJa3Result {
+    TlsJa4Fingerprint fingerprint; /* JA3指纹数据 */
     unsigned char is_client_hello; /* 是否为Client Hello */
     unsigned char is_complete;     /* 分析是否完成 */
     int status_code;               /* 返回状态码 */
-    unsigned int cached_bytes;     /* 缓存字节数（用于分段重组） */
-    unsigned int flow_id;          /* 流ID（用于调试） */
     unsigned long timestamp;       /* 时间戳（毫秒） */
+};
+
+/* JA4分析结果结构体 */
+struct TlsJa4Result {
+    TlsJa4Fingerprint fingerprint; /* JA4指纹数据 */
+    unsigned char is_client_hello; /* 是否为Client Hello */
+    unsigned char is_complete;     /* 分析是否完成 */
+    int status_code;               /* 返回状态码 */
+    unsigned long timestamp;       /* 时间戳（毫秒） */
+    unsigned char is_match;        /* JA4指纹是否匹配数据库中的条目（1=匹配，0=不匹配） */
 };
 
 /* TLS会话信息，用于分段处理 */
@@ -77,10 +84,10 @@ struct TlsJa4Context {
 };
 
 /**
- * 初始化TLS JA4上下文（线程私有）
+ * 初始化TLS上下文（线程私有）
  * @return 上下文指针，失败返回NULL
  */
-TlsJa4Context* tls_ja4_init(void);
+TlsJa4Context* tls_init(void);
 
 /**
  * 检测是否为TLS报文
@@ -88,7 +95,7 @@ TlsJa4Context* tls_ja4_init(void);
  * @param payload_len 载荷长度
  * @return 状态码：TLS_JA4_SUCCESS(是TLS), TLS_JA4_NOT_TLS(非TLS)
  */
-int tls_ja4_is_tls_packet(
+int tls_is_tls_packet(
     const unsigned char* tcp_payload,
     unsigned int payload_len
 );
@@ -99,40 +106,43 @@ int tls_ja4_is_tls_packet(
  * @param payload_len 载荷长度
  * @return 状态码：TLS_JA4_SUCCESS(是Client Hello), TLS_JA4_NOT_CLIENT_HELLO(非Client Hello)
  */
-int tls_ja4_is_client_hello(
+int tls_is_client_hello(
     const unsigned char* tcp_payload,
     unsigned int payload_len
 );
 
 /**
- * 统一报文分析接口 - 处理从IP头开始的完整报文
- * 内部自动处理TCP分段、TLS解析和指纹计算
- * @param ctx 上下文指针（可为NULL，内部自动管理）
- * @param packet_data 从IP头开始的完整报文数据
- * @param packet_len 报文长度
- * @param result 结果输出
- * @return 状态码：
- *   TLS_JA4_SUCCESS: 指纹计算完成
- *   TLS_JA4_NOT_TLS: 非TLS报文
- *   TLS_JA4_NOT_CLIENT_HELLO: TLS报文但不是Client Hello
- *   TLS_JA4_SEGMENT_CACHED: TCP分段已缓存，等待更多数据
- *   TLS_JA4_CACHE_OVERFLOW: TCP缓存溢出，已清理
- *   TLS_JA4_CACHE_TIMEOUT: TCP缓存超时，已清理
- *   其他错误码
+ * 计算JA3指纹（仅TCP载荷）
+ * @param tls_payload TLS载荷数据（TCP载荷中的TLS部分）
+ * @param payload_len 载荷长度
+ * @param result JA3结果输出
+ * @return 状态码：TLS_JA4_SUCCESS(成功), TLS_JA4_NOT_TLS(非TLS), TLS_JA4_NOT_CLIENT_HELLO(非Client Hello)
  */
-int tls_ja4_analyze_packet(
-    TlsJa4Context* ctx,
-    const unsigned char* packet_data,
-    unsigned int packet_len,
+int tls_calculate_ja3(
+    const unsigned char* tls_payload,
+    unsigned int payload_len,
+    TlsJa3Result* result
+);
+
+/**
+ * 计算JA4指纹（仅TCP载荷）
+ * @param tls_payload TLS载荷数据（TCP载荷中的TLS部分）
+ * @param payload_len 载荷长度
+ * @param result JA4结果输出
+ * @return 状态码：TLS_JA4_SUCCESS(成功), TLS_JA4_NOT_TLS(非TLS), TLS_JA4_NOT_CLIENT_HELLO(非Client Hello)
+ */
+int tls_calculate_ja4(
+    const unsigned char* tls_payload,
+    unsigned int payload_len,
     TlsJa4Result* result
 );
 
 
 /**
- * 清理TLS JA4上下文
+ * 清理TLS上下文
  * @param ctx 上下文指针
  */
-void tls_ja4_cleanup(TlsJa4Context* ctx);
+void tls_cleanup(TlsJa4Context* ctx);
 
 /**
  * 设置TCP缓存限制
@@ -173,68 +183,8 @@ int tls_ja4_get_cache_stats(
     unsigned int* total_cached_bytes
 );
 
-/**
- * 获取JA4指纹（便捷函数）
- * @param tcp_payload TCP载荷数据
- * @param payload_len 载荷长度
- * @param ja4_buffer JA4输出缓冲区（需要至少64字节）
- * @param buffer_size 缓冲区大小
- * @return 状态码：TLS_JA4_SUCCESS(成功), TLS_JA4_NOT_TLS(非TLS), 
- *         TLS_JA4_NOT_CLIENT_HELLO(非Client Hello)
- */
-int tls_ja4_get_ja4_fingerprint(
-    const unsigned char* tcp_payload,
-    unsigned int payload_len,
-    char* ja4_buffer,
-    unsigned int buffer_size
-);
 
-/**
- * 获取JA3指纹（便捷函数）
- * @param tcp_payload TCP载荷数据
- * @param payload_len 载荷长度
- * @param ja3_buffer JA3输出缓冲区（需要至少64字节）
- * @param buffer_size 缓冲区大小
- * @return 状态码：TLS_JA4_SUCCESS(成功), TLS_JA4_NOT_TLS(非TLS), 
- *         TLS_JA4_NOT_CLIENT_HELLO(非Client Hello)
- */
-int tls_ja4_get_ja3_fingerprint(
-    const unsigned char* tcp_payload,
-    unsigned int payload_len,
-    char* ja3_buffer,
-    unsigned int buffer_size
-);
 
-/**
- * VPP集成示例：
- *
- * // 统一接口 - 处理从IP头开始的完整报文
- * TlsJa4Context* ctx = tls_ja4_init();
- * TlsJa4Result result;
- * int ret = tls_ja4_analyze_packet(ctx, packet_data, packet_len, &result);
- * 
- * switch (ret) {
- *     case TLS_JA4_SUCCESS:
- *         // 指纹计算完成
- *         process_fingerprint(result.fingerprint.ja4, result.fingerprint.ja3);
- *         break;
- *     case TLS_JA4_SEGMENT_CACHED:
- *         // TCP分段已缓存，等待更多数据
- *         break;
- *     case TLS_JA4_CACHE_OVERFLOW:
- *     case TLS_JA4_CACHE_TIMEOUT:
- *         // 缓存已清理，可以继续处理
- *         break;
- *     case TLS_JA4_NOT_TLS:
- *     case TLS_JA4_NOT_CLIENT_HELLO:
- *         // 非TLS或非Client Hello，继续处理其他报文
- *         break;
- * }
- * 
- * // 定期清理超时缓存
- * tls_ja4_cleanup_timeout_cache(ctx, current_time_ms);
- * tls_ja4_cleanup(ctx);
- */
 
 #ifdef __cplusplus
 }

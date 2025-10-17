@@ -100,13 +100,10 @@ LD_LIBRARY_PATH=../target/debug ./vpp_integration_example
 ==========================
 ✅ TLS detection: tls_ja4_is_tls_packet()
 ✅ Client Hello detection: tls_ja4_is_client_hello()
-✅ Single packet analysis: tls_ja4_analyze_packet()
-✅ TCP flow analysis: tls_ja4_analyze_tcp_flow()
-✅ Segment processing: tls_ja4_process_tcp_segment()
-✅ Convenient functions: tls_ja4_get_ja4_fingerprint(), tls_ja4_get_ja3_fingerprint()
+✅ TLS Client Hello analysis: tls_ja4_analyze_client_hello()
 ✅ Thread-safe: No global state, perfect for VPP multi-worker architecture
 ✅ High performance: Zero-copy design, minimal memory allocation
-✅ Segment reassembly: Automatic handling of fragmented TLS Client Hello
+✅ TCP payload processing: Optimized for TCP payload analysis
 
 🚀 Ready for VPP integration!
 ```

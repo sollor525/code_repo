@@ -4,31 +4,18 @@ use tls_ja4::c_api::*;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Testing segmented TLS processing...");
     println!("This example demonstrates how to handle TLS Client Hello that is split across multiple TCP segments.");
+    println!("Note: Current C API focuses on TCP payload processing. For IP packet processing, use Rust API instead.");
 
     // 创建上下文
-    let context = tls_ja4_init();
+    let context = tls_init();
     if context.is_null() {
         println!("❌ Failed to initialize context");
         return Ok(());
     }
 
-    // 模拟分段TLS Client Hello
-    // 第一个分段：IP头 + TCP头 + TLS记录头 + 部分Client Hello
+    // 模拟分段TLS Client Hello (仅TCP载荷)
+    // 第一个分段：部分TLS Client Hello
     let segment1 = &[
-        // IPv4 Header (20 bytes)
-        0x45, 0x00, 0x00, 0x50,  // Version(4) + IHL(5) + TOS(0) + Total Length(80)
-        0x00, 0x01, 0x40, 0x00,  // ID(1) + Flags(2) + Fragment Offset(0)
-        0x40, 0x06, 0x00, 0x00,  // TTL(64) + Protocol(TCP=6) + Header Checksum(0)
-        0xc0, 0xa8, 0x01, 0x64,  // Source IP: 192.168.1.100
-        0x08, 0x08, 0x08, 0x08,  // Destination IP: 8.8.8.8
-        
-        // TCP Header (20 bytes)
-        0x30, 0x39, 0x01, 0xbb,  // Source Port(12345) + Destination Port(443)
-        0x00, 0x00, 0x03, 0xe8,  // Sequence Number(1000)
-        0x00, 0x00, 0x00, 0x00,  // Acknowledgment Number(0)
-        0x50, 0x18, 0x00, 0x00,  // Header Length(5) + Flags(PSH+ACK) + Window Size(0)
-        0x00, 0x00, 0x00, 0x00,  // Checksum(0) + Urgent Pointer(0)
-        
         // TLS Handshake - 第一个分段 (40 bytes)
         0x16, 0x03, 0x01, 0x00, 0x4a,  // TLS Handshake header
         0x01, 0x00, 0x00, 0x46,        // Client Hello header
@@ -41,20 +28,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 第二个分段：剩余的TLS数据
     let segment2 = &[
-        // IPv4 Header (20 bytes)
-        0x45, 0x00, 0x00, 0x2c,  // Version(4) + IHL(5) + TOS(0) + Total Length(44)
-        0x00, 0x02, 0x40, 0x00,  // ID(2) + Flags(2) + Fragment Offset(0)
-        0x40, 0x06, 0x00, 0x00,  // TTL(64) + Protocol(TCP=6) + Header Checksum(0)
-        0xc0, 0xa8, 0x01, 0x64,  // Source IP: 192.168.1.100
-        0x08, 0x08, 0x08, 0x08,  // Destination IP: 8.8.8.8
-        
-        // TCP Header (20 bytes)
-        0x30, 0x39, 0x01, 0xbb,  // Source Port(12345) + Destination Port(443)
-        0x00, 0x00, 0x04, 0x10,  // Sequence Number(1040) - 继续第一个分段的序列号
-        0x00, 0x00, 0x00, 0x00,  // Acknowledgment Number(0)
-        0x50, 0x18, 0x00, 0x00,  // Header Length(5) + Flags(PSH+ACK) + Window Size(0)
-        0x00, 0x00, 0x00, 0x00,  // Checksum(0) + Urgent Pointer(0)
-        
         // TLS Handshake - 第二个分段 (4 bytes)
         0x01,                           // Compression methods length
         0x00,                           // Compression methods
@@ -63,20 +36,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 第三个分段：扩展数据
     let segment3 = &[
-        // IPv4 Header (20 bytes)
-        0x45, 0x00, 0x00, 0x3c,  // Version(4) + IHL(5) + TOS(0) + Total Length(60)
-        0x00, 0x03, 0x40, 0x00,  // ID(3) + Flags(2) + Fragment Offset(0)
-        0x40, 0x06, 0x00, 0x00,  // TTL(64) + Protocol(TCP=6) + Header Checksum(0)
-        0xc0, 0xa8, 0x01, 0x64,  // Source IP: 192.168.1.100
-        0x08, 0x08, 0x08, 0x08,  // Destination IP: 8.8.8.8
-        
-        // TCP Header (20 bytes)
-        0x30, 0x39, 0x01, 0xbb,  // Source Port(12345) + Destination Port(443)
-        0x00, 0x00, 0x04, 0x14,  // Sequence Number(1044) - 继续第二个分段的序列号
-        0x00, 0x00, 0x00, 0x00,  // Acknowledgment Number(0)
-        0x50, 0x18, 0x00, 0x00,  // Header Length(5) + Flags(PSH+ACK) + Window Size(0)
-        0x00, 0x00, 0x00, 0x00,  // Checksum(0) + Urgent Pointer(0)
-        
         // TLS Handshake - 第三个分段 (20 bytes)
         0x00, 0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x17, 0x00, 0x18, 0x00, 0x19,  // Supported groups
         0x00, 0x0b, 0x00, 0x02, 0x01, 0x00,  // EC point formats
@@ -84,84 +43,159 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     println!("\n📦 Processing Segment 1 ({} bytes)...", segment1.len());
-    let mut result = TlsJa4Result {
-        fingerprint: TlsJa4Fingerprint {
-            ja4: [0; 64],
-            ja4_len: 0,
-            ja3: [0; 64],
-            ja3_len: 0,
-            tls_version: 0,
-            cipher_count: 0,
-            extension_count: 0,
-        },
-        is_client_hello: 0,
-        is_complete: 0,
-        status_code: 0,
-        cached_bytes: 0,
-        flow_id: 0,
-        timestamp: 0,
-        is_match: 0,
-    };
 
-    let ret1 = tls_ja4_analyze_packet(
-        context,
-        segment1.as_ptr(),
-        segment1.len() as u32,
-        &mut result
-    );
+    // 测试第一个分段 - 检测是否为TLS和Client Hello
+    let is_tls1 = tls_is_tls_packet(segment1.as_ptr(), segment1.len() as u32);
+    let is_ch1 = tls_is_client_hello(segment1.as_ptr(), segment1.len() as u32);
 
-    println!("Segment 1 result: {}", ret1);
-    if ret1 == TLS_JA4_SEGMENT_CACHED {
-        println!("📦 Segment 1 cached, waiting for more data...");
-    } else if ret1 == TLS_JA4_SUCCESS {
-        println!("✅ Complete TLS Client Hello in segment 1!");
+    println!("Segment 1 - Is TLS: {}", is_tls1);
+    println!("Segment 1 - Is Client Hello: {}", is_ch1);
+
+    if is_tls1 == TLS_JA4_NOT_TLS {
+        println!("❌ Segment 1 is not TLS data");
+    } else if is_ch1 == TLS_JA4_NOT_CLIENT_HELLO {
+        println!("📦 Segment 1 is TLS but incomplete Client Hello - needs more data");
     } else {
-        println!("❌ Segment 1 analysis failed: {}", ret1);
+        println!("✅ Segment 1 contains valid TLS Client Hello data");
+
+        // 尝试JA3分析
+        let mut ja3_result = TlsJa3Result {
+            fingerprint: TlsJa4Fingerprint {
+                fingerprint: [0; 64],
+                fingerprint_len: 0,
+                tls_version: 0,
+                cipher_count: 0,
+                extension_count: 0,
+            },
+            is_client_hello: 0,
+            is_complete: 0,
+            status_code: 0,
+            timestamp: 0,
+        };
+
+        let ja3_ret1 = tls_calculate_ja3(
+            segment1.as_ptr(),
+            segment1.len() as u32,
+            &mut ja3_result
+        );
+
+        println!("Segment 1 JA3 analysis result: {}", ja3_ret1);
+        if ja3_ret1 == TLS_JA4_SUCCESS {
+            println!("✅ Complete TLS Client Hello in segment 1 for JA3!");
+            println!("JA3: {}", std::str::from_utf8(&ja3_result.fingerprint.fingerprint[..ja3_result.fingerprint.fingerprint_len as usize]).unwrap_or("invalid"));
+        } else {
+            println!("📦 Segment 1 incomplete for JA3 - needs more data");
+        }
+
+        // 尝试JA4分析
+        let mut ja4_result = TlsJa4Result {
+            fingerprint: TlsJa4Fingerprint {
+                fingerprint: [0; 64],
+                fingerprint_len: 0,
+                tls_version: 0,
+                cipher_count: 0,
+                extension_count: 0,
+            },
+            is_client_hello: 0,
+            is_complete: 0,
+            status_code: 0,
+            timestamp: 0,
+            is_match: 0,
+        };
+
+        let ja4_ret1 = tls_calculate_ja4(
+            segment1.as_ptr(),
+            segment1.len() as u32,
+            &mut ja4_result
+        );
+
+        println!("Segment 1 JA4 analysis result: {}", ja4_ret1);
+        if ja4_ret1 == TLS_JA4_SUCCESS {
+            println!("✅ Complete TLS Client Hello in segment 1 for JA4!");
+            println!("JA4: {}", std::str::from_utf8(&ja4_result.fingerprint.fingerprint[..ja4_result.fingerprint.fingerprint_len as usize]).unwrap_or("invalid"));
+        } else {
+            println!("📦 Segment 1 incomplete for JA4 - needs more data");
+        }
     }
 
-    println!("\n📦 Processing Segment 2 ({} bytes)...", segment2.len());
-    let ret2 = tls_ja4_analyze_packet(
-        context,
-        segment2.as_ptr(),
-        segment2.len() as u32,
-        &mut result
-    );
+    println!("\n📦 Processing Combined TLS data...");
 
-    println!("Segment 2 result: {}", ret2);
-    if ret2 == TLS_JA4_SEGMENT_CACHED {
-        println!("📦 Segment 2 cached, waiting for more data...");
-    } else if ret2 == TLS_JA4_SUCCESS {
-        println!("✅ Complete TLS Client Hello in segment 2!");
-    } else {
-        println!("❌ Segment 2 analysis failed: {}", ret2);
-    }
+    // 组合所有分段
+    let mut combined = Vec::new();
+    combined.extend_from_slice(segment1);
+    combined.extend_from_slice(segment2);
+    combined.extend_from_slice(segment3);
 
-    println!("\n📦 Processing Segment 3 ({} bytes)...", segment3.len());
-    let ret3 = tls_ja4_analyze_packet(
-        context,
-        segment3.as_ptr(),
-        segment3.len() as u32,
-        &mut result
-    );
+    // 测试组合后的完整数据
+    let is_tls_combined = tls_is_tls_packet(combined.as_ptr(), combined.len() as u32);
+    let is_ch_combined = tls_is_client_hello(combined.as_ptr(), combined.len() as u32);
 
-    println!("Segment 3 result: {}", ret3);
-    if ret3 == TLS_JA4_SUCCESS {
-        println!("✅ Complete TLS Client Hello assembled from segments!");
-        println!("JA4: {}", std::str::from_utf8(&result.fingerprint.ja4[..result.fingerprint.ja4_len as usize]).unwrap_or("invalid"));
-        println!("JA3: {}", std::str::from_utf8(&result.fingerprint.ja3[..result.fingerprint.ja3_len as usize]).unwrap_or("invalid"));
-        println!("TLS Version: 0x{:04x}", result.fingerprint.tls_version);
-        println!("Cipher Count: {}", result.fingerprint.cipher_count);
-        println!("Extension Count: {}", result.fingerprint.extension_count);
-    } else {
-        println!("❌ Segment 3 analysis failed: {}", ret3);
+    println!("Combined - Is TLS: {}", is_tls_combined);
+    println!("Combined - Is Client Hello: {}", is_ch_combined);
+
+    if is_tls_combined == TLS_JA4_SUCCESS && is_ch_combined == TLS_JA4_SUCCESS {
+        // JA3分析
+        let mut ja3_result = TlsJa3Result {
+            fingerprint: TlsJa4Fingerprint {
+                fingerprint: [0; 64],
+                fingerprint_len: 0,
+                tls_version: 0,
+                cipher_count: 0,
+                extension_count: 0,
+            },
+            is_client_hello: 0,
+            is_complete: 0,
+            status_code: 0,
+            timestamp: 0,
+        };
+
+        let ja3_ret_combined = tls_calculate_ja3(
+            combined.as_ptr(),
+            combined.len() as u32,
+            &mut ja3_result
+        );
+
+        // JA4分析
+        let mut ja4_result = TlsJa4Result {
+            fingerprint: TlsJa4Fingerprint {
+                fingerprint: [0; 64],
+                fingerprint_len: 0,
+                tls_version: 0,
+                cipher_count: 0,
+                extension_count: 0,
+            },
+            is_client_hello: 0,
+            is_complete: 0,
+            status_code: 0,
+            timestamp: 0,
+            is_match: 0,
+        };
+
+        let ja4_ret_combined = tls_calculate_ja4(
+            combined.as_ptr(),
+            combined.len() as u32,
+            &mut ja4_result
+        );
+
+        println!("Combined JA3 analysis result: {}", ja3_ret_combined);
+        println!("Combined JA4 analysis result: {}", ja4_ret_combined);
+
+        if ja3_ret_combined == TLS_JA4_SUCCESS && ja4_ret_combined == TLS_JA4_SUCCESS {
+            println!("✅ Complete TLS Client Hello assembled from segments!");
+            println!("JA3: {}", std::str::from_utf8(&ja3_result.fingerprint.fingerprint[..ja3_result.fingerprint.fingerprint_len as usize]).unwrap_or("invalid"));
+            println!("JA4: {}", std::str::from_utf8(&ja4_result.fingerprint.fingerprint[..ja4_result.fingerprint.fingerprint_len as usize]).unwrap_or("invalid"));
+            println!("TLS Version: 0x{:04x}", ja4_result.fingerprint.tls_version);
+            println!("Cipher Count: {}", ja4_result.fingerprint.cipher_count);
+            println!("Extension Count: {}", ja4_result.fingerprint.extension_count);
+        }
     }
 
     // 清理上下文
-    tls_ja4_cleanup(context);
+    tls_cleanup(context);
 
     println!("\n🎯 Segmented TLS processing test completed!");
-    println!("This demonstrates how the library handles TLS Client Hello split across multiple TCP segments.");
-    println!("The implementation automatically reassembles segments and extracts fingerprints when complete.");
+    println!("Note: C API works with TCP payloads. For IP packet parsing and segment reassembly,");
+    println!("use the Rust API or implement TCP reassembly before calling C API functions.");
 
     Ok(())
 }

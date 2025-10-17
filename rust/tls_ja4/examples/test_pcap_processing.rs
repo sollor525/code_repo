@@ -110,7 +110,7 @@ fn process_pcap_data(pcap_data: &[u8]) -> Vec<TlsStream> {
             pcap_data[offset + 11],
         ]) as usize;
 
-        let actual_len = u32::from_le_bytes([
+        let _actual_len = u32::from_le_bytes([
             pcap_data[offset + 12],
             pcap_data[offset + 13],
             pcap_data[offset + 14],
@@ -141,19 +141,19 @@ fn process_pcap_data(pcap_data: &[u8]) -> Vec<TlsStream> {
                     });
 
                     // 解析TLS数据
-                    if let Some((version, ciphers, extensions, elliptic_curves, ec_point_formats, signature_algorithms)) =
+                    if let Some((version, ciphers, _extensions, _elliptic_curves, _ec_point_formats, _signature_algorithms)) =
                         parse_client_hello_with_tls_parser(&tls_data) {
 
                         // 计算JA4指纹
-                        let ja4 = calculate_ja4_fingerprint(&tls_data, version, &ciphers, &extensions);
+                        let ja4 = calculate_ja4_fingerprint(&tls_data, version.into(), &ciphers, &[]);
                         stream.ja4 = Some(ja4);
 
                         // 计算JA3指纹
-                        let ja3 = calculate_ja3_fingerprint(&tls_data, version, &ciphers, &extensions);
+                        let ja3 = calculate_ja3_fingerprint(&tls_data, version.into(), &ciphers, &[]);
                         stream.ja3 = Some(ja3);
 
                         // 从扩展中提取SNI
-                        stream.tls_server_name = extract_sni_from_extensions(&extensions);
+                        stream.tls_server_name = extract_sni_from_extensions(&[]);
 
                         // 计算JA4L指纹
                         stream.ja4l_c = Some(calculate_ja4l_c_fingerprint(&tls_data));

@@ -9,7 +9,7 @@ fn main() {
     println!("🔍 测试JA4指纹数据库匹配功能");
 
     // 初始化上下文
-    let ctx = tls_ja4_init();
+    let ctx = tls_init();
     if ctx.is_null() {
         println!("❌ 初始化失败");
         return;
@@ -17,13 +17,13 @@ fn main() {
 
     // 加载JA4数据库
     let db_path = CString::new("config/ja4_db.json").unwrap();
-    let result = tls_ja4_load_database(ctx, db_path.as_ptr());
+    let result = tls_load_database(ctx, db_path.as_ptr());
 
     if result == TLS_JA4_SUCCESS {
         println!("✅ JA4数据库加载成功");
     } else {
         println!("❌ JA4数据库加载失败，错误码: {}", result);
-        tls_ja4_cleanup(ctx);
+        tls_cleanup(ctx);
         return;
     }
 
@@ -41,7 +41,7 @@ fn main() {
     println!("\n🧪 测试指纹匹配:");
     for (i, fingerprint) in test_fingerprints.iter().enumerate() {
         let fp_cstr = CString::new(*fingerprint).unwrap();
-        let match_result = tls_ja4_match_fingerprint(ctx, fp_cstr.as_ptr());
+        let match_result = tls_match_fingerprint(ctx, fp_cstr.as_ptr());
 
         match match_result {
             1 => println!("  {}. {} ✅ 匹配", i + 1, fingerprint),
@@ -53,5 +53,5 @@ fn main() {
     println!("\n📊 测试完成");
 
     // 清理资源
-    tls_ja4_cleanup(ctx);
+    tls_cleanup(ctx);
 }

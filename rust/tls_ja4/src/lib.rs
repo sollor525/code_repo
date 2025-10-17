@@ -32,9 +32,9 @@
 //! // 加载数据库
 //! tls_ja4_load_database(ctx, "config/ja4_db.json");
 //!
-//! // 分析数据包
+//! // 分析TLS数据包 (TCP载荷)
 //! tls_ja4_result result;
-//! int ret = tls_ja4_analyze_packet(ctx, packet_data, packet_len, &result);
+//! int ret = tls_ja4_analyze_client_hello(ctx, tcp_payload_data, payload_len, &result);
 //!
 //! if (ret == 0 && result.is_match) {
 //!     printf("匹配的JA4指纹: %.*s\\n", result.fingerprint.ja4_len, result.fingerprint.ja4);
