@@ -10,6 +10,7 @@ use axum::http::{header, HeaderValue};
 use crate::network_utils::NetworkUtils;
 use crate::packet_analyzer::PacketAnalyzer;
 use crate::regex_matcher::RegexMatcher;
+use crate::md5_utils::{Md5Request, process_md5_request};
 
 #[derive(Serialize, Deserialize)]
 struct ApiResponse<T> {
@@ -106,6 +107,11 @@ pub fn create_packet_routes() -> Router {
 pub fn create_regex_routes() -> Router {
     Router::new()
         .route("/match", post(regex_match))
+}
+
+pub fn create_md5_routes() -> Router {
+    Router::new()
+        .route("/calculate", post(md5_calculate))
 }
 
 async fn network_convert(
@@ -214,5 +220,12 @@ async fn regex_match(
         matches,
     };
 
+    Json(ApiResponse::success(response))
+}
+
+async fn md5_calculate(
+    Json(request): Json<Md5Request>
+) -> impl IntoResponse {
+    let response = process_md5_request(request);
     Json(ApiResponse::success(response))
 }

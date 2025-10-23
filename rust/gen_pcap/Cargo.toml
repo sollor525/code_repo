@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pcap = "1.0" 
+pcap = "1.0"
 pnet = "0.33"
 libc = "0.2"
+clap = { version = "4.0", features = ["derive"] }
+rand = "0.8"
 
 [[example]]
 name = "http_example"

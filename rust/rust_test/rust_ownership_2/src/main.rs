@@ -22,8 +22,8 @@ fn gives_ownership() -> String {       // gives_ownership 将会把返回值传�
 }
 
 // 该函数将传入字符串并返回该值
-fn takes_and_gives_back(muta_string: String) -> String {
-    // a_string 进入作用域
-    a_string.push_str(" world");
-    a_string  // 返回 a_string 并移出给调用的函数
+fn takes_and_gives_back(mut muta_string: String) -> String {
+    // muta_string 进入作用域
+    muta_string.push_str(" world");
+    muta_string  // 返回 muta_string 并移出给调用的函数
 }

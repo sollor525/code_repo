@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MD5 计算工具 - 开发者工具箱</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔐</text></svg>">
+
+    <style>
+        /* MD5 计算页面专用样式 */
+        .compact-card {
+            margin-bottom: 1.5rem;
+        }
+
+        .compact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .result-container {
+            min-height: 80px !important;
+        }
+
+        .form-textarea, .form-input {
+            padding: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+        }
+
+        .hash-result {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+            background: var(--background-secondary);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 0.75rem;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--background-secondary);
+        }
+
+        .file-input-label:hover {
+            border-color: var(--primary-color);
+            background: var(--primary-color-light);
+        }
+
+        .file-info {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .copy-btn {
+            background: var(--success-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--success-color-dark);
+            transform: translateY(-1px);
+        }
+
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            .compact-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <span style="font-size: 1.5rem; margin-right: 0.5rem;">🛠️</span>
+                <span>开发者工具箱</span>
+            </a>
+            <nav class="nav">
+                <a href="/" class="nav-link">主页</a>
+                <a href="/network.html" class="nav-link">网络转换</a>
+                <a href="/packet.html" class="nav-link">报文分析</a>
+                <a href="/regex.html" class="nav-link">正则匹配</a>
+                <a href="/md5.html" class="nav-link active">MD5 计算</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 面包屑导航 -->
+    <nav style="background: var(--background); padding: 1rem 0; border-bottom: 1px solid var(--border-color);">
+        <div class="container">
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                <a href="/" style="color: var(--primary-color); text-decoration: none;">🏠 首页</a>
+                <span>›</span>
+                <span style="color: var(--text-primary); font-weight: 500;">MD5 计算工具</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main">
+        <div class="container">
+            <!-- 页面标题 -->
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="card-title">🔐 MD5 哈希计算工具</h1>
+                    <p class="card-description">
+                        快速计算文本或文件的 MD5 哈希值，支持多种输入格式，适用于数据校验、文件完整性验证等场景
+                    </p>
+                </div>
+            </div>
+
+            <!-- 文本 MD5 计算 -->
+            <div class="card compact-card">
+                <div class="card-header">
+                    <h2 class="card-title">📝 文本 MD5 计算</h2>
+                </div>
+                <div class="compact-grid">
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">输入文本内容</label>
+                            <textarea id="textInput" class="form-textarea" rows="8"
+                                      placeholder="请输入要计算 MD5 的文本内容..."></textarea>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="calculateTextMD5()">
+                                🔐 计算 MD5
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearTextInput()">
+                                🗑️ 清空
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">MD5 哈希结果</label>
+                            <div class="result-container">
+                                <div id="textResult" class="hash-result" style="display: none;">
+                                    <div id="textHashValue"></div>
+                                    <div class="file-info" id="textInfo"></div>
+                                    <button class="copy-btn" onclick="copyToClipboard('textHashValue')">
+                                        📋 复制结果
+                                    </button>
+                                </div>
+                                <div id="textPlaceholder" style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+                                    点击"计算 MD5"按钮查看结果
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 文件 MD5 计算 -->
+            <div class="card compact-card">
+                <div class="card-header">
+                    <h2 class="card-title">📁 文件 MD5 计算</h2>
+                </div>
+                <div class="compact-grid">
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">选择文件</label>
+                            <div class="file-input-wrapper">
+                                <input type="file" id="fileInput" class="file-input" onchange="handleFileSelect()">
+                                <label for="fileInput" class="file-input-label">
+                                    <div style="font-size: 1.2rem; margin-bottom: 0.5rem;">📁</div>
+                                    <div>点击选择文件或拖拽文件到此处</div>
+                                    <div style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-secondary);">
+                                        支持任意格式文件
+                                    </div>
+                                </label>
+                            </div>
+                            <div id="fileInfo" class="file-info" style="display: none;"></div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="calculateFileMD5()" id="calculateFileBtn" disabled>
+                                🔐 计算文件 MD5
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearFileInput()">
+                                🗑️ 清空
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">文件 MD5 哈希结果</label>
+                            <div class="result-container">
+                                <div id="fileResult" class="hash-result" style="display: none;">
+                                    <div id="fileHashValue"></div>
+                                    <div class="file-info" id="fileInfoResult"></div>
+                                    <button class="copy-btn" onclick="copyToClipboard('fileHashValue')">
+                                        📋 复制结果
+                                    </button>
+                                </div>
+                                <div id="filePlaceholder" style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+                                    选择文件后点击"计算文件 MD5"按钮
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 使用说明 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📖 使用说明</h2>
+                </div>
+                <div class="card-content">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                        <div>
+                            <h3 style="color: var(--primary-color); margin-bottom: 1rem;">🔤 文本计算</h3>
+                            <ul style="line-height: 1.6; color: var(--text-secondary);">
+                                <li>支持任意文本内容，包括中文、英文、数字等</li>
+                                <li>实时计算，输入后即可查看结果</li>
+                                <li>支持多行文本和特殊字符</li>
+                                <li>结果可一键复制到剪贴板</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 style="color: var(--primary-color); margin-bottom: 1rem;">📁 文件计算</h3>
+                            <ul style="line-height: 1.6; color: var(--text-secondary);">
+                                <li>支持任意格式和大小的文件</li>
+                                <li>显示文件大小和基本信息</li>
+                                <li>适用于文件完整性校验</li>
+                                <li>支持拖拽上传文件</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 style="color: var(--primary-color); margin-bottom: 1rem;">💡 应用场景</h3>
+                            <ul style="line-height: 1.6; color: var(--text-secondary);">
+                                <li>密码哈希存储</li>
+                                <li>文件完整性验证</li>
+                                <li>数据校验和比较</li>
+                                <li>开发调试和测试</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 开发者工具箱. 免费开源工具集合.</p>
+        </div>
+    </footer>
+
+    <script>
+        let selectedFile = null;
+
+        // 计算文本 MD5
+        async function calculateTextMD5() {
+            const textInput = document.getElementById('textInput');
+            const text = textInput.value.trim();
+            
+            if (!text) {
+                alert('请输入要计算 MD5 的文本内容');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/md5/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success && result.data.success) {
+                    displayTextResult(result.data);
+                } else {
+                    alert('计算失败: ' + (result.data?.error || '未知错误'));
+                }
+            } catch (error) {
+                alert('请求失败: ' + error.message);
+            }
+        }
+
+        // 计算文件 MD5
+        async function calculateFileMD5() {
+            if (!selectedFile) {
+                alert('请先选择文件');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/md5/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        file_path: selectedFile.name
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success && result.data.success) {
+                    displayFileResult(result.data);
+                } else {
+                    alert('计算失败: ' + (result.data?.error || '未知错误'));
+                }
+            } catch (error) {
+                alert('请求失败: ' + error.message);
+            }
+        }
+
+        // 显示文本结果
+        function displayTextResult(data) {
+            const resultDiv = document.getElementById('textResult');
+            const placeholder = document.getElementById('textPlaceholder');
+            const hashValue = document.getElementById('textHashValue');
+            const info = document.getElementById('textInfo');
+
+            hashValue.textContent = data.md5_hash;
+            info.textContent = `输入类型: ${data.input_type} | 字符数: ${data.input_size}`;
+            
+            placeholder.style.display = 'none';
+            resultDiv.style.display = 'block';
+        }
+
+        // 显示文件结果
+        function displayFileResult(data) {
+            const resultDiv = document.getElementById('fileResult');
+            const placeholder = document.getElementById('filePlaceholder');
+            const hashValue = document.getElementById('fileHashValue');
+            const info = document.getElementById('fileInfoResult');
+
+            hashValue.textContent = data.md5_hash;
+            info.textContent = `文件类型: ${data.input_type} | 文件大小: ${formatFileSize(data.input_size)}`;
+            
+            placeholder.style.display = 'none';
+            resultDiv.style.display = 'block';
+        }
+
+        // 处理文件选择
+        function handleFileSelect() {
+            const fileInput = document.getElementById('fileInput');
+            const fileInfo = document.getElementById('fileInfo');
+            const calculateBtn = document.getElementById('calculateFileBtn');
+            
+            if (fileInput.files.length > 0) {
+                selectedFile = fileInput.files[0];
+                fileInfo.innerHTML = `
+                    <strong>文件名:</strong> ${selectedFile.name}<br>
+                    <strong>文件大小:</strong> ${formatFileSize(selectedFile.size)}<br>
+                    <strong>文件类型:</strong> ${selectedFile.type || '未知'}
+                `;
+                fileInfo.style.display = 'block';
+                calculateBtn.disabled = false;
+            } else {
+                selectedFile = null;
+                fileInfo.style.display = 'none';
+                calculateBtn.disabled = true;
+            }
+        }
+
+        // 清空文本输入
+        function clearTextInput() {
+            document.getElementById('textInput').value = '';
+            document.getElementById('textResult').style.display = 'none';
+            document.getElementById('textPlaceholder').style.display = 'block';
+        }
+
+        // 清空文件输入
+        function clearFileInput() {
+            document.getElementById('fileInput').value = '';
+            document.getElementById('fileInfo').style.display = 'none';
+            document.getElementById('fileResult').style.display = 'none';
+            document.getElementById('filePlaceholder').style.display = 'block';
+            document.getElementById('calculateFileBtn').disabled = true;
+            selectedFile = null;
+        }
+
+        // 复制到剪贴板
+        async function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            
+            try {
+                await navigator.clipboard.writeText(text);
+                // 临时改变按钮文本
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = '✅ 已复制';
+                button.style.background = 'var(--success-color-dark)';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = 'var(--success-color)';
+                }, 2000);
+            } catch (error) {
+                alert('复制失败: ' + error.message);
+            }
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 添加拖拽支持
+            const fileInputLabel = document.querySelector('.file-input-label');
+            
+            fileInputLabel.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.style.borderColor = 'var(--primary-color)';
+                this.style.background = 'var(--primary-color-light)';
+            });
+            
+            fileInputLabel.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.style.borderColor = 'var(--border-color)';
+                this.style.background = 'var(--background-secondary)';
+            });
+            
+            fileInputLabel.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.style.borderColor = 'var(--border-color)';
+                this.style.background = 'var(--background-secondary)';
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    document.getElementById('fileInput').files = files;
+                    handleFileSelect();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
