@@ -8,6 +8,8 @@ pub mod core;
 pub mod tcp;
 pub mod http;
 pub mod session;
+pub mod template;
+pub mod license;
 
 // 重新导出主要公共接口
 pub use core::{
@@ -26,6 +28,17 @@ pub use http::{
     request::{HttpRequest, HttpMethod, HttpVersion},
     response::{HttpResponse, HttpStatusCode}
 };
+
+// 模板相关类型的导出
+pub use template::{
+    YamlTemplate, TemplateEngine, TemplateConfig,
+    TemplateError, TemplateMetadata, NetworkConfig, SessionTemplate,
+    AddressConfig, SessionType, ApplicationConfig, HttpRequestConfig,
+    HttpResponseConfig, DefaultSettings
+};
+
+// 许可证相关类型导出
+pub use license::{LicenseManager, ProgramConfig, UsageCounter};
 
 // TcpSession实现 - 统一使用一个主要方法
 impl TcpSession {

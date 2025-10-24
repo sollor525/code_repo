@@ -20,11 +20,28 @@ impl IpRange {
         let clean_str = range_str.trim().to_lowercase();
 
         if clean_str == "random" {
-            // 完全随机IP地址范围 (0.0.0.0 - 255.255.255.255)
-            Ok(Self::new(
-                Ipv4Addr::new(0, 0, 0, 0),
-                Ipv4Addr::new(255, 255, 255, 255)
-            ))
+            // 只使用合法的单播IP地址范围
+            // 排除: 0.0.0.0/8 (保留地址), 127.0.0.0/8 (环回), 224.0.0.0/4 (组播), 240.0.0.0/4 (保留)
+            // 使用: 1.0.0.0 - 223.255.255.255
+
+            // 生成随机合法的单播IP地址
+            let mut rng = rand::thread_rng();
+
+            // 随机选择一个A、B、C类网络
+            let first_octet = match rng.gen_range(0..3) {
+                0 => rng.gen_range(1..127),    // A类: 1.0.0.0 - 126.255.255.255
+                1 => rng.gen_range(128..192), // B类: 128.0.0.0 - 191.255.255.255
+                _ => rng.gen_range(192..224), // C类: 192.0.0.0 - 223.255.255.255
+            };
+
+            let ip = Ipv4Addr::new(
+                first_octet,
+                rng.gen_range(0..=255),
+                rng.gen_range(0..=255),
+                rng.gen_range(1..=255) // 确保最后一个字节不为0（避免网络地址）
+            );
+
+            Ok(Self::new(ip, ip))
         } else if clean_str.contains('-') {
             let parts: Vec<&str> = clean_str.split('-').collect();
             if parts.len() != 2 {
@@ -82,8 +99,20 @@ impl PortRange {
         let clean_str = range_str.split(',').next().unwrap_or(range_str).trim().to_lowercase();
 
         if clean_str == "random" {
-            // 完全随机端口范围 (1-65535)
-            Ok(Self::new(1, 65535))
+            // 只使用合法端口范围 (1-65535，排除系统保留端口0和部分高端口)
+            // 但在实际应用中，通常使用 1024-49151 (注册端口) 和 49152-65535 (动态/私有端口)
+            let mut rng = rand::thread_rng();
+
+            // 80%概率使用动态端口，20%概率使用注册端口
+            let port = if rng.gen_range(0..100) < 80 {
+                // 动态/私有端口: 49152-65535
+                rng.gen_range(49152..=65535)
+            } else {
+                // 注册端口: 1024-49151
+                rng.gen_range(1024..=49151)
+            };
+
+            Ok(Self::new(port, port))
         } else if clean_str.contains('-') {
             let parts: Vec<&str> = clean_str.split('-').collect();
             if parts.len() != 2 {

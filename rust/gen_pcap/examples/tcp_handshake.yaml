@@ -1,0 +1,50 @@
+# TCP三次握手示例模板
+metadata:
+  name: "TCP Handshake Example"
+  description: "生成基本的TCP三次握手流量"
+  version: "1.0"
+  author: "gen_pcap"
+
+# 网络配置
+network:
+  src_mac: "00:11:22:33:44:55"
+  dst_mac: "e2:c9:fc:f5:9e:3c"
+
+# 会话定义
+sessions:
+  - name: "ssh_connection"
+    repeat: 1
+    connection:
+      src:
+        ip: "10.10.1.100"
+        port: 54321
+      dst:
+        ip: "192.168.1.100"
+        port: 22
+    session_type:
+      Tcp:
+        ports: [22, 21, 25, 3306, 5672, 9200]
+        duration_ms: 1000
+
+  - name: "web_connection"
+    repeat: 2
+    connection:
+      src:
+        ip: "10.10.1.101"
+      dst:
+        ip: "192.168.1.101"
+        port: 80
+    application:
+      Http:
+        requests:
+          - method: "GET"
+            uri: "/"
+            headers:
+              Host: "example.com"
+              User-Agent: "gen_pcap/1.0"
+        responses:
+          - status_code: 200
+            headers:
+              Server: "nginx/1.20.1"
+              Content-Type: "text/html"
+            body: "<h1>Hello World</h1>"

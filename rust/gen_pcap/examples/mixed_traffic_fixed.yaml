@@ -1,0 +1,87 @@
+# 混合流量示例模板（修复版）
+metadata:
+  name: "Mixed Traffic Example"
+  description: "生成包含TCP和HTTP的混合流量"
+  version: "1.0"
+  author: "gen_pcap"
+
+# 网络配置
+network:
+  src_mac: "de:ad:be:ef:ca:fe"
+  dst_mac: "ba:dc:0f:fe:e1:00"
+
+# 会话定义
+sessions:
+  - name: "database_connection"
+    repeat: 1
+    connection:
+      src:
+        ip: "192.168.10.100"
+        port: 45000
+      dst:
+        ip: "192.168.10.200"
+        port: 3306
+    session_type:
+      type: "Tcp"
+      ports: [3306]
+      duration_ms: 5000
+
+  - name: "web_server_traffic"
+    repeat: 2
+    connection:
+      src:
+        ip: "10.1.1.50"
+        port: 0
+      dst:
+        ip: "10.1.1.10"
+        port: 80
+    session_type:
+      type: "Tcp"
+      ports: [80]
+      duration_ms: 3000
+    application:
+      protocol: "Http"
+      requests:
+        - method: "GET"
+          uri: "/"
+          headers:
+            Host: "webapp.example.com"
+        - method: "GET"
+          uri: "/css/style.css"
+          headers:
+            Host: "webapp.example.com"
+        - method: "GET"
+          uri: "/js/app.js"
+          headers:
+            Host: "webapp.example.com"
+      responses:
+        - status_code: 200
+          headers:
+            Content-Type: "text/html"
+          body: "<html><head><title>WebApp</title></head><body><h1>Welcome</h1></body></html>"
+        - status_code: 200
+          headers:
+            Content-Type: "text/css"
+          body: "body { margin: 0; font-family: Arial; }"
+        - status_code: 200
+          headers:
+            Content-Type: "application/javascript"
+          body: "console.log('Hello World');"
+
+  - name: "tcp_raw_data"
+    repeat: 1
+    connection:
+      src:
+        ip: "172.20.30.40"
+        port: 0
+      dst:
+        ip: "172.20.30.50"
+        port: 9999
+    session_type:
+      type: "Tcp"
+      ports: [9999]
+      duration_ms: 2000
+    application:
+      protocol: "Tcp"
+      data_size: 1024
+      flags: ["PSH", "ACK"]

@@ -4,6 +4,7 @@ use libc::timeval;
 use std::net::Ipv4Addr;
 use gen_pcap::{
     TcpSessionConfig, IpRange, PortRange, ApplicationFlowType, NetworkConnection, TcpSession,
+    TemplateEngine, TemplateConfig, LicenseManager,
     core::{HttpFlow, ApplicationFlow}
 };
 
@@ -80,12 +81,49 @@ fn main() {
                 .default_value("output.pcap")
         )
         .arg(
+            Arg::new("template")
+                .short('t')
+                .long("template")
+                .value_name("FILE")
+                .help("YAML模板文件路径")
+        )
+        .arg(
             Arg::new("legacy")
                 .long("legacy")
                 .help("使用传统模式生成示例流量")
                 .action(clap::ArgAction::SetTrue)
         )
+        .arg(
+            Arg::new("license-status")
+                .long("license-status")
+                .help("显示许可证状态")
+                .action(clap::ArgAction::SetTrue)
+        )
+        .arg(
+            Arg::new("bypass-license")
+                .long("bypass-license")
+                .help("绕过许可证检查 (仅用于测试)")
+                .action(clap::ArgAction::SetTrue)
+                .hide(true) // 隐藏这个选项，不显示在帮助中
+        )
         .get_matches();
+
+    // 检查许可证状态（除非绕过）
+    if !matches.get_flag("bypass-license") {
+        check_license_and_exit_if_needed();
+    }
+
+    // 如果检查许可证状态
+    if matches.get_flag("license-status") {
+        show_license_status();
+        return;
+    }
+
+    // 如果使用模板模式
+    if let Some(template_file) = matches.get_one::<String>("template") {
+        run_template_mode(template_file, matches.get_one::<String>("output").unwrap());
+        return;
+    }
 
     // 如果使用传统模式
     if matches.get_flag("legacy") {
@@ -181,6 +219,72 @@ fn run_new_mode(matches: &clap::ArgMatches) {
     }
 
     println!("[+] 完成! 总共写入 {} 个数据包到 {}", packet_count, output_file);
+
+    // 记录PCAP生成
+    record_pcap_generation(output_file).unwrap_or_else(|e| {
+        eprintln!("[!] 警告: 无法记录PCAP生成: {}", e);
+    });
+}
+
+fn run_template_mode(template_file: &str, output_file: &str) {
+    println!("[*] 使用YAML模板模式生成PCAP文件");
+    println!("[*] 模板文件: {}", template_file);
+    println!("[*] 输出文件: {}", output_file);
+
+    // 解析YAML模板
+    let template_config = match TemplateConfig::from_yaml_file(template_file) {
+        Ok(config) => {
+            println!("[+] 模板解析成功");
+            config
+        }
+        Err(e) => {
+            eprintln!("[!] 模板解析失败: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // 显示模板信息
+    println!("[*] 模板信息:");
+    println!("    名称: {}", template_config.template.metadata.name);
+    println!("    描述: {}", template_config.template.metadata.description.as_deref().unwrap_or("无"));
+    println!("    版本: {}", template_config.template.metadata.version.as_deref().unwrap_or("1.0"));
+    println!("    会话数量: {}", template_config.template.sessions.len());
+
+    // 创建模板引擎
+    let engine = TemplateEngine::new(template_config);
+
+    // 生成数据包
+    match engine.generate_packets() {
+        Ok(packets) => {
+            println!("[+] 数据包生成成功，共 {} 个数据包", packets.len());
+
+            // 创建PCAP文件
+            let cap = Capture::dead(pcap::Linktype::ETHERNET).unwrap();
+            let mut savefile = cap.savefile(output_file).unwrap();
+
+            // 写入数据包
+            for (i, packet_data) in packets.iter().enumerate() {
+                let header = PacketHeader {
+                    ts: timeval { tv_sec: i as i64, tv_usec: 0 },
+                    caplen: packet_data.len() as u32,
+                    len: packet_data.len() as u32,
+                };
+                let packet = Packet::new(&header, &packet_data);
+                savefile.write(&packet);
+            }
+
+            println!("[+] 完成! 总共写入 {} 个数据包到 {}", packets.len(), output_file);
+
+            // 记录PCAP生成
+            record_pcap_generation(output_file).unwrap_or_else(|e| {
+                eprintln!("[!] 警告: 无法记录PCAP生成: {}", e);
+            });
+        }
+        Err(e) => {
+            eprintln!("[!] 数据包生成失败: {}", e);
+            std::process::exit(1);
+        }
+    }
 }
 
 fn run_legacy_mode() {
@@ -287,5 +391,70 @@ fn run_legacy_mode() {
 
     println!("[+] HTTP 四种视频协议流的流程完成（包含三次握手、请求/响应）");
     println!("全部完成，已写入 {}", PCAP_FILE);
+
+    // 记录PCAP生成
+    record_pcap_generation(PCAP_FILE).unwrap_or_else(|e| {
+        eprintln!("[!] 警告: 无法记录PCAP生成: {}", e);
+    });
 }
 
+/// 检查许可证状态并在需要时退出
+fn check_license_and_exit_if_needed() {
+    let license_manager = LicenseManager::new();
+
+    // 检查过期时间
+    if let Err(e) = license_manager.check_expiration() {
+        eprintln!("[!] {}", e);
+        std::process::exit(1);
+    }
+
+    // 检查激活状态
+    match license_manager.check_activation() {
+        Ok(is_activated) => {
+            if !is_activated {
+                let (_, unique, _) = license_manager.get_usage_stats().unwrap_or((0, 0, false));
+                eprintln!("[!] 程序尚未激活！");
+                eprintln!("[*] 当前唯一PCAP文件数: {}/{}", unique, license_manager.config.activation_threshold);
+                eprintln!("[*] 请继续生成不同的PCAP文件直到达到激活阈值。");
+                eprintln!("[*] 使用 --license-status 查看详细状态。");
+                std::process::exit(1);
+            }
+        }
+        Err(e) => {
+            eprintln!("[!] 无法检查激活状态: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+/// 显示许可证状态
+fn show_license_status() {
+    let license_manager = LicenseManager::new();
+
+    if let Err(e) = license_manager.show_license_status() {
+        eprintln!("[!] 无法显示许可证状态: {}", e);
+        std::process::exit(1);
+    }
+
+    // 显示使用提示
+    println!("\n[*] 使用说明:");
+    println!("    - 程序将在2026年5月31日后过期");
+    println!("    - 生成{}个不同的PCAP文件后程序将永久激活", license_manager.config.activation_threshold);
+    println!("    - 每次生成新的PCAP文件都会增加计数");
+}
+
+/// 记录PCAP生成
+fn record_pcap_generation(output_file: &str) -> anyhow::Result<()> {
+    let license_manager = LicenseManager::new();
+    license_manager.record_pcap_generation(output_file)?;
+
+    // 检查是否刚刚达到激活阈值
+    if let Ok(is_activated) = license_manager.check_activation() {
+        if is_activated {
+            println!("\n[🎉] 恭喜！程序已激活！");
+            println!("[*] 您现在可以无限制使用所有功能。");
+        }
+    }
+
+    Ok(())
+}

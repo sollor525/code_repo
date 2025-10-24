@@ -1,0 +1,63 @@
+# HTTP流量示例模板（工作版本）
+metadata:
+  name: "HTTP Traffic Example"
+  description: "生成包含GET和POST请求的HTTP流量"
+  version: "1.0"
+  author: "gen_pcap"
+
+# 网络配置
+network:
+  src_mac: "aa:bb:cc:dd:ee:ff"
+  dst_mac: "11:22:33:44:55:66"
+
+# 会话定义
+sessions:
+  - name: "api_client"
+    repeat: 1
+    connection:
+      src:
+        ip: "172.16.1.100"
+        port: 12345  # 使用固定端口
+      dst:
+        ip: "10.0.0.50"
+        port: 8080
+    session_type:
+      type: "Tcp"
+      ports: [8080]
+      duration_ms: 5000
+    application:
+      protocol: "Http"
+      requests:
+        - method: "GET"
+          uri: "/api/users"
+          headers:
+            Host: "api.example.com"
+            Accept: "application/json"
+            Authorization: "Bearer token123"
+        - method: "POST"
+          uri: "/api/users"
+          headers:
+            Host: "api.example.com"
+            Content-Type: "application/json"
+            Authorization: "Bearer token123"
+          body: '{"name": "John Doe", "email": "john@example.com"}'
+        - method: "GET"
+          uri: "/api/products"
+          headers:
+            Host: "api.example.com"
+            Accept: "application/json"
+            User-Agent: "gen_pcap-client/1.0"
+      responses:
+        - status_code: 200
+          headers:
+            Content-Type: "application/json"
+          body: '{"users": [{"id": 1, "name": "Alice"}]}'
+        - status_code: 201
+          headers:
+            Content-Type: "application/json"
+            Location: "/api/users/123"
+          body: '{"id": 123, "name": "John Doe", "email": "john@example.com"}'
+        - status_code: 200
+          headers:
+            Content-Type: "application/json"
+          body: '{"products": [{"id": 1, "name": "Product A"}]}'
