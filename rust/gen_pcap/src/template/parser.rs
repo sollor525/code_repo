@@ -4,12 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::net::{Ipv4Addr, IpAddr};
-use indexmap::IndexMap;
-use crate::core::NetworkConnection;
-use crate::{HttpRequest, HttpMethod, HttpVersion, HttpResponse, HttpStatusCode};
-use pnet::packet::tcp::TcpFlags;
-use anyhow::{Result, Context, anyhow};
+use anyhow::{Result, Context};
 
 /// YAML模板的完整结构
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -43,6 +38,8 @@ pub struct NetworkConfig {
     pub dst_mac: Option<String>,
     /// MAC地址池（用于多个连接）
     pub mac_pools: Option<MacAddressPool>,
+    /// VLAN配置
+    pub vlan: Option<VlanConfig>,
 }
 
 /// MAC地址池
@@ -50,6 +47,28 @@ pub struct NetworkConfig {
 pub struct MacAddressPool {
     pub src_macs: Vec<String>,
     pub dst_macs: Vec<String>,
+}
+
+/// VLAN配置
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct VlanConfig {
+    /// VLAN标签配置
+    pub tags: Vec<VlanTag>,
+    /// 是否使用双层VLAN (QinQ)
+    pub qinq: Option<bool>,
+}
+
+/// VLAN标签配置
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct VlanTag {
+    /// VLAN ID (1-4094)
+    pub vlan_id: u16,
+    /// VLAN优先级 (0-7, 可选)
+    pub priority: Option<u8>,
+    /// DEI位 (Drop Eligible Indicator, 可选)
+    pub dei: Option<bool>,
+    /// 标签类型 (outer/inner, 用于双层VLAN)
+    pub tag_type: Option<String>,
 }
 
 /// 会话模板
@@ -272,7 +291,7 @@ impl TemplateParser {
         // 验证端口范围
         if let SessionType::Tcp { ports: Some(ports), .. } = &session.session_type {
             for port in ports {
-                if *port == 0 || *port > 65535 {
+                if *port == 0  {
                     return Err(TemplateError::PortError(format!(
                         "无效的端口: {}. 有效范围: 1-65535", port
                     )).into());

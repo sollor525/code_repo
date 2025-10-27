@@ -4,7 +4,7 @@ use libc::timeval;
 use std::net::Ipv4Addr;
 use gen_pcap::{
     TcpSessionConfig, IpRange, PortRange, ApplicationFlowType, NetworkConnection, TcpSession,
-    TemplateEngine, TemplateConfig, LicenseManager,
+    TemplateEngine, TemplateConfig, LicenseManager, VlanConfig, VlanTag, build_vlan_ethernet_header,
     core::{HttpFlow, ApplicationFlow}
 };
 
@@ -79,6 +79,57 @@ fn main() {
                 .value_name("FILE")
                 .help("输出PCAP文件名")
                 .default_value("output.pcap")
+        )
+        .arg(
+            Arg::new("vlan")
+                .long("vlan")
+                .value_name("VLAN_ID")
+                .help("VLAN ID (1-4094)")
+        )
+        .arg(
+            Arg::new("vlan-priority")
+                .long("vlan-priority")
+                .value_name("PRIORITY")
+                .help("VLAN优先级 (0-7)")
+                .default_value("0")
+        )
+        .arg(
+            Arg::new("vlan-dei")
+                .long("vlan-dei")
+                .help("设置VLAN DEI位 (Drop Eligible Indicator)")
+                .action(clap::ArgAction::SetTrue)
+        )
+        .arg(
+            Arg::new("qinq")
+                .long("qinq")
+                .help("使用双层VLAN (QinQ)")
+                .action(clap::ArgAction::SetTrue)
+        )
+        .arg(
+            Arg::new("outer-vlan")
+                .long("outer-vlan")
+                .value_name("OUTER_VLAN_ID")
+                .help("外层VLAN ID (用于QinQ)")
+        )
+        .arg(
+            Arg::new("inner-vlan")
+                .long("inner-vlan")
+                .value_name("INNER_VLAN_ID")
+                .help("内层VLAN ID (用于QinQ)")
+        )
+        .arg(
+            Arg::new("outer-priority")
+                .long("outer-priority")
+                .value_name("OUTER_PRIORITY")
+                .help("外层VLAN优先级 (0-7)")
+                .default_value("0")
+        )
+        .arg(
+            Arg::new("inner-priority")
+                .long("inner-priority")
+                .value_name("INNER_PRIORITY")
+                .help("内层VLAN优先级 (0-7)")
+                .default_value("0")
         )
         .arg(
             Arg::new("template")
@@ -159,6 +210,9 @@ fn run_new_mode(matches: &clap::ArgMatches) {
 
     let output_file = matches.get_one::<String>("output").unwrap();
 
+    // 解析VLAN配置
+    let vlan_config = parse_vlan_config(matches);
+
     // 创建配置
     let mut config = TcpSessionConfig::new()
         .with_session_count(session_count)
@@ -169,6 +223,27 @@ fn run_new_mode(matches: &clap::ArgMatches) {
 
     if include_http {
         config = config.with_http(http_uris.clone(), http_host.clone());
+    }
+
+    // 显示VLAN配置信息
+    if let Some(ref vlan_cfg) = vlan_config {
+        println!("[*] VLAN配置:");
+        if vlan_cfg.is_qinq {
+            println!("    类型: 双层VLAN (QinQ)");
+            if let Some(ref outer_tag) = vlan_cfg.outer_tag {
+                println!("    外层VLAN: ID={}, 优先级={}", outer_tag.vlan_id, outer_tag.priority);
+            }
+            if let Some(ref inner_tag) = vlan_cfg.inner_tag {
+                println!("    内层VLAN: ID={}, 优先级={}, DEI={}",
+                    inner_tag.vlan_id, inner_tag.priority, inner_tag.dei);
+            }
+        } else {
+            println!("    类型: 单层VLAN");
+            if let Some(ref outer_tag) = vlan_cfg.outer_tag {
+                println!("    VLAN ID: {}, 优先级={}, DEI={}",
+                    outer_tag.vlan_id, outer_tag.priority, outer_tag.dei);
+            }
+        }
     }
 
     // 显示配置信息
@@ -202,11 +277,14 @@ fn run_new_mode(matches: &clap::ArgMatches) {
     for (i, session) in sessions.iter().enumerate() {
         let packets = session.generate_packets(&config.application_flow);
 
+        // 应用VLAN标签
+        let vlan_packets = apply_vlan_to_packets(packets, session, &vlan_config);
+
         println!("[*] 会话 {}: {}个数据包 ({} -> {}:{})",
-            i + 1, packets.len(),
+            i + 1, vlan_packets.len(),
             session.connection.src_ip, session.connection.dst_ip, session.connection.dst_port);
 
-        for packet_data in packets {
+        for packet_data in vlan_packets {
             let header = PacketHeader {
                 ts: timeval { tv_sec: i as i64, tv_usec: 0 },
                 caplen: packet_data.len() as u32,
@@ -290,6 +368,57 @@ fn run_template_mode(template_file: &str, output_file: &str) {
 fn run_legacy_mode() {
     println!("[*] 使用传统模式生成示例PCAP文件");
 
+    // 获取命令行参数
+    let args: Vec<String> = std::env::args().collect();
+    let mut vlan_config = None;
+
+    // 简单解析VLAN参数 (从命令行直接获取)
+    for (i, arg) in args.iter().enumerate() {
+        match arg.as_str() {
+            "--vlan" => {
+                if i + 1 < args.len() {
+                    if let Ok(vlan_id) = args[i + 1].parse::<u16>() {
+                        vlan_config = Some(VlanConfig::single_layer(vlan_id, 0, false));
+                        println!("[*] 检测到VLAN参数: {}", vlan_id);
+                    }
+                }
+            }
+            "--vlan-priority" => {
+                if i + 1 < args.len() {
+                    if let Some(priority) = args[i + 1].parse::<u8>().ok() {
+                        if let Some(ref mut vlan_cfg) = vlan_config {
+                            if let Some(ref mut tag) = vlan_cfg.outer_tag {
+                                tag.priority = priority;
+                            }
+                            println!("[*] VLAN优先级: {}", priority);
+                        }
+                    }
+                }
+            }
+            "--vlan-dei" => {
+                if let Some(ref mut vlan_cfg) = vlan_config {
+                    if let Some(ref mut tag) = vlan_cfg.outer_tag {
+                        tag.dei = true;
+                    }
+                    println!("[*] 启用VLAN DEI位");
+                }
+            }
+            "--qinq" => {
+                if i + 1 < args.len() {
+                    if let Ok(outer_vlan) = args[i + 1].parse::<u16>() {
+                        if i + 2 < args.len() {
+                            if let Ok(inner_vlan) = args[i + 2].parse::<u16>() {
+                                vlan_config = Some(VlanConfig::double_layer(outer_vlan, inner_vlan, 0, 0));
+                                println!("[*] 检测到QinQ参数: 外层{}, 内层{}", outer_vlan, inner_vlan);
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
     const PCAP_FILE: &str = "multi_tcp_handshake.pcap";
     const SRC_MAC: [u8; 6] = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
     const DST_MAC: [u8; 6] = [0xe2, 0xc9, 0xfc, 0xf5, 0x9e, 0x3c];
@@ -313,8 +442,11 @@ fn run_legacy_mode() {
 
         let packets = session.generate_packets(&flow);
 
+        // 应用VLAN标签
+        let vlan_packets = apply_vlan_to_packets(packets, &session, &vlan_config);
+
         // 写入所有握手包
-        for (packet_idx, packet_data) in packets.iter().enumerate() {
+        for (packet_idx, packet_data) in vlan_packets.iter().enumerate() {
             let header = PacketHeader {
                 ts: timeval { tv_sec: idx as i64, tv_usec: packet_idx as i64 },
                 caplen: packet_data.len() as u32,
@@ -341,8 +473,11 @@ fn run_legacy_mode() {
     let http_session = TcpSession::new(http_connection, 1008080);
     let http_packets = http_session.generate_packets(&http_flow);
 
+    // 为HTTP流量应用VLAN标签
+    let vlan_http_packets = apply_vlan_to_packets(http_packets, &http_session, &vlan_config);
+
     // 写入所有HTTP包
-    for (packet_idx, packet_data) in http_packets.iter().enumerate() {
+    for (packet_idx, packet_data) in vlan_http_packets.iter().enumerate() {
         let header = PacketHeader {
             ts: timeval { tv_sec: 1, tv_usec: packet_idx as i64 },
             caplen: packet_data.len() as u32,
@@ -377,8 +512,11 @@ fn run_legacy_mode() {
 
         let packets = session.generate_packets(&video_flow);
 
+        // 为视频协议流量应用VLAN标签
+        let vlan_packets = apply_vlan_to_packets(packets, &session, &vlan_config);
+
         // 写入所有HTTP包
-        for (packet_idx, packet_data) in packets.iter().enumerate() {
+        for (packet_idx, packet_data) in vlan_packets.iter().enumerate() {
             let header = PacketHeader {
                 ts: timeval { tv_sec: 2 + idx as i64, tv_usec: packet_idx as i64 },
                 caplen: packet_data.len() as u32,
@@ -402,26 +540,29 @@ fn run_legacy_mode() {
 fn check_license_and_exit_if_needed() {
     let license_manager = LicenseManager::new();
 
-    // 检查过期时间
-    if let Err(e) = license_manager.check_expiration() {
-        eprintln!("[!] {}", e);
-        std::process::exit(1);
-    }
-
-    // 检查激活状态
-    match license_manager.check_activation() {
-        Ok(is_activated) => {
-            if !is_activated {
+    // 检查程序是否允许使用
+    match license_manager.check_usage_allowed() {
+        Ok(is_allowed) => {
+            if !is_allowed {
                 let (_, unique, _) = license_manager.get_usage_stats().unwrap_or((0, 0, false));
-                eprintln!("[!] 程序尚未激活！");
-                eprintln!("[*] 当前唯一PCAP文件数: {}/{}", unique, license_manager.config.activation_threshold);
-                eprintln!("[*] 请继续生成不同的PCAP文件直到达到激活阈值。");
+                let is_expired = license_manager.check_is_expired().unwrap_or(false);
+
+                if is_expired {
+                    eprintln!("[!] 程序已过期！");
+                    eprintln!("[*] 过期时间: 2026年5月31日");
+                    eprintln!("[*] 请联系开发者获取更新版本。");
+                } else {
+                    eprintln!("[!] 程序使用次数已达到限制！");
+                    eprintln!("[*] 当前唯一PCAP文件数: {}/{}", unique, license_manager.config.activation_threshold);
+                    eprintln!("[*] 程序已达到最大使用次数，无法继续生成PCAP文件。");
+                    eprintln!("[*] 如需继续使用，请联系开发者获取新的许可证。");
+                }
                 eprintln!("[*] 使用 --license-status 查看详细状态。");
                 std::process::exit(1);
             }
         }
         Err(e) => {
-            eprintln!("[!] 无法检查激活状态: {}", e);
+            eprintln!("[!] 无法检查许可证状态: {}", e);
             std::process::exit(1);
         }
     }
@@ -439,8 +580,142 @@ fn show_license_status() {
     // 显示使用提示
     println!("\n[*] 使用说明:");
     println!("    - 程序将在2026年5月31日后过期");
-    println!("    - 生成{}个不同的PCAP文件后程序将永久激活", license_manager.config.activation_threshold);
+    println!("    - 可生成最多{}个不同的PCAP文件", license_manager.config.activation_threshold);
+    println!("    - 达到使用限制后程序将禁用");
     println!("    - 每次生成新的PCAP文件都会增加计数");
+}
+
+/// 从命令行参数解析VLAN配置
+fn parse_vlan_config(matches: &clap::ArgMatches) -> Option<VlanConfig> {
+    // 检查是否有任何VLAN相关参数
+    let has_vlan = matches.get_one::<String>("vlan").is_some()
+        || matches.get_one::<String>("outer-vlan").is_some()
+        || matches.get_one::<String>("inner-vlan").is_some()
+        || matches.get_flag("vlan-dei")
+        || matches.get_flag("qinq");
+
+    if !has_vlan {
+        return None;
+    }
+
+    let mut vlan_config = VlanConfig::new();
+
+    if matches.get_flag("qinq") {
+        // QinQ配置
+        vlan_config.is_qinq = true;
+
+        // 外层VLAN
+        if let Some(outer_vlan_str) = matches.get_one::<String>("outer-vlan") {
+            if let Ok(outer_vlan) = outer_vlan_str.parse::<u16>() {
+                let outer_priority = matches.get_one::<String>("outer-priority")
+                    .unwrap_or(&"0".to_string())
+                    .parse::<u8>()
+                    .unwrap_or(0);
+
+                vlan_config.outer_tag = Some(VlanTag::new(
+                    outer_vlan,
+                    outer_priority,
+                    false
+                ));
+            }
+        }
+
+        // 内层VLAN
+        if let Some(inner_vlan_str) = matches.get_one::<String>("inner-vlan") {
+            if let Ok(inner_vlan) = inner_vlan_str.parse::<u16>() {
+                let inner_priority = matches.get_one::<String>("inner-priority")
+                    .unwrap_or(&"0".to_string())
+                    .parse::<u8>()
+                    .unwrap_or(0);
+
+                vlan_config.inner_tag = Some(VlanTag::new(
+                    inner_vlan,
+                    inner_priority,
+                    false
+                ));
+            }
+        }
+
+        // 如果没有指定内层VLAN，使用普通VLAN参数作为内层
+        if vlan_config.inner_tag.is_none() {
+            if let Some(vlan_str) = matches.get_one::<String>("vlan") {
+                if let Ok(vlan_id) = vlan_str.parse::<u16>() {
+                    let priority = matches.get_one::<String>("vlan-priority")
+                        .unwrap_or(&"0".to_string())
+                        .parse::<u8>()
+                        .unwrap_or(0);
+                    let dei = matches.get_flag("vlan-dei");
+
+                    vlan_config.inner_tag = Some(VlanTag::new(
+                        vlan_id,
+                        priority,
+                        dei
+                    ));
+                }
+            }
+        }
+    } else {
+        // 单层VLAN配置
+        if let Some(vlan_str) = matches.get_one::<String>("vlan") {
+            if let Ok(vlan_id) = vlan_str.parse::<u16>() {
+                let priority = matches.get_one::<String>("vlan-priority")
+                    .unwrap_or(&"0".to_string())
+                    .parse::<u8>()
+                    .unwrap_or(0);
+                let dei = matches.get_flag("vlan-dei");
+
+                vlan_config.outer_tag = Some(VlanTag::new(
+                    vlan_id,
+                    priority,
+                    dei
+                ));
+            }
+        }
+    }
+
+    // 验证VLAN配置
+    if let Some(ref outer_tag) = vlan_config.outer_tag {
+        if outer_tag.vlan_id == 0 || outer_tag.vlan_id > 4094 {
+            eprintln!("[!] 无效的外层VLAN ID: {}. 有效范围: 1-4094", outer_tag.vlan_id);
+            std::process::exit(1);
+        }
+    }
+
+    if let Some(ref inner_tag) = vlan_config.inner_tag {
+        if inner_tag.vlan_id == 0 || inner_tag.vlan_id > 4094 {
+            eprintln!("[!] 无效的内层VLAN ID: {}. 有效范围: 1-4094", inner_tag.vlan_id);
+            std::process::exit(1);
+        }
+    }
+
+    Some(vlan_config)
+}
+
+/// 为数据包添加VLAN标签
+fn apply_vlan_to_packets(packets: Vec<Vec<u8>>, session: &TcpSession, vlan_config: &Option<VlanConfig>) -> Vec<Vec<u8>> {
+    if let Some(vlan_cfg) = vlan_config {
+        packets.into_iter().map(|packet| {
+            if vlan_cfg.is_qinq || vlan_cfg.outer_tag.is_some() {
+                // 构建新的VLAN以太网头
+                let vlan_header = build_vlan_ethernet_header(
+                    session.connection.src_mac,
+                    session.connection.dst_mac,
+                    &vlan_cfg,
+                );
+
+                // 替换原以太网头
+                let mut new_packet = packet.clone();
+                if packet.len() >= 14 {
+                    new_packet.splice(0..14, vlan_header);
+                }
+                new_packet
+            } else {
+                packet
+            }
+        }).collect()
+    } else {
+        packets
+    }
 }
 
 /// 记录PCAP生成
@@ -448,11 +723,18 @@ fn record_pcap_generation(output_file: &str) -> anyhow::Result<()> {
     let license_manager = LicenseManager::new();
     license_manager.record_pcap_generation(output_file)?;
 
-    // 检查是否刚刚达到激活阈值
-    if let Ok(is_activated) = license_manager.check_activation() {
-        if is_activated {
-            println!("\n[🎉] 恭喜！程序已激活！");
-            println!("[*] 您现在可以无限制使用所有功能。");
+    // 检查是否刚刚达到使用限制
+    if let Ok(is_blocked) = license_manager.check_activation() {
+        if is_blocked {
+            let is_expired = license_manager.check_is_expired().unwrap_or(false);
+            if is_expired {
+                println!("\n[⚠️]  警告：程序已过期！");
+                println!("[*] 这可能是最后一次成功生成PCAP文件。");
+            } else {
+                println!("\n[⚠️]  警告：程序使用次数已达到限制！");
+                println!("[*] 这是最后一次成功生成PCAP文件。");
+                println!("[*] 如需继续使用，请联系开发者获取新的许可证。");
+            }
         }
     }
 

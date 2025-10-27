@@ -1,0 +1,47 @@
+# 单层VLAN示例模板
+metadata:
+  name: "Single VLAN Example"
+  description: "生成带有单层VLAN标签的HTTP流量"
+  version: "1.0"
+  author: "gen_pcap"
+
+# 网络配置（包含VLAN）
+network:
+  src_mac: "00:11:22:33:44:55"
+  dst_mac: "e2:c9:fc:f5:9e:3c"
+  vlan:
+    qinq: false  # 单层VLAN
+    tags:
+      - vlan_id: 100
+        priority: 3
+        dei: false
+        tag_type: "outer"  # 外层标签
+
+# 会话定义
+sessions:
+  - name: "vlan_http_client"
+    repeat: 1
+    connection:
+      src:
+        ip: "10.10.1.100"
+        port: 12345
+      dst:
+        ip: "192.168.1.100"
+        port: 80
+    session_type:
+      type: "Tcp"
+      ports: [80]
+      duration_ms: 5000
+    application:
+      protocol: "Http"
+      requests:
+        - method: "GET"
+          uri: "/api/vlan-test"
+          headers:
+            Host: "vlan-server.example.com"
+            User-Agent: "VLAN-Client/1.0"
+      responses:
+        - status_code: 200
+          headers:
+            Content-Type: "application/json"
+          body: '{"message": "VLAN test successful", "vlan_id": 100}'

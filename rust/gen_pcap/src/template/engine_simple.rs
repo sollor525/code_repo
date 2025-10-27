@@ -3,10 +3,11 @@
 //! 专注于基本功能，确保能够编译和运行
 
 use std::net::Ipv4Addr;
-use crate::{TcpSession, HttpRequest, HttpResponse, HttpMethod, HttpVersion, HttpStatusCode, SessionTemplate};
+use crate::{TcpSession, HttpStatusCode, SessionTemplate};
 use crate::tcp::{build_tcp_handshake_packets, TcpConnection};
-use crate::core::{NetworkConnection, ApplicationFlowType};
-use super::{YamlTemplate, TemplateConfig, TemplateError};
+use crate::core::{NetworkConnection};
+use crate::vlan::{VlanConfig, build_vlan_ethernet_header};
+use super::{ TemplateConfig, TemplateError};
 
 /// 简化的模板引擎
 pub struct SimpleTemplateEngine {
@@ -16,6 +17,73 @@ pub struct SimpleTemplateEngine {
 impl SimpleTemplateEngine {
     pub fn new(config: TemplateConfig) -> Self {
         Self { config }
+    }
+
+    /// 为数据包添加VLAN标签
+    fn apply_vlan_to_packet(&self, packet: Vec<u8>, session: &TcpSession) -> Vec<u8> {
+        let vlan_config = self.parse_vlan_config();
+        if vlan_config.is_qinq || vlan_config.outer_tag.is_some() {
+            // 构建新的VLAN以太网头
+            let vlan_header = build_vlan_ethernet_header(
+                session.connection.src_mac,
+                session.connection.dst_mac,
+                &vlan_config,
+            );
+
+            // 替换原以太网头
+            let mut new_packet = packet.clone();
+            if packet.len() >= 14 {
+                new_packet.splice(0..14, vlan_header);
+            }
+            new_packet
+        } else {
+            packet
+        }
+    }
+
+    /// 从模板解析VLAN配置
+    fn parse_vlan_config(&self) -> VlanConfig {
+        if let Some(vlan_cfg) = &self.config.template.network.vlan {
+            let mut vlan_config = VlanConfig::new();
+
+            // 设置是否为QinQ
+            vlan_config.is_qinq = vlan_cfg.qinq.unwrap_or(false);
+
+            // 解析VLAN标签
+            for tag in &vlan_cfg.tags {
+                let vlan_tag = crate::vlan::VlanTag {
+                    vlan_id: tag.vlan_id,
+                    priority: tag.priority.unwrap_or(0),
+                    dei: tag.dei.unwrap_or(false),
+                };
+
+                if let Some(tag_type) = &tag.tag_type {
+                    match tag_type.as_str() {
+                        "outer" => vlan_config.outer_tag = Some(vlan_tag),
+                        "inner" => vlan_config.inner_tag = Some(vlan_tag),
+                        _ => {
+                            // 如果没有指定类型，默认为外层标签
+                            if vlan_config.outer_tag.is_none() {
+                                vlan_config.outer_tag = Some(vlan_tag);
+                            } else if vlan_config.inner_tag.is_none() {
+                                vlan_config.inner_tag = Some(vlan_tag);
+                            }
+                        }
+                    }
+                } else {
+                    // 如果没有指定类型，默认为外层标签
+                    if vlan_config.outer_tag.is_none() {
+                        vlan_config.outer_tag = Some(vlan_tag);
+                    } else if vlan_config.inner_tag.is_none() {
+                        vlan_config.inner_tag = Some(vlan_tag);
+                    }
+                }
+            }
+
+            vlan_config
+        } else {
+            VlanConfig::new() // 无VLAN配置
+        }
     }
 
     /// 生成所有会话的数据包
@@ -61,7 +129,12 @@ impl SimpleTemplateEngine {
             session.connection.dst_port,
             session.isn
         );
-        packets.extend(handshake_packets);
+
+        // 为握手包添加VLAN标签
+        for packet in handshake_packets {
+            let vlan_packet = self.apply_vlan_to_packet(packet, &session);
+            packets.push(vlan_packet);
+        }
 
         // 如果有HTTP配置，生成HTTP请求和响应
         if let Some(app_config) = &template.application {
@@ -103,7 +176,10 @@ impl SimpleTemplateEngine {
 
                         // 计算HTTP请求的数据长度（总包长度 - IP头20字节 - TCP头20字节 = 54字节）
                         let request_data_len = request_packet.len() as u32 - 54;
-                        packets.push(request_packet);
+
+                        // 为HTTP请求添加VLAN标签
+                        let vlan_request_packet = self.apply_vlan_to_packet(request_packet, &session);
+                        packets.push(vlan_request_packet);
 
                         // 更新客户端序列号（发送了数据）
                         conn.update_seq(true, request_data_len);
@@ -131,7 +207,10 @@ impl SimpleTemplateEngine {
 
                         // 计算HTTP响应的数据长度
                         let response_data_len = response_packet.len() as u32 - 54;
-                        packets.push(response_packet);
+
+                        // 为HTTP响应添加VLAN标签
+                        let vlan_response_packet = self.apply_vlan_to_packet(response_packet, &session);
+                        packets.push(vlan_response_packet);
 
                         // 更新服务器序列号（发送了数据）
                         conn.update_seq(false, response_data_len);

@@ -1,0 +1,66 @@
+# 双层VLAN (QinQ)示例模板
+metadata:
+  name: "QinQ VLAN Example"
+  description: "生成带有双层VLAN标签的HTTP流量"
+  version: "1.0"
+  author: "gen_pcap"
+
+# 网络配置（包含双层VLAN）
+network:
+  src_mac: "aa:bb:cc:dd:ee:ff"
+  dst_mac: "11:22:33:44:55:66"
+  vlan:
+    qinq: true   # 双层VLAN (QinQ)
+    tags:
+      - vlan_id: 1000      # 外层VLAN (服务提供商VLAN)
+        priority: 5
+        dei: false
+        tag_type: "outer"
+      - vlan_id: 200       # 内层VLAN (客户VLAN)
+        priority: 2
+        dei: true
+        tag_type: "inner"
+
+# 会话定义
+sessions:
+  - name: "qinq_http_client"
+    repeat: 1
+    connection:
+      src:
+        ip: "172.16.1.100"
+        port: 54321
+      dst:
+        ip: "10.0.0.50"
+        port: 8080
+    session_type:
+      type: "Tcp"
+      ports: [8080]
+      duration_ms: 8000
+    application:
+      protocol: "Http"
+      requests:
+        - method: "GET"
+          uri: "/api/qinq-test"
+          headers:
+            Host: "qinq-server.example.com"
+            User-Agent: "QinQ-Client/1.0"
+            X-VLAN-Info: "outer=1000,inner=200"
+        - method: "POST"
+          uri: "/api/qinq-data"
+          headers:
+            Host: "qinq-server.example.com"
+            Content-Type: "application/json"
+            X-VLAN-Info: "outer=1000,inner=200"
+          body: '{"test": "QinQ traffic", "outer_vlan": 1000, "inner_vlan": 200}'
+      responses:
+        - status_code: 200
+          headers:
+            Content-Type: "application/json"
+            X-VLAN-Info: "outer=1000,inner=200"
+          body: '{"message": "QinQ test successful", "outer_vlan": 1000, "inner_vlan": 200}'
+        - status_code: 201
+          headers:
+            Content-Type: "application/json"
+            Location: "/api/qinq-data/12345"
+            X-VLAN-Info: "outer=1000,inner=200"
+          body: '{"id": 12345, "status": "created", "vlan_tags": {"outer": 1000, "inner": 200}}'

@@ -10,6 +10,7 @@ pub mod http;
 pub mod session;
 pub mod template;
 pub mod license;
+pub mod vlan;
 
 // 重新导出主要公共接口
 pub use core::{
@@ -39,6 +40,9 @@ pub use template::{
 
 // 许可证相关类型导出
 pub use license::{LicenseManager, ProgramConfig, UsageCounter};
+
+// VLAN相关类型导出
+pub use vlan::{VlanTag, VlanConfig, parse_mac_address, build_vlan_ethernet_header};
 
 // TcpSession实现 - 统一使用一个主要方法
 impl TcpSession {

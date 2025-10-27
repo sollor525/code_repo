@@ -16,6 +16,9 @@ anyhow = "1.0"
 md5 = "0.7"
 thiserror = "1.0"
 serde_json = "1.0"
+base64 = "0.21"
+chacha20poly1305 = "0.10"
+sha2 = "0.10"
 
 [[example]]
 name = "http_example"

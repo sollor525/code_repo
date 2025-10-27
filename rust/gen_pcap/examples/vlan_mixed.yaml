@@ -1,0 +1,77 @@
+# 混合VLAN流量示例模板
+metadata:
+  name: "Mixed VLAN Traffic Example"
+  description: "生成包含不同VLAN配置的混合流量"
+  version: "1.0"
+  author: "gen_pcap"
+
+# 网络配置（包含VLAN）
+network:
+  src_mac: "de:ad:be:ef:ca:fe"
+  dst_mac: "ba:dc:0f:fe:e1:00"
+  vlan:
+    qinq: false  # 每个会话有自己的VLAN配置
+    tags:
+      - vlan_id: 500
+        priority: 3
+        dei: false
+
+# 会话定义
+sessions:
+  - name: "no_vlan_session"
+    repeat: 1
+    connection:
+      src:
+        ip: "10.1.1.10"
+        port: 40000
+      dst:
+        ip: "10.1.1.20"
+        port: 22
+    session_type:
+      type: "Tcp"
+      ports: [22]
+      duration_ms: 3000
+    # 这个会话没有VLAN标签
+
+  - name: "single_vlan_session"
+    repeat: 1
+    connection:
+      src:
+        ip: "10.1.1.30"
+        port: 40001
+      dst:
+        ip: "10.1.1.40"
+        port: 80
+    session_type:
+      type: "Tcp"
+      ports: [80]
+      duration_ms: 5000
+    application:
+      protocol: "Http"
+      requests:
+        - method: "GET"
+          uri: "/api/vlan/single"
+          headers:
+            Host: "single-vlan.example.com"
+      responses:
+        - status_code: 200
+          headers:
+            Content-Type: "text/plain"
+          body: "Single VLAN traffic (VLAN 500)"
+
+  - name: "qinq_session"
+    repeat: 1
+    connection:
+      src:
+        ip: "10.1.1.50"
+        port: 40002
+      dst:
+        ip: "10.1.1.60"
+        port: 443
+    session_type:
+      type: "Tcp"
+      ports: [443]
+      duration_ms: 7000
+    # 覆盖全局VLAN配置，使用QinQ
+    # 注意: 当前实现中，会话级别的VLAN覆盖需要在engine中实现
+    # 这里先使用全局配置作为示例
