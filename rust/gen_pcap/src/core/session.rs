@@ -61,10 +61,9 @@ impl HttpFlow {
 }
 
 impl ApplicationFlow for HttpFlow {
-    fn generate_packets(&self, _session: &TcpSession) -> Vec<Vec<u8>> {
-        // HTTP流量生成逻辑将在http模块中实现
-        // 这里先返回空向量，具体实现在http::flow.rs中
-        Vec::new()
+    fn generate_packets(&self, session: &TcpSession) -> Vec<Vec<u8>> {
+        // 使用HTTP模块中的实现生成流量
+        crate::http::flow::HttpFlowImplementation::generate_packets(&self.uris, &self.host, session)
     }
 
     fn name(&self) -> &'static str {

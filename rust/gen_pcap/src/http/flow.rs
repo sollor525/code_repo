@@ -1,7 +1,7 @@
 // HTTP流量实现
 
 use crate::core::session::TcpSession;
-use crate::tcp::{TcpConnection, build_tcp_packet_with_data};
+use crate::tcp::build_tcp_packet_with_data;
 use crate::tcp::packet::TcpPacketWithDataParams;
 use super::request::{HttpRequest, HttpMethod};
 use super::response::{HttpResponse, HttpStatusCode};
@@ -13,13 +13,20 @@ pub struct HttpFlowImplementation;
 impl HttpFlowImplementation {
     pub fn generate_packets(uris: &[String], host: &str, session: &TcpSession) -> Vec<Vec<u8>> {
         let mut packets = Vec::new();
-        let mut conn = TcpConnection::new(session.isn);
 
-        // 完成握手后更新连接状态
-        conn.update_seq(true, 1);
-        conn.update_seq(false, 1);
-        conn.update_ack(true, 1);
-        conn.update_ack(false, 1);
+        // 首先生成TCP三次握手包
+        let (handshake_packets, mut conn) = crate::tcp::build_tcp_handshake_packets(
+            session.connection.src_mac,
+            session.connection.dst_mac,
+            session.connection.src_ip,
+            session.connection.dst_ip,
+            session.connection.src_port,
+            session.connection.dst_port,
+            session.isn
+        );
+        packets.extend(handshake_packets);
+
+        // 使用握手后的连接状态继续生成HTTP流量
 
         for (i, uri) in uris.iter().enumerate() {
             // HTTP GET请求
