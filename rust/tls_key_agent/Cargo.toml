@@ -1,0 +1,87 @@
+[package]
+name = "tls_key_agent"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance TLS key extraction agent with LD_PRELOAD and eBPF support"
+authors = ["sollor525@hotmail.com"]
+license = "MIT OR Apache-2.0"
+keywords = ["tls", "ssl", "security", "agent", "ld-preload"]
+categories = ["network-programming", "security"]
+build = "build.rs"
+
+[dependencies]
+# 异步运行时
+tokio = { version = "1.0", features = ["full"] }
+
+# 序列化和配置
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# 错误处理
+thiserror = "1.0"
+anyhow = "1.0"
+
+# TLS和安全
+openssl-sys = "0.9"
+libloading = "0.8"
+
+# 网络和IPC
+# tokio-socket = "0.4"  # 暂时禁用，直接使用tokio::net
+# shared_memory = "0.12"  # 暂时禁用
+
+# 性能优化
+parking_lot = "0.12"
+rayon = "1.8"
+
+# 日志和监控
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+clap = { version = "4.0", features = ["derive"] }
+
+# 工具库
+hex = "0.4"
+local-ip = "0.1"
+
+# C interop
+libc = "0.2"
+
+# HTTP客户端
+reqwest = { version = "0.11", features = ["json"], optional = true }
+
+# 系统调用支持
+nix = { version = "0.27", optional = true }
+
+# 异步trait
+async-trait = "0.1"
+
+# 时间处理
+chrono = { version = "0.4", features = ["serde"] }
+
+# 流处理
+tokio-stream = "0.1"
+
+# 内部依赖 (需要根据实际路径调整)
+# tls_ja4_core = { path = "../tls_ja4/tls_ja4_core" }
+# common_tools = { path = "../common_tools" }
+
+[lib]
+name = "tls_key_agent"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "tls_key_agent"
+path = "src/main.rs"
+
+[[bin]]
+name = "verify_keys"
+path = "src/bin/verify_keys.rs"
+
+[dev-dependencies]
+tempfile = "3.0"
+
+# 示例和测试程序依赖
+[features]
+default = []
+test-utils = ["reqwest", "nix"]

@@ -1,0 +1,54 @@
+# TLS Key Agent 默认配置文件
+# 此配置文件展示了TLS Key Agent的完整配置选项
+
+[agent]
+name = "tls_key_agent"
+version = "0.1.0"
+log_level = "info"
+buffer_pool_size = 1000
+buffer_size = 8192
+
+[extraction]
+enabled = true
+capture_client_random = true
+capture_master_secret = true
+capture_session_ticket = false
+library_path = "./libtls_key_agent.so"
+
+[transport]
+enabled_transports = ["Tcp", "File"]
+
+[transport.tcp]
+enabled = true
+server_host = "127.0.0.1"
+server_port = 9999
+reconnect_interval = 5
+max_retries = 10
+timeout = 10
+
+[transport.file]
+enabled = true
+output_path = "./tls_keys.log"
+rotation = true
+max_file_size = 104857600  # 100MB
+max_files = 10
+
+# 默认过滤规则
+[[filters]]
+name = "default_http_https"
+enabled = true
+[filters.five_tuple]
+dst_port = 80
+protocol = "TCP"
+
+[[filters]]
+name = "default_https"
+enabled = true
+[filters.five_tuple]
+dst_port = 443
+protocol = "TCP"
+
+[[filters]]
+name = "web_servers"
+enabled = true
+process_name = "nginx|apache|httpd|lighttpd|caddy"
