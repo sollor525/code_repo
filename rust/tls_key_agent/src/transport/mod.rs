@@ -8,10 +8,12 @@ use crate::config::{TransportConfig, TransportType};
 pub mod tcp_transport;
 pub mod file_transport;
 pub mod transport_manager;
+pub mod key_output;
 
 pub use tcp_transport::*;
 pub use file_transport::*;
 pub use transport_manager::*;
+pub use key_output::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransportMessage {

@@ -61,6 +61,12 @@ chrono = { version = "0.4", features = ["serde"] }
 # 流处理
 tokio-stream = "0.1"
 
+# eBPF支持 (暂时禁用，使用编译时检查)
+# libbpf-sys = { version = "1.4", optional = true }
+# libbpf-rs = { version = "0.26.0-beta.1", optional = true }
+# plain = { version = "0.2", optional = true }
+# byteorder = { version = "1.5", optional = true }
+
 # 内部依赖 (需要根据实际路径调整)
 # tls_ja4_core = { path = "../tls_ja4/tls_ja4_core" }
 # common_tools = { path = "../common_tools" }

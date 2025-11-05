@@ -18,6 +18,7 @@ pub struct Config {
     pub extraction: ExtractionConfig,
     pub transport: TransportConfig,
     pub filters: Vec<FilterRule>,
+    pub injection: InjectionConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,6 +69,18 @@ pub struct FileTransportConfig {
     pub rotation: bool,
     pub max_file_size: u64,
     pub max_files: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InjectionConfig {
+    pub enabled: bool,
+    pub method: String, // "preload", "ebpf", "auto"
+    pub hook_library: Option<String>,
+    pub auto_inject: bool,
+    pub skip_critical_processes: bool,
+    pub injection_timeout: u64, // seconds
+    pub max_injected_processes: usize,
+    pub process_discovery_interval: u64, // seconds
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -137,6 +150,7 @@ impl Default for Config {
                     pid: None,
                 },
             ],
+            injection: InjectionConfig::default(),
         }
     }
 }
@@ -196,6 +210,21 @@ impl Default for FileTransportConfig {
             rotation: true,
             max_file_size: 100 * 1024 * 1024, // 100MB
             max_files: 10,
+        }
+    }
+}
+
+impl Default for InjectionConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            method: "auto".to_string(), // "preload", "ebpf", "auto"
+            hook_library: Some("./target/release/libopenssl_hook.so".to_string()),
+            auto_inject: true,
+            skip_critical_processes: true,
+            injection_timeout: 30, // seconds
+            max_injected_processes: 1000,
+            process_discovery_interval: 5, // seconds
         }
     }
 }

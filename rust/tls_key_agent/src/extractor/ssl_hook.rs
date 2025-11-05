@@ -81,6 +81,10 @@ impl SslHook {
     async fn install_openssl_hooks(&self) -> Result<()> {
         debug!("安装OpenSSL Hook");
 
+        // TODO: 临时注释掉C函数调用，将在注入管理模块中重新实现
+        info!("OpenSSL Hook功能将在注入管理模块中实现");
+
+        /*
         // 使用默认配置路径，实际应用中可以从Config获取
         let config_path = std::ffi::CString::new("config.toml")
             .map_err(|e| TlsKeyAgentError::Config(format!("配置路径转换失败: {}", e)))?;
@@ -104,11 +108,18 @@ impl SslHook {
                 Err(TlsKeyAgentError::Extraction("Hook安装失败".to_string()))
             }
         }
+        */
+
+        Ok(())
     }
 
     async fn uninstall_openssl_hooks(&self) -> Result<()> {
         debug!("卸载OpenSSL Hook");
 
+        // TODO: 临时注释掉C函数调用，将在注入管理模块中重新实现
+        info!("OpenSSL Hook卸载功能将在注入管理模块中实现");
+
+        /*
         // 调用C函数来清理Hook
         let result = unsafe {
             crate::ffi::cleanup_tls_key_agent_hook()
@@ -125,6 +136,9 @@ impl SslHook {
                 Ok(())
             }
         }
+        */
+
+        Ok(())
     }
 
     // 处理Client Random

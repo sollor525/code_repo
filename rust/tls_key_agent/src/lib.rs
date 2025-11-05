@@ -7,6 +7,7 @@ pub mod common;
 pub mod ffi;
 pub mod integration;
 pub mod monitoring;
+pub mod injector;
 
 use anyhow::Result;
 use tracing::info;

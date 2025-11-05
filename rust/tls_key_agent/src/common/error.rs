@@ -26,6 +26,15 @@ pub enum TlsKeyAgentError {
     #[error("提取错误: {0}")]
     Extraction(String),
 
+    #[error("注入错误: {0}")]
+    Injection(String),
+
+    #[error("检测错误: {0}")]
+    Detection(String),
+
+    #[error("Hook错误: {0}")]
+    Hook(String),
+
     #[error("FFI错误: {0}")]
     Ffi(String),
 

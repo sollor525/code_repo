@@ -45,8 +45,9 @@ fn compile_c_hook_library(out_dir: &str) {
         Ok(output) => {
             if output.status.success() {
                 println!("✓ C Hook库编译成功: {}", hook_lib_path.display());
-                println!("cargo:rustc-link-search=native={}", out_dir);
-                println!("cargo:rustc-link-lib=dylib=openssl_hook");
+                // Note: libopenssl_hook.so is loaded via LD_PRELOAD, not statically linked
+                // println!("cargo:rustc-link-search=native={}", out_dir);
+                // println!("cargo:rustc-link-lib=dylib=openssl_hook");
             } else {
                 println!("⚠ C Hook库编译失败，将跳过C Hook功能");
                 println!("错误: {}", String::from_utf8_lossy(&output.stderr));
@@ -127,3 +128,4 @@ fn create_symlink_to_target_dir(hook_lib_path: &Path) {
         println!("✓ Hook库符号链接创建成功: {}", symlink_path.display());
     }
 }
+

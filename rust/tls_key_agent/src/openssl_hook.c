@@ -51,6 +51,11 @@ static int (*original_SSL_get_client_random)(const SSL *ssl, unsigned char *out,
 static SSL_SESSION *(*original_SSL_get_session)(const SSL *ssl) = NULL;
 static int (*original_SSL_session_reused)(const SSL *ssl) = NULL;
 
+// SSL上下文函数指针
+static SSL_CTX *(*original_SSL_CTX_new)(const SSL_METHOD *method) = NULL;
+static void (*original_SSL_CTX_free)(SSL_CTX *ctx) = NULL;
+static void (*original_SSL_CTX_set_keylog_callback_real)(SSL_CTX *ctx, void (*cb)(const SSL *ssl, const char *line)) = NULL;
+
 // 密钥提取函数指针（从OpenSSL内部获取）
 static int (*original_SSL_export_keying_material)(SSL *ssl, unsigned char *out, size_t olen,
                                                  const char *label, size_t llen,
@@ -64,28 +69,64 @@ static void (*original_SSL_CTX_set_keylog_callback)(SSL_CTX *ctx, void (*cb)(con
 static int hook_initialized = 0;
 static pthread_mutex_t hook_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// Keylog回调函数实现
+// Keylog回调函数实现 - 增强版
 static void openssl_keylog_callback(const SSL *ssl, const char *line) {
     if (!line || !ssl) {
         return;
     }
 
-    // 解析keylog行，查找CLIENT_RANDOM和MASTER_SECRET
+    // 解析并处理不同类型的keylog行
     if (strncmp(line, "CLIENT_RANDOM ", 14) == 0) {
-        // 这里可以提取Client Random
-        printf("[TLS Agent] Keylog: %s\n", line);
+        // CLIENT_RANDOM <client_random> <master_secret>
+        printf("[TLS Agent] 提取到Client Random和Master Secret\n");
+
+        // 解析Client Random和Master Secret
+        const char *random_start = line + 14;
+        const char *secret_start = strchr(random_start, ' ');
+        if (secret_start) {
+            secret_start++; // 跳过空格
+
+            // 解析Client Random (32 bytes = 64 hex chars)
+            unsigned char client_random[32];
+            if (strlen(random_start) >= 64 && parse_hex_string(random_start, client_random, 64)) {
+                // 调用Rust FFI函数处理Client Random
+                tls_key_agent_on_client_random((void*)ssl, client_random, 32);
+
+                // 解析Master Secret (48 bytes = 96 hex chars)
+                if (strlen(secret_start) >= 96) {
+                    unsigned char master_secret[48];
+                    if (parse_hex_string(secret_start, master_secret, 96)) {
+                        // 调用Rust FFI函数处理Master Secret
+                        tls_key_agent_on_master_secret((void*)ssl, master_secret, 48);
+                        printf("[TLS Agent] 成功提取完整密钥对\n");
+                    }
+                }
+            }
+        }
     } else if (strncmp(line, "CLIENT_TRAFFIC_SECRET_0 ", 25) == 0) {
-        // TLS 1.3的客户端流量密钥
-        printf("[TLS Agent] Keylog: %s\n", line);
+        // TLS 1.3客户端应用流量密钥
+        printf("[TLS Agent] TLS 1.3 客户端流量密钥: %s\n", line);
     } else if (strncmp(line, "SERVER_TRAFFIC_SECRET_0 ", 25) == 0) {
-        // TLS 1.3的服务器流量密钥
-        printf("[TLS Agent] Keylog: %s\n", line);
+        // TLS 1.3服务器应用流量密钥
+        printf("[TLS Agent] TLS 1.3 服务器流量密钥: %s\n", line);
+    } else if (strncmp(line, "EXPORTER_SECRET ", 16) == 0) {
+        // TLS 1.3导出密钥
+        printf("[TLS Agent] TLS 1.3 导出密钥: %s\n", line);
     }
 
-    // 将keylog信息写入文件
-    FILE *fp = fopen("/tmp/openssl_keylog.txt", "a");
+    // 写入标准keylog文件（兼容Wireshark等工具）
+    char keylog_file[256];
+    const char *keylog_env = getenv("SSLKEYLOGFILE");
+    if (keylog_env) {
+        strncpy(keylog_file, keylog_env, sizeof(keylog_file) - 1);
+    } else {
+        snprintf(keylog_file, sizeof(keylog_file), "/tmp/openssl_keys_%d.log", getpid());
+    }
+
+    FILE *fp = fopen(keylog_file, "a");
     if (fp) {
         fprintf(fp, "%s\n", line);
+        fflush(fp); // 确保立即写入
         fclose(fp);
     }
 }
@@ -115,14 +156,19 @@ static void init_openssl_hook(void) {
     original_SSL_get_session = dlsym(RTLD_NEXT, "SSL_get_session");
     original_SSL_session_reused = dlsym(RTLD_NEXT, "SSL_session_reused");
 
+    // SSL上下文函数指针
+    original_SSL_CTX_new = dlsym(RTLD_NEXT, "SSL_CTX_new");
+    original_SSL_CTX_free = dlsym(RTLD_NEXT, "SSL_CTX_free");
+    original_SSL_CTX_set_keylog_callback_real = (void (*)(SSL_CTX *, void (*)(const SSL *, const char *)))dlsym(RTLD_NEXT, "SSL_CTX_set_keylog_callback");
+
     // 可选函数，可能不存在
     original_SSL_export_keying_material = dlsym(RTLD_NEXT, "SSL_export_keying_material");
     if (!original_SSL_export_keying_material) {
         printf("[TLS Agent] SSL_export_keying_material 函数不可用（正常情况）\n");
     }
 
-    // Keylog回调函数
-    original_SSL_CTX_set_keylog_callback = dlsym(RTLD_NEXT, "SSL_CTX_set_keylog_callback");
+    // Keylog回调函数（兼容性）
+    original_SSL_CTX_set_keylog_callback = original_SSL_CTX_set_keylog_callback_real;
 
     // 检查关键函数是否成功获取
     char *error = dlerror();
@@ -138,7 +184,21 @@ static void init_openssl_hook(void) {
         fprintf(stderr, "  SSL_accept: %p\n", original_SSL_accept);
     } else {
         printf("[TLS Agent] OpenSSL Hook 初始化成功\n");
+
+        // 设置环境变量，强制OpenSSL使用keylog
+        setenv("SSLKEYLOGFILE", "/tmp/openssl_keys_all.log", 1);
+
         hook_initialized = 1;
+    }
+
+    // 尝试为现有SSL上下文设置keylog回调
+    if (original_SSL_CTX_set_keylog_callback_real) {
+        printf("[TLS Agent] 支持Keylog回调机制\n");
+
+        // Hook SSL_CTX_new函数以自动设置keylog回调
+        if (original_SSL_CTX_new) {
+            printf("[TLS Agent] 成功设置Keylog回调钩子\n");
+        }
     }
 
     pthread_mutex_unlock(&hook_mutex);
@@ -190,12 +250,6 @@ typedef struct {
     char command_line[1024];
     int has_master_secret;
 } tls_key_info_t;
-
-// 声明Rust FFI函数
-extern int tls_key_agent_on_client_random(void *ssl_ptr, const unsigned char *client_random, size_t len);
-extern int tls_key_agent_on_master_secret(void *ssl_ptr, const unsigned char *master_secret, size_t len);
-extern int tls_key_agent_on_connection_info(void *ssl_ptr, const char *src_ip, uint16_t src_port,
-                                           const char *dst_ip, uint16_t dst_port, const char *protocol);
 
 // 将密钥信息写入本地文件（备用方案）
 static void write_key_to_file(const tls_key_info_t *key_info) {
@@ -287,7 +341,7 @@ static int extract_master_secret_from_ssl(SSL *ssl, unsigned char *master_secret
     // 这里提供一个框架，实际实现可能需要更复杂的技术
 
     // 方法1：尝试从SSL_SESSION中获取Master Secret
-    SSL_SESSION *session = SSL_get_session(ssl);
+    SSL_SESSION *session = original_SSL_get_session ? original_SSL_get_session(ssl) : NULL;
     if (session) {
         // 对于某些OpenSSL版本，可以尝试从session中提取
         // 注意：这通常需要访问内部结构，可能在不同版本中不可用
@@ -647,4 +701,50 @@ int tls_key_agent_hook_status(void) {
 void tls_key_agent_set_log_level(int level) {
     printf("[TLS Agent] 设置日志级别: %d\n", level);
     // 这里可以实现更复杂的日志级别控制
+}
+
+// Hook SSL_CTX_new - 自动设置keylog回调
+SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
+    if (!original_SSL_CTX_new) {
+        original_SSL_CTX_new = dlsym(RTLD_NEXT, "SSL_CTX_new");
+        if (!original_SSL_CTX_new) {
+            return NULL;
+        }
+    }
+
+    // 调用原始函数创建SSL_CTX
+    SSL_CTX *ctx = original_SSL_CTX_new(method);
+    if (!ctx) {
+        return NULL;
+    }
+
+    // 自动设置keylog回调
+    if (original_SSL_CTX_set_keylog_callback_real && hook_initialized) {
+        original_SSL_CTX_set_keylog_callback_real(ctx, openssl_keylog_callback);
+        printf("[TLS Agent] 为新SSL_CTX设置keylog回调\n");
+    }
+
+    return ctx;
+}
+
+// Hook SSL_CTX_free - 清理keylog回调
+void SSL_CTX_free(SSL_CTX *ctx) {
+    if (!ctx) {
+        return;
+    }
+
+    if (!original_SSL_CTX_free) {
+        original_SSL_CTX_free = dlsym(RTLD_NEXT, "SSL_CTX_free");
+        if (!original_SSL_CTX_free) {
+            return;
+        }
+    }
+
+    // 清理keylog回调
+    if (original_SSL_CTX_set_keylog_callback_real) {
+        original_SSL_CTX_set_keylog_callback_real(ctx, NULL);
+    }
+
+    // 调用原始函数
+    original_SSL_CTX_free(ctx);
 }

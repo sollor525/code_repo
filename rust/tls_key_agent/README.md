@@ -1,18 +1,25 @@
 # TLS Key Agent
 
-高性能TLS密钥提取Agent，支持通过LD_PRELOAD和eBPF机制获取nginx/apache/smtp等应用的TLS协商密钥。
+高性能TLS密钥提取工具，支持LD_PRELOAD和eBPF两种注入机制，专为生产环境设计。
 
-## 项目概述
+## 🚀 特性
 
-TLS Key Agent是一个专业的网络安全工具，用于监控和提取TLS/SSL连接的密钥信息，支持：
+### 核心功能
+- **双重注入机制**：支持LD_PRELOAD和eBPF两种注入方式
+- **自动方法选择**：根据系统能力自动选择最佳注入方式
+- **无感注入**：运行时自动发现并注入TLS进程，无需重启服务
+- **生产级安全**：关键进程过滤，安全检查机制
 
-- **多种应用支持**: nginx, Apache, SMTP等使用TLS的应用
-- **双机制支持**: LD_PRELOAD机制和eBPF内核级监控
-- **远程配置**: 支持远程API配置和本地文件配置
-- **智能筛选**: 基于五元组、进程名、PID的智能筛选
-- **多方式传输**: TCP Socket传输和本地文件保存
-- **高性能**: 异步I/O、内存池、零拷贝优化
-- **低资源占用**: 优化的内存管理和CPU使用
+### 密钥提取
+- **全面密钥支持**：Client Random、Master Secret、Session Ticket等
+- **多种输出格式**：Wireshark、JSON、CSV、TLS KeyLog等
+- **实时密钥传输**：TCP和文件两种传输方式
+- **高精度提取**：基于OpenSSL Keylog API的精确提取
+
+### 系统兼容
+- **广泛系统支持**：Linux内核4.14+
+- **架构支持**：x86_64、ARM64
+- **多种TLS库**：OpenSSL、BoringSSL等
 
 ## 架构设计
 
