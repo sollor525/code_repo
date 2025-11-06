@@ -2,7 +2,15 @@
 
 ## 概述
 
-本文档描述了TLS Key Agent提供的所有API接口，包括C FFI接口、Rust内部API和REST API。
+本文档描述了TLS Key Agent提供的所有API接口，包括C FFI接口、Rust内部API和REST API。TLS Key Agent采用**主动式Hook架构**，提供了丰富的API来支持TLS密钥的提取、处理和传输。
+
+## 🚀 新增功能（v0.2.0）
+
+### 主动式Hook API
+- **SSL函数Hook**: 直接Hook SSL_write、SSL_read、SSL_connect等函数
+- **多算法提取**: Client Random和Master Secret的多策略提取
+- **智能验证**: 密钥有效性验证和熵值检测
+- **线程安全**: 支持高并发场景的密钥提取
 
 ## 目录
 

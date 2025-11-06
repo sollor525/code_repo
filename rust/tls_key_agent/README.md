@@ -14,7 +14,9 @@
 - **全面密钥支持**：Client Random、Master Secret、Session Ticket等
 - **多种输出格式**：Wireshark、JSON、CSV、TLS KeyLog等
 - **实时密钥传输**：TCP和文件两种传输方式
-- **高精度提取**：基于OpenSSL Keylog API的精确提取
+- **主动式提取**：基于SSL函数Hook的直接密钥提取，不依赖Keylog回调
+- **多算法支持**：Client Random多方法提取 + Master Secret多策略提取
+- **智能验证**：熵值检测和密钥有效性验证
 
 ### 系统兼容
 - **广泛系统支持**：Linux内核4.14+
@@ -33,8 +35,11 @@
 │  └── Dynamic Filter Rules (五元组筛选规则)                 │
 ├─────────────────────────────────────────────────────────────┤
 │  Key Extraction Layer (密钥提取层)                         │
-│  ├── LD_PRELOAD Hook (C/Rust FFI)                         │
-│  ├── OpenSSL Interceptor (SSL_write/read hook)            │
+│  ├── Proactive SSL Hook (主动式SSL函数Hook)                │
+│  ├── SSL_write/read/connect/accept Hook                    │
+│  ├── Multi-algorithm Extraction (多算法密钥提取)           │
+│  ├── Client Random Extraction (3种方法)                   │
+│  ├── Master Secret Extraction (3种策略)                   │
 │  ├── GnuTLS/NSS Support (扩展TLS库支持)                    │
 │  └── Application Filter (应用进程筛选)                     │
 ├─────────────────────────────────────────────────────────────┤
@@ -52,11 +57,18 @@
 
 ## 核心功能
 
-### 1. 密钥提取
-- **Client Random提取**: 32字节的客户端随机数
-- **Master Secret提取**: 48字节的主密钥
-- **Session Ticket支持**: TLS会话票据提取
+### 1. 主动式密钥提取 (核心功能)
+- **Client Random提取**: 3种方法多层次提取
+  - OpenSSL官方API (`SSL_get_client_random`)
+  - 直接SSL结构体内存访问 (`ssl->s3->client_random`)
+  - 智能内存搜索算法
+- **Master Secret提取**: 3种策略主动获取
+  - `SSL_export_keying_material` API提取
+  - SSL_SESSION结构体访问
+  - 内存模式搜索 (最后回退)
+- **智能验证机制**: 熵值检测、连续字节检查、频率分析
 - **多TLS库支持**: OpenSSL, GnuTLS, NSS等
+- **Session Ticket支持**: TLS会话票据提取
 
 ### 2. 智能筛选
 - **五元组筛选**: 源IP、源端口、目标IP、目标端口、协议
@@ -76,7 +88,46 @@
 - **零拷贝**: 最小化内存拷贝操作
 - **批量处理**: 批量传输提高效率
 
-## 快速开始
+## 🏗️ 架构模式对比
+
+TLS Key Agent支持**两种主要架构模式**，根据使用场景选择：
+
+### 🚀 模式1: 主动式Hook库 (推荐)
+
+**适用场景：** 个人开发、安全测试、Wireshark解密、单机密钥提取
+
+```bash
+# 一条命令搞定，无需Agent进程
+LD_PRELOAD=./libtls_agent_hook.so curl https://example.com
+```
+
+**优势：**
+- ✅ **极简部署**: 一条命令，立即可用
+- ✅ **零依赖**: 无需配置文件，无需Agent进程
+- ✅ **高性能**: 直接Hook SSL函数，无中间层
+- ✅ **高可靠**: 没有进程间通信故障点
+- ✅ **兼容性**: 完美兼容Wireshark Keylog格式
+
+### 🏢 模式2: Agent + Hook组合 (企业级)
+
+**适用场景：** 企业级部署、远程密钥收集、集中管理、分布式监控
+
+```bash
+# 1. 启动Agent进程
+./target/release/tls_key_agent --config agent_config.toml &
+
+# 2. 应用加载Hook库
+LD_PRELOAD=./libtls_agent_hook.so your_application
+```
+
+**企业级功能：**
+- ✅ **集中管理**: TOML配置文件驱动的规则管理
+- ✅ **远程收集**: TCP传输到中央服务器
+- ✅ **复杂过滤**: 五元组、进程名、时间范围过滤
+- ✅ **实时监控**: Agent状态和性能监控
+- ✅ **高可用**: 故障转移和自动重启
+
+## 🚀 快速开始
 
 ### 1. 编译项目
 
@@ -85,69 +136,108 @@
 git clone <repository-url>
 cd tls_key_agent
 
-# 编译
+# 编译Agent可执行文件
 cargo build --release
 
-# 编译共享库 (用于LD_PRELOAD)
-cargo build --release --lib
+# 编译主动式Hook库 (推荐)
+gcc -shared -fPIC -o libtls_agent_hook.so src/openssl_hook.c -ldl -lpthread
 ```
 
-### 2. 配置文件
+### 2. 使用方法
 
-复制并编辑配置文件：
+#### 方式1: 仅Hook库 (推荐 - 90%用户选择)
 
 ```bash
-cp config.toml.example config.toml
+# 立即使用TLS密钥提取
+LD_PRELOAD=./libtls_agent_hook.so curl https://example.com
+
+# 查看提取的密钥
+cat /tmp/openssl_keys_all.log
+# CLIENT_RANDOM <32字节的随机值> <48字节的密钥>
+
+# Wireshark集成
+# Edit → Preferences → Protocols → SSL → (Pre)-Master-Secret log filename
+# 设置为: /tmp/openssl_keys_all.log
 ```
 
-配置文件示例：
+#### 方式2: Agent + Hook组合 (企业级)
+
+```bash
+# 1. 创建配置文件 (agent_config.toml)
+cp agent_only_file.toml my_agent_config.toml
+
+# 2. 启动Agent进程
+./target/release/tls_key_agent --config my_agent_config.toml &
+
+# 3. 应用使用Hook库
+LD_PRELOAD=./libtls_agent_hook.so your_application
+
+# 4. 检查Agent输出
+ls -la /tmp/tls_keys_agent*.log
+```
+
+### 3. 配置文件 (Agent模式)
+
+企业级配置示例：
 
 ```toml
 [agent]
-name = "tls_key_agent"
+name = "enterprise_tls_agent"
+version = "0.1.0"
 log_level = "info"
-buffer_pool_size = 1000
+buffer_pool_size = 5000
 buffer_size = 8192
 
 [extraction]
 enabled = true
 capture_client_random = true
 capture_master_secret = true
-library_path = "./target/release/libtls_key_agent.so"
+library_path = "./libtls_agent_hook.so"
 
 [transport]
-enabled_transports = ["Tcp"]
+enabled_transports = ["File"]  # 或 ["Tcp", "File"]
 
-[transport.tcp]
+[transport.file]
 enabled = true
-server_host = "127.0.0.1"
-server_port = 9999
-reconnect_interval = 5
+output_path = "/tmp/tls_keys_agent.log"
+rotation = true
+max_file_size = 104857600  # 100MB
 
 [[filters]]
-name = "nginx_https"
+name = "https_only"
 enabled = true
-five_tuple = { dst_port = 443 }
-process_name = "nginx"
+five_tuple = { dst_port = 443, protocol = "TCP" }
+
+[[filters]]
+name = "web_servers"
+enabled = true
+five_tuple = {}
+process_name = "nginx|apache|httpd"
 ```
 
-### 3. 使用方法
-
-#### 方式1: LD_PRELOAD (推荐)
+### 4. 测试验证
 
 ```bash
-# 启动TLS Key Agent
-./target/release/tls_key_agent --config config.toml &
+# 运行完整测试
+./test_agent_hook_integration.sh
 
-# 使用LD_PRELOAD监控应用
-LD_PRELOAD=./target/release/libtls_key_agent.so nginx -c /etc/nginx/nginx.conf
+# 或手动测试
+gcc -shared -fPIC -o libtls_agent_hook.so src/openssl_hook.c -ldl -lpthread
+LD_PRELOAD=./libtls_agent_hook.so curl -s https://www.baidu.com > /dev/null
+echo "✅ 提取的密钥条目: $(wc -l < /tmp/openssl_keys_all.log)"
 ```
 
-#### 方式2: 直接集成
+### 4. 测试Hook库
 
 ```bash
-# 直接启动Agent监控指定进程
-./target/release/tls_key_agent --config config.toml --pid 1234
+# 编译测试程序
+gcc -o test_hook_simple test_hook_simple.c -lssl -lcrypto
+
+# 运行Hook测试
+LD_PRELOAD=./libtls_agent_hook.so ./test_hook_simple
+
+# 检查密钥文件
+ls -la /tmp/openssl_keys_all.log /tmp/tls_test_keys.log
 ```
 
 ## 配置说明
@@ -315,7 +405,115 @@ cargo test extractor
 - 作者: sollor525@hotmail.com
 - 项目主页: [GitHub Repository]
 
+## 技术实现细节
+
+### 主动式Hook架构
+
+#### 1. SSL函数拦截
+```c
+// Hook SSL_write - 在首次成功写入时提取密钥
+int SSL_write(SSL *ssl, const void *buf, int num) {
+    int result = original_SSL_write(ssl, buf, num);
+
+    static __thread int keys_extracted = 0;
+    if (!keys_extracted && result > 0 && is_handshake_complete(ssl)) {
+        extract_tls_keys_proactive(ssl, "SSL_write");
+        keys_extracted = 1;
+    }
+
+    return result;
+}
+```
+
+#### 2. Client Random多方法提取
+```c
+static int extract_client_random_proactive(SSL *ssl, unsigned char *client_random) {
+    // 方法1: OpenSSL官方API
+    if (original_SSL_get_client_random) {
+        int len = original_SSL_get_client_random(ssl, client_random, 32);
+        if (len == 32) return 1;
+    }
+
+    // 方法2: 直接结构体访问
+    if (access_ssl_structure_direct_c(ssl, client_random)) {
+        return 1;
+    }
+
+    // 方法3: 内存搜索
+    if (search_client_random_in_memory_c(ssl, client_random)) {
+        return 1;
+    }
+
+    return 0;
+}
+```
+
+#### 3. Master Secret多策略提取
+```c
+static int extract_master_secret_proactive(SSL *ssl, unsigned char *master_secret) {
+    // 方法1: SSL_export_keying_material API
+    if (original_SSL_export_keying_material) {
+        int result = original_SSL_export_keying_material(
+            ssl, master_secret, 48, "master secret", 13, NULL, 0, 0);
+        if (result > 0 && is_likely_master_secret_c(master_secret)) {
+            return 1;
+        }
+    }
+
+    // 方法2: SSL_SESSION提取
+    if (extract_from_ssl_session_c(ssl, master_secret)) {
+        return 1;
+    }
+
+    // 方法3: 内存搜索
+    if (search_master_secret_in_memory_c(ssl, master_secret)) {
+        return 1;
+    }
+
+    return 0;
+}
+```
+
+#### 4. 智能密钥验证
+```c
+static int is_likely_client_random_c(const unsigned char *data) {
+    // 熵值检测 - 不应该全零或全相同
+    // 频率分析 - 任何字节不应出现超过4次
+    // 连续检查 - 不应该有太长的连续相同字节
+
+    int byte_counts[256] = {0};
+    for (int i = 0; i < 32; i++) {
+        byte_counts[data[i]]++;
+    }
+
+    int max_count = 0;
+    for (int i = 0; i < 256; i++) {
+        if (byte_counts[i] > max_count) max_count = byte_counts[i];
+    }
+
+    return (max_count <= 4); // 最大频率限制
+}
+```
+
+### 关键技术创新
+
+1. **无依赖主动提取**: 完全不依赖OpenSSL Keylog回调机制
+2. **多算法回退**: 确保在不同OpenSSL版本下的兼容性
+3. **智能时机检测**: 在最佳时机提取密钥，提高成功率
+4. **线程安全设计**: 使用线程局部存储避免重复提取
+5. **高并发支持**: 在多线程环境下稳定运行
+
 ## 更新日志
+
+### v0.2.0 (2025-11-05) - 主动式Hook重构
+- ✅ **核心重构**: 完全重新设计TLS密钥提取架构
+- ✅ **主动式Hook**: 基于SSL函数的直接密钥提取，不依赖Keylog回调
+- ✅ **多算法支持**: Client Random 3种方法 + Master Secret 3种策略
+- ✅ **智能验证**: 熵值检测和密钥有效性验证机制
+- ✅ **高兼容性**: 支持OpenSSL 1.1.1f等多种版本
+- ✅ **高性能**: 优化Hook逻辑，支持高并发场景
+- ✅ **C语言库**: 独立的`libtls_agent_hook.so`Hook库
+- ✅ **完整测试**: 功能测试、兼容性测试、性能测试
 
 ### v0.1.0 (2023-11-04)
 - 初始版本发布

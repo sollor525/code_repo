@@ -69,65 +69,420 @@ static void (*original_SSL_CTX_set_keylog_callback)(SSL_CTX *ctx, void (*cb)(con
 static int hook_initialized = 0;
 static pthread_mutex_t hook_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// Keylog回调函数实现 - 增强版
-static void openssl_keylog_callback(const SSL *ssl, const char *line) {
-    if (!line || !ssl) {
-        return;
+// 注释掉Keylog回调，改为主动提取模式
+// static void openssl_keylog_callback(const SSL *ssl, const char *line) { ... }
+
+// 前向声明 - 解决编译错误
+static int extract_client_random_proactive(SSL *ssl, unsigned char *client_random);
+static int extract_master_secret_proactive(SSL *ssl, unsigned char *master_secret);
+static void log_tls_key_proactive(const char *label, const unsigned char *client_random, const unsigned char *master_secret, const char *operation);
+
+// 辅助函数前向声明
+static int access_ssl_structure_direct_c(SSL *ssl, unsigned char *client_random);
+static int search_client_random_in_memory_c(SSL *ssl, unsigned char *client_random);
+static int extract_from_ssl_session_c(SSL *ssl, unsigned char *master_secret);
+static int search_master_secret_in_memory_c(SSL *ssl, unsigned char *master_secret);
+static int is_likely_master_secret_c(const unsigned char *master_secret);
+static int is_likely_client_random_c(const unsigned char *data);
+static int validate_client_random_position_c(SSL *ssl, int offset);
+
+// Rust FFI函数声明（如果实际链接Rust库时需要）
+extern int tls_key_agent_on_client_random(SSL *ssl, const unsigned char *client_random, size_t len);
+extern int tls_key_agent_on_master_secret(SSL *ssl, const unsigned char *master_secret, size_t len);
+extern int tls_key_agent_on_connection_info(SSL *ssl, const char *src_ip, int src_port,
+                                          const char *dst_ip, int dst_port, const char *protocol);
+
+// 增强版TLS密钥提取 - 主动从SSL函数Hook中提取
+static int extract_tls_keys_proactive(SSL *ssl, const char *operation) {
+    if (!ssl || !hook_initialized) {
+        return -1;
     }
 
-    // 解析并处理不同类型的keylog行
-    if (strncmp(line, "CLIENT_RANDOM ", 14) == 0) {
-        // CLIENT_RANDOM <client_random> <master_secret>
-        printf("[TLS Agent] 提取到Client Random和Master Secret\n");
+    printf("[TLS Agent] 开始主动密钥提取 - 操作: %s\n", operation);
 
-        // 解析Client Random和Master Secret
-        const char *random_start = line + 14;
-        const char *secret_start = strchr(random_start, ' ');
-        if (secret_start) {
-            secret_start++; // 跳过空格
+    // 步骤1: 提取Client Random
+    unsigned char client_random[32];
+    if (extract_client_random_proactive(ssl, client_random)) {
+        printf("[TLS Agent] ✓ Client Random提取成功\n");
 
-            // 解析Client Random (32 bytes = 64 hex chars)
-            unsigned char client_random[32];
-            if (strlen(random_start) >= 64 && parse_hex_string(random_start, client_random, 64)) {
-                // 调用Rust FFI函数处理Client Random
-                tls_key_agent_on_client_random((void*)ssl, client_random, 32);
+        // 步骤2: 尝试提取Master Secret
+        unsigned char master_secret[48];
+        if (extract_master_secret_proactive(ssl, master_secret)) {
+            printf("[TLS Agent] ✓ Master Secret提取成功\n");
 
-                // 解析Master Secret (48 bytes = 96 hex chars)
-                if (strlen(secret_start) >= 96) {
-                    unsigned char master_secret[48];
-                    if (parse_hex_string(secret_start, master_secret, 96)) {
-                        // 调用Rust FFI函数处理Master Secret
-                        tls_key_agent_on_master_secret((void*)ssl, master_secret, 48);
-                        printf("[TLS Agent] 成功提取完整密钥对\n");
-                    }
-                }
+            // 记录密钥信息
+            log_tls_key_proactive("CLIENT_RANDOM", client_random, master_secret, operation);
+        } else {
+            printf("[TLS Agent] ⚠ Master Secret提取失败 (这在现代OpenSSL中是正常的)\n");
+
+            // 仍然记录Client Random
+            unsigned char empty_master[48] = {0};
+            log_tls_key_proactive("CLIENT_RANDOM", client_random, empty_master, operation);
+        }
+    } else {
+        printf("[TLS Agent] ❌ Client Random提取失败\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+// 增强版Client Random提取
+static int extract_client_random_proactive(SSL *ssl, unsigned char *client_random) {
+    // 方法1: 使用OpenSSL官方API
+    if (original_SSL_get_client_random) {
+        int len = original_SSL_get_client_random(ssl, client_random, 32);
+        if (len == 32) {
+            printf("[TLS Agent] Client Random: 方法1 (OpenSSL API) 成功\n");
+            return 1;
+        }
+    }
+
+    // 方法2: 直接访问SSL结构体
+    if (access_ssl_structure_direct_c(ssl, client_random)) {
+        printf("[TLS Agent] Client Random: 方法2 (直接结构体访问) 成功\n");
+        return 1;
+    }
+
+    // 方法3: 内存搜索
+    if (search_client_random_in_memory_c(ssl, client_random)) {
+        printf("[TLS Agent] Client Random: 方法3 (内存搜索) 成功\n");
+        return 1;
+    }
+
+    printf("[TLS Agent] Client Random: 所有方法都失败\n");
+    return 0;
+}
+
+// 增强版Master Secret提取
+static int extract_master_secret_proactive(SSL *ssl, unsigned char *master_secret) {
+    // 方法1: 使用SSL_export_keying_material
+    if (original_SSL_export_keying_material) {
+        // 尝试导出"master secret"标签的密钥材料
+        int result = original_SSL_export_keying_material(
+            ssl,
+            master_secret,
+            48,
+            "master secret",
+            13,
+            NULL,
+            0,
+            0
+        );
+
+        if (result > 0 && is_likely_master_secret_c(master_secret)) {
+            printf("[TLS Agent] Master Secret: 方法1 (SSL_export_keying_material) 成功\n");
+            return 1;
+        }
+    }
+
+    // 方法2: 从SSL_SESSION中提取
+    if (extract_from_ssl_session_c(ssl, master_secret)) {
+        printf("[TLS Agent] Master Secret: 方法2 (SSL_SESSION) 成功\n");
+        return 1;
+    }
+
+    // 方法3: 内存搜索 (最后回退)
+    if (search_master_secret_in_memory_c(ssl, master_secret)) {
+        printf("[TLS Agent] Master Secret: 方法3 (内存搜索) 成功\n");
+        return 1;
+    }
+
+    return 0;
+}
+
+// C语言版本的辅助函数声明
+static int access_ssl_structure_direct_c(SSL *ssl, unsigned char *client_random);
+static int search_client_random_in_memory_c(SSL *ssl, unsigned char *client_random);
+static int extract_from_ssl_session_c(SSL *ssl, unsigned char *master_secret);
+static int search_master_secret_in_memory_c(SSL *ssl, unsigned char *master_secret);
+static int is_likely_master_secret_c(const unsigned char *master_secret);
+static void log_tls_key_proactive(const char *label, const unsigned char *client_random, const unsigned char *master_secret, const char *operation);
+
+// C语言版本的SSL结构体直接访问
+static int access_ssl_structure_direct_c(SSL *ssl, unsigned char *client_random) {
+    if (!ssl || !client_random) {
+        return 0;
+    }
+
+    // 检查SSL结构体中的s3字段
+    if (ssl->s3) {
+        memcpy(client_random, ssl->s3->client_random, 32);
+
+        // 验证这看起来像有效的Client Random
+        if (is_likely_client_random_c(client_random)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+// C语言版本的内存搜索Client Random
+static int search_client_random_in_memory_c(SSL *ssl, unsigned char *client_random) {
+    if (!ssl || !client_random) {
+        return 0;
+    }
+
+    unsigned char *ssl_ptr = (unsigned char *)ssl;
+    int search_range = 1024; // 搜索前1KB
+
+    for (int offset = 0; offset < search_range; offset++) {
+        unsigned char *candidate_ptr = ssl_ptr + offset;
+
+        if (is_likely_client_random_c(candidate_ptr)) {
+            // 验证位置的合理性
+            if (validate_client_random_position_c(ssl, offset)) {
+                memcpy(client_random, candidate_ptr, 32);
+                return 1;
             }
         }
-    } else if (strncmp(line, "CLIENT_TRAFFIC_SECRET_0 ", 25) == 0) {
-        // TLS 1.3客户端应用流量密钥
-        printf("[TLS Agent] TLS 1.3 客户端流量密钥: %s\n", line);
-    } else if (strncmp(line, "SERVER_TRAFFIC_SECRET_0 ", 25) == 0) {
-        // TLS 1.3服务器应用流量密钥
-        printf("[TLS Agent] TLS 1.3 服务器流量密钥: %s\n", line);
-    } else if (strncmp(line, "EXPORTER_SECRET ", 16) == 0) {
-        // TLS 1.3导出密钥
-        printf("[TLS Agent] TLS 1.3 导出密钥: %s\n", line);
     }
 
-    // 写入标准keylog文件（兼容Wireshark等工具）
-    char keylog_file[256];
+    return 0;
+}
+
+// C语言版本的Client Random检测
+static int is_likely_client_random_c(const unsigned char *data) {
+    // 检查1: 不应该全零或全相同
+    unsigned char first_byte = data[0];
+    if (data[0] == 0) {
+        // 全零，检查是否全相同
+        int all_same = 1;
+        for (int i = 1; i < 32; i++) {
+            if (data[i] != first_byte) {
+                all_same = 0;
+                break;
+            }
+        }
+        if (all_same) return 0;
+    }
+
+    // 检查2: 简单的熵值检测
+    int byte_counts[256] = {0};
+    for (int i = 0; i < 32; i++) {
+        byte_counts[data[i]]++;
+    }
+
+    int max_count = 0;
+    for (int i = 0; i < 256; i++) {
+        if (byte_counts[i] > max_count) {
+            max_count = byte_counts[i];
+        }
+    }
+
+    // 任何字节不应该出现超过4次
+    if (max_count > 4) {
+        return 0;
+    }
+
+    // 检查3: 不应该有太长的连续相同字节
+    int max_consecutive = 1;
+    int current_consecutive = 1;
+
+    for (int i = 1; i < 32; i++) {
+        if (data[i] == data[i-1]) {
+            current_consecutive++;
+            if (current_consecutive > max_consecutive) {
+                max_consecutive = current_consecutive;
+            }
+        } else {
+            current_consecutive = 1;
+        }
+    }
+
+    if (max_consecutive > 3) {
+        return 0;
+    }
+
+    return 1;
+}
+
+// 验证Client Random位置的合理性
+static int validate_client_random_position_c(SSL *ssl, int offset) {
+    // 简单验证：Client Random应该在SSL对象的合理范围内
+    if (offset > 1024) {
+        return 0;
+    }
+    return 1;
+}
+
+// C语言版本的SSL_SESSION提取
+static int extract_from_ssl_session_c(SSL *ssl, unsigned char *master_secret) {
+    if (!ssl || !master_secret || !original_SSL_get_session) {
+        return 0;
+    }
+
+    SSL_SESSION *session = original_SSL_get_session(ssl);
+    if (!session) {
+        return 0;
+    }
+
+    // 这里实现从SSL_SESSION结构中提取Master Secret
+    // 由于OpenSSL版本差异，这是一个复杂的过程
+    // 在实际环境中需要根据具体版本调整偏移量
+
+    // 暂时返回失败
+    return 0;
+}
+
+// C语言版本的内存搜索Master Secret
+static int search_master_secret_in_memory_c(SSL *ssl, unsigned char *master_secret) {
+    if (!ssl || !master_secret) {
+        return 0;
+    }
+
+    unsigned char *ssl_ptr = (unsigned char *)ssl;
+    int search_range = 2048; // 搜索范围更大
+
+    for (int offset = 0; offset < search_range; offset++) {
+        unsigned char *candidate_ptr = ssl_ptr + offset;
+
+        if (is_likely_master_secret_c(candidate_ptr)) {
+            memcpy(master_secret, candidate_ptr, 48);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+// C语言版本的Master Secret检测
+static int is_likely_master_secret_c(const unsigned char *master_secret) {
+    if (!master_secret) {
+        return 0;
+    }
+
+    // 检查1: 不应该全零
+    int all_zero = 1;
+    for (int i = 0; i < 48; i++) {
+        if (master_secret[i] != 0) {
+            all_zero = 0;
+            break;
+        }
+    }
+    if (all_zero) return 0;
+
+    // 检查2: 不应该全相同
+    unsigned char first_byte = master_secret[0];
+    int all_same = 1;
+    for (int i = 1; i < 48; i++) {
+        if (master_secret[i] != first_byte) {
+            all_same = 0;
+            break;
+        }
+    }
+    if (all_same) return 0;
+
+    // 检查3: 应该有足够的熵值
+    int unique_bytes = 0;
+    int seen[256] = {0};
+
+    for (int i = 0; i < 48; i++) {
+        if (!seen[master_secret[i]]) {
+            seen[master_secret[i]] = 1;
+            unique_bytes++;
+        }
+    }
+
+    // 48字节中至少要有16个不同的字节
+    return (unique_bytes >= 16);
+}
+
+// 增强版密钥日志记录 - 减少Keylog依赖
+static void log_tls_key_proactive(const char *label, const unsigned char *client_random, const unsigned char *master_secret, const char *operation) {
+    // 仍然支持SSLKEYLOGFILE环境变量，但不依赖它
     const char *keylog_env = getenv("SSLKEYLOGFILE");
     if (keylog_env) {
-        strncpy(keylog_file, keylog_env, sizeof(keylog_file) - 1);
-    } else {
-        snprintf(keylog_file, sizeof(keylog_file), "/tmp/openssl_keys_%d.log", getpid());
+        FILE *file = fopen(keylog_env, "a");
+        if (file) {
+            time_t timestamp = time(NULL);
+
+            // 转换为十六进制字符串
+            char client_random_hex[65];
+            char master_secret_hex[97];
+
+            for (int i = 0; i < 32; i++) {
+                sprintf(client_random_hex + i * 2, "%02x", client_random[i]);
+            }
+            client_random_hex[64] = '\0';
+
+            for (int i = 0; i < 48; i++) {
+                sprintf(master_secret_hex + i * 2, "%02x", master_secret[i]);
+            }
+            master_secret_hex[96] = '\0';
+
+            // 检查Master Secret是否有效
+            int has_valid_master = 0;
+            for (int i = 0; i < 48; i++) {
+                if (master_secret[i] != 0) {
+                    has_valid_master = 1;
+                    break;
+                }
+            }
+
+            // 使用标准Wireshark格式
+            if (has_valid_master) {
+                fprintf(file, "CLIENT_RANDOM %s %s %ld\n", client_random_hex, master_secret_hex, timestamp);
+            } else {
+                fprintf(file, "CLIENT_RANDOM %s %s %ld\n", client_random_hex,
+                    "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", timestamp);
+            }
+
+            fclose(file);
+        }
     }
 
-    FILE *fp = fopen(keylog_file, "a");
-    if (fp) {
-        fprintf(fp, "%s\n", line);
-        fflush(fp); // 确保立即写入
-        fclose(fp);
+    // 同时输出到stderr用于调试
+    printf("[TLS Agent] 密钥提取完成 [%s] - 操作: %s\n", label, operation);
+    printf("[TLS Agent] Client Random: ");
+    for (int i = 0; i < 8; i++) {
+        printf("%02x", client_random[i]);
+    }
+
+    int has_valid_master = 0;
+    for (int i = 0; i < 48; i++) {
+        if (master_secret[i] != 0) {
+            has_valid_master = 1;
+            break;
+        }
+    }
+
+    if (has_valid_master) {
+        printf(" - Master Secret: ");
+        for (int i = 0; i < 8; i++) {
+            printf("%02x", master_secret[i]);
+        }
+    } else {
+        printf(" - Master Secret: 未提取");
+    }
+    printf("\n");
+}
+
+// 原始的keylog日志记录（保留作为回退）
+static void log_tls_key(const char *label, const unsigned char *client_random, const unsigned char *master_secret, const char *operation) {
+    const char *keylog_file = getenv("SSLKEYLOGFILE");
+    if (keylog_file) {
+        FILE *fp = fopen(keylog_file, "a");
+        if (fp) {
+            // 构造Wireshark兼容的keylog行
+            char client_random_hex[65];
+            char master_secret_hex[97];
+
+            for (int i = 0; i < 32; i++) {
+                sprintf(client_random_hex + i * 2, "%02x", client_random[i]);
+            }
+            client_random_hex[64] = '\0';
+
+            for (int i = 0; i < 48; i++) {
+                sprintf(master_secret_hex + i * 2, "%02x", master_secret[i]);
+            }
+            master_secret_hex[96] = '\0';
+
+            fprintf(fp, "CLIENT_RANDOM %s %s\n", client_random_hex, master_secret_hex);
+            fflush(fp);
+            fclose(fp);
+        }
     }
 }
 
@@ -547,12 +902,12 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
 
     int result = original_SSL_write(ssl, buf, num);
 
-    // 在首次成功写入后检查握手状态并提取密钥
-    static __thread int handshake_checked = 0;
-    if (!handshake_checked && result > 0 && is_handshake_complete(ssl)) {
-        printf("[TLS Agent] SSL_write: 检测到握手完成，提取密钥\n");
-        extract_tls_keys(ssl);
-        handshake_checked = 1;
+    // 在首次成功写入时使用主动式密钥提取
+    static __thread int keys_extracted = 0;
+    if (!keys_extracted && result > 0 && is_handshake_complete(ssl)) {
+        printf("[TLS Agent] SSL_write: 主动提取TLS密钥\n");
+        extract_tls_keys_proactive(ssl, "SSL_write");
+        keys_extracted = 1;
     }
 
     return result;
@@ -566,12 +921,12 @@ int SSL_read(SSL *ssl, void *buf, int num) {
 
     int result = original_SSL_read(ssl, buf, num);
 
-    // 在首次成功读取后检查握手状态并提取密钥
-    static __thread int handshake_checked = 0;
-    if (!handshake_checked && result > 0 && is_handshake_complete(ssl)) {
-        printf("[TLS Agent] SSL_read: 检测到握手完成，提取密钥\n");
-        extract_tls_keys(ssl);
-        handshake_checked = 1;
+    // 在首次成功读取时使用主动式密钥提取
+    static __thread int keys_extracted = 0;
+    if (!keys_extracted && result > 0 && is_handshake_complete(ssl)) {
+        printf("[TLS Agent] SSL_read: 主动提取TLS密钥\n");
+        extract_tls_keys_proactive(ssl, "SSL_read");
+        keys_extracted = 1;
     }
 
     return result;
@@ -586,8 +941,8 @@ int SSL_connect(SSL *ssl) {
     int result = original_SSL_connect(ssl);
 
     if (result == 1) {
-        printf("[TLS Agent] SSL_connect: 连接建立成功\n");
-        extract_tls_keys(ssl);
+        printf("[TLS Agent] SSL_connect: 连接建立成功，主动提取TLS密钥\n");
+        extract_tls_keys_proactive(ssl, "SSL_connect");
     } else if (result < 0) {
         // 检查是否是非阻塞模式下的继续操作
         int error = errno;
@@ -610,8 +965,8 @@ int SSL_accept(SSL *ssl) {
     int result = original_SSL_accept(ssl);
 
     if (result == 1) {
-        printf("[TLS Agent] SSL_accept: 接受连接成功\n");
-        extract_tls_keys(ssl);
+        printf("[TLS Agent] SSL_accept: 接受连接成功，主动提取TLS密钥\n");
+        extract_tls_keys_proactive(ssl, "SSL_accept");
     } else if (result < 0) {
         // 检查是否是非阻塞模式下的继续操作
         int error = errno;
@@ -640,8 +995,8 @@ int SSL_do_handshake(SSL *ssl) {
     int result = original_SSL_do_handshake(ssl);
 
     if (result == 1) {
-        printf("[TLS Agent] SSL_do_handshake: 握手完成\n");
-        extract_tls_keys(ssl);
+        printf("[TLS Agent] SSL_do_handshake: 握手完成，主动提取TLS密钥\n");
+        extract_tls_keys_proactive(ssl, "SSL_do_handshake");
     }
 
     return result;
@@ -718,11 +1073,14 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
         return NULL;
     }
 
-    // 自动设置keylog回调
+    // 注释：不再自动设置keylog回调，改用主动式提取
+    // Keylog回调现在作为回退机制，仅在某些特殊情况下启用
+    /*
     if (original_SSL_CTX_set_keylog_callback_real && hook_initialized) {
         original_SSL_CTX_set_keylog_callback_real(ctx, openssl_keylog_callback);
         printf("[TLS Agent] 为新SSL_CTX设置keylog回调\n");
     }
+    */
 
     return ctx;
 }

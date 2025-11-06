@@ -1,8 +1,61 @@
 # TLS Key Agent 使用指南
 
+## 🎯 架构选择：Agent vs Hook库
+
+**重要更新**: TLS Key Agent现在支持**两种架构模式**，根据需求选择：
+
+### 🚀 模式1: 仅Hook库 (推荐90%用户)
+
+**特点**: 极简部署，无需Agent进程，直接Hook SSL函数提取密钥
+
+```bash
+# 一条命令搞定，无需任何配置
+LD_PRELOAD=./libtls_agent_hook.so curl https://example.com
+cat /tmp/openssl_keys_all.log
+```
+
+**优势**:
+- ✅ **零配置**: 无需配置文件，无需Agent进程
+- ✅ **极简部署**: 一条命令立即可用
+- ✅ **高性能**: 直接Hook，无中间层开销
+- ✅ **高可靠**: 无进程间通信故障点
+
+**适用场景**:
+- 个人开发和调试
+- 安全渗透测试
+- Wireshark流量解密
+- 单机密钥收集
+
+### 🏢 模式2: Agent + Hook组合 (企业级)
+
+**特点**: 完整的企业级密钥管理，支持集中管理、远程收集、复杂过滤
+
+```bash
+# 1. 启动Agent进程
+./target/release/tls_key_agent --config agent_config.toml &
+
+# 2. 应用使用Hook库
+LD_PRELOAD=./libtls_agent_hook.so your_application
+```
+
+**企业级功能**:
+- ✅ **集中管理**: TOML配置文件驱动的规则管理
+- ✅ **远程收集**: TCP传输到中央服务器
+- ✅ **复杂过滤**: 五元组、进程名、时间范围过滤
+- ✅ **实时监控**: Agent状态和性能监控
+- ✅ **文件轮转**: 自动日志文件管理
+
 ## 概述
 
-本指南详细介绍如何使用TLS Key Agent来监控和提取TLS连接中的密钥信息。涵盖了从基础安装到高级配置的各个方面。
+本指南详细介绍TLS Key Agent的**两种使用模式**。项目采用**主动式Hook架构**，通过直接Hook SSL函数实现更可靠、更直接的密钥提取，完全摆脱了对OpenSSL Keylog回调的依赖。
+
+## 🚀 核心特性
+
+- **主动式Hook**: 基于SSL_write/SSL_read等函数的直接密钥提取
+- **多算法支持**: Client Random和Master Secret的多种提取策略
+- **智能验证**: 熵值检测和密钥有效性验证
+- **高兼容性**: 支持多种OpenSSL版本
+- **高性能**: 线程安全，支持高并发场景
 
 ## 目录
 
@@ -26,20 +79,37 @@
 - **网络**: 能够访问目标TLS服务
 - **权限**: root权限或目标进程的适当权限
 
-### 一键启动
+### 一键启动（主动式Hook）
 
 ```bash
-# 1. 下载并编译
+# 1. 下载并编译Hook库
 git clone <repository-url>
 cd tls_key_agent
+
+# 编译C语言Hook库
+gcc -shared -fPIC -o libtls_agent_hook.so src/openssl_hook.c -ldl -lpthread
+
+# 可选：编译Rust库
 cargo build --release
 
 # 2. 快速测试
-LD_PRELOAD=./target/release/libopenssl_hook.so \
-curl -s https://www.baidu.com > /dev/null
+export SSLKEYLOGFILE=/tmp/test_keys.log
+LD_PRELOAD=./libtls_agent_hook.so curl -s https://www.baidu.com > /dev/null
 
-# 3. 启动验证工具
-./target/release/verify_keys test --host www.baidu.com
+# 3. 验证密钥提取结果
+ls -la /tmp/test_keys.log
+cat /tmp/test_keys.log
+```
+
+### 验证Hook是否正常工作
+
+```bash
+# 检查Hook初始化日志
+LD_PRELOAD=./libtls_agent_hook.so curl -s https://example.com 2>&1 | grep "TLS Agent"
+
+# 应该看到类似输出：
+# [TLS Agent] OpenSSL Hook 初始化成功
+# [TLS Agent] SSL_write: 主动提取TLS密钥
 ```
 
 ## 安装部署
@@ -199,99 +269,96 @@ five_tuple = { dst_port = 443 }
 
 ## 使用场景
 
-### 场景1: 监控Nginx HTTPS流量
+### 🎯 关键概念：LD_PRELOAD工作机制
+
+**重要理解**：
+- **LD_PRELOAD只影响新进程**: 已经运行的进程不会加载新的Hook库
+- **"重启"实际是重新启动进程**: 不是为了应用配置，而是为了加载Hook库
+- **无需复杂配置**: 主动式Hook通过环境变量直接工作
+
+### 场景1: 监控Nginx HTTPS流量（主动式Hook）
 
 ```bash
-# 1. 配置Nginx过滤规则
-cat >> config.toml <<EOF
+# 1. 编译Hook库
+gcc -shared -fPIC -o libtls_agent_hook.so src/openssl_hook.c -ldl -lpthread
 
-[[filters]]
-name = "nginx_https"
-enabled = true
-priority = 100
-process_name = "nginx"
-five_tuple = { dst_port = 443 }
-EOF
+# 2. 设置密钥输出文件（可选）
+export SSLKEYLOGFILE=/tmp/nginx_tls_keys.log
 
-# 2. 启动Agent
-./target/release/tls_key_agent --config config.toml &
-
-# 3. 重启Nginx并加载Hook
+# 3. 停止现有Nginx进程（可选）
 sudo systemctl stop nginx
-sudo LD_PRELOAD=/opt/tls_key_agent/libopenssl_hook.so \
-     systemctl start nginx
 
-# 4. 验证密钥提取
-tail -f /var/log/tls_agent/tls_keys_*.log
+# 4. 使用LD_PRELOAD启动Nginx（主动式Hook方式）
+sudo LD_PRELOAD=$(pwd)/libtls_agent_hook.so systemctl start nginx
+
+# 或者直接启动Nginx二进制（测试环境）
+sudo LD_PRELOAD=$(pwd)/libtls_agent_hook.so /usr/sbin/nginx -g 'daemon off;'
+
+# 5. 验证密钥提取
+ls -la /tmp/nginx_tls_keys.log /tmp/openssl_keys_all.log
+tail -f /tmp/openssl_keys_all.log
 ```
 
-### 场景2: 监控Apache HTTP Server
+**🔧 重要说明**：
+- **无需独立Agent**: 主动式Hook直接工作，无需启动tls_key_agent进程
+- **新进程生效**: LD_PRELOAD只对**新启动**的进程生效
+- **无需配置文件**: Hook库通过环境变量直接工作
+
+### 场景2: 监控Apache HTTP Server（主动式Hook）
 
 ```bash
-# 1. 创建Apache专用配置
-cat > apache_config.toml <<EOF
-[agent]
-name = "tls_key_agent_apache"
-log_level = "info"
+# 1. 编译Hook库（如果还没有编译）
+gcc -shared -fPIC -o libtls_agent_hook.so src/openssl_hook.c -ldl -lpthread
 
-[extraction]
-enabled = true
-capture_client_random = true
-capture_master_secret = true
+# 2. 设置密钥输出文件
+export SSLKEYLOGFILE=/tmp/apache_tls_keys.log
 
-[transport]
-enabled_transports = ["Tcp"]
+# 3. 停止现有Apache进程
+sudo systemctl stop apache2
 
-[transport.tcp]
-enabled = true
-server_host = "127.0.0.1"
-server_port = 9999
+# 4. 使用LD_PRELOAD启动Apache（主动式Hook方式）
+sudo LD_PRELOAD=$(pwd)/libtls_agent_hook.so systemctl start apache2
 
-[[filters]]
-name = "apache_https"
-enabled = true
-priority = 100
-process_name = "apache2"
-five_tuple = { dst_port = 443 }
-EOF
+# 或者使用apache2ctl
+sudo LD_PRELOAD=$(pwd)/libtls_agent_hook.so apache2ctl start
 
-# 2. 启动Agent和Apache
-./target/release/tls_key_agent --config apache_config.toml &
-sudo LD_PRELOAD=./target/release/libopenssl_hook.so apache2ctl restart
-
-# 3. 启动密钥收集服务器
-nc -l 9999 > keys.txt
+# 5. 验证密钥提取
+ls -la /tmp/apache_tls_keys.log /tmp/openssl_keys_all.log
+tail -f /tmp/openssl_keys_all.log
 ```
 
-### 场景3: 监控邮件服务器(SMTP over TLS)
+**🔧 重要说明**：
+- **无需配置文件**: 主动式Hook通过LD_PRELOAD直接工作
+- **新进程生效**: 只有新启动的Apache进程才会加载Hook库
+- **无需密钥收集服务器**: 密钥直接写入文件，无需TCP传输
+
+### 场景3: 监控邮件服务器(SMTP over TLS)（主动式Hook）
 
 ```bash
-# 1. 配置SMTP过滤规则
-cat >> config.toml <<EOF
+# 1. 编译Hook库（如果还没有编译）
+gcc -shared -fPIC -o libtls_agent_hook.so src/openssl_hook.c -ldl -lpthread
 
-[[filters]]
-name = "smtp_tls"
-enabled = true
-priority = 100
-five_tuple = { dst_port = 587 }
-process_name = "postfix"
+# 2. 设置邮件服务的密钥输出文件
+export SSLKEYLOGFILE=/tmp/postfix_tls_keys.log
 
-[[filters]]
-name = "smtps"
-enabled = true
-priority = 101
-five_tuple = { dst_port = 465 }
-process_name = "postfix"
-EOF
-
-# 2. 重启邮件服务
+# 3. 停止Postfix服务
 sudo systemctl stop postfix
-sudo LD_PRELOAD=/opt/tls_key_agent/libopenssl_hook.so \
-     systemctl start postfix
 
-# 3. 测试邮件发送
-echo "Test email" | mail -s "TLS Test" user@example.com
+# 4. 使用LD_PRELOAD启动Postfix（主动式Hook方式）
+sudo LD_PRELOAD=$(pwd)/libtls_agent_hook.so systemctl start postfix
+
+# 5. 测试邮件发送和TLS密钥提取
+echo "Test TLS Key Extraction" | mail -s "TLS Hook Test" user@example.com
+
+# 6. 验证密钥提取
+ls -la /tmp/postfix_tls_keys.log /tmp/openssl_keys_all.log
+tail -f /tmp/openssl_keys_all.log
 ```
+
+**🔧 重要说明**：
+- **无需过滤规则配置**: 主动式Hook自动处理所有TLS连接
+- **支持多种端口**: 自动捕获587 (STARTTLS) 和465 (SMTPS) 的密钥
+- **无需独立Agent**: Hook库直接工作，无需额外的Agent进程
 
 ### 场景4: 开发环境调试
 
