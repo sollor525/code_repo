@@ -50,38 +50,39 @@ body {
 .header-content {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 1rem 20px;
+    padding: 0.6rem 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .logo {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     font-weight: 700;
     color: var(--primary-color);
     text-decoration: none;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
 }
 
 .logo::before {
     content: "🔧";
-    font-size: 1.8rem;
+    font-size: 1.5rem;
 }
 
 .nav {
     display: flex;
-    gap: 1rem;
+    gap: 0.5rem;
 }
 
 .nav-link {
     color: var(--text-secondary);
     text-decoration: none;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.4rem;
     transition: all 0.3s ease;
+    font-size: 0.9rem;
 }
 
 .nav-link:hover,

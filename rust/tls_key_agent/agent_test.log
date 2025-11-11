@@ -1,0 +1,31 @@
+[2m2025-11-06T06:18:04.946224Z[0m [32m INFO[0m [2mtls_key_agent[0m[2m:[0m 启动TLS密钥提取Agent v0.1.0
+[2m2025-11-06T06:18:04.946463Z[0m [32m INFO[0m [2mtls_key_agent[0m[2m:[0m 成功加载配置文件: agent_only_file.toml
+[2m2025-11-06T06:18:04.946493Z[0m [32m INFO[0m [2mtls_key_agent[0m[2m:[0m 初始化TLS密钥Agent
+[2m2025-11-06T06:18:04.946504Z[0m [32m INFO[0m [2mtls_key_agent::extractor[0m[2m:[0m 初始化密钥提取器
+[2m2025-11-06T06:18:04.946520Z[0m [32m INFO[0m [2mtls_key_agent::extractor::session_manager[0m[2m:[0m 初始化会话管理器
+[2m2025-11-06T06:18:04.946587Z[0m [32m INFO[0m [2mtls_key_agent::extractor::ssl_hook[0m[2m:[0m 初始化SSL Hook
+[2m2025-11-06T06:18:04.946605Z[0m [32m INFO[0m [2mtls_key_agent::transport::file_transport[0m[2m:[0m 初始化文件传输器: /tmp/tls_keys_agent.log
+[2m2025-11-06T06:18:04.946625Z[0m [32m INFO[0m [2mtls_key_agent::transport::transport_manager[0m[2m:[0m 初始化传输管理器
+[2m2025-11-06T06:18:04.946641Z[0m [32m INFO[0m [2mtls_key_agent[0m[2m:[0m 启动TLS密钥Agent
+[2m2025-11-06T06:18:04.946653Z[0m [32m INFO[0m [2mtls_key_agent::transport::transport_manager[0m[2m:[0m 启动传输管理器
+[2m2025-11-06T06:18:04.946664Z[0m [32m INFO[0m [2mtls_key_agent::transport::file_transport[0m[2m:[0m 初始化文件传输器: /tmp/tls_keys_agent.log
+[2m2025-11-06T06:18:04.946668Z[0m [32m INFO[0m [2mtls_key_agent::transport::file_transport[0m[2m:[0m 启动文件传输器
+[2m2025-11-06T06:18:04.946700Z[0m [32m INFO[0m [2mtls_key_agent::transport::file_transport[0m[2m:[0m 创建新文件: /tmp/tls_keys_agent_1762409884.log
+[2m2025-11-06T06:18:04.946986Z[0m [32m INFO[0m [2mtls_key_agent::transport::file_transport[0m[2m:[0m 文件传输器启动成功
+[2m2025-11-06T06:18:04.947019Z[0m [32m INFO[0m [2mtls_key_agent::transport::transport_manager[0m[2m:[0m 传输器 File 初始化并启动成功
+[2m2025-11-06T06:18:04.947043Z[0m [32m INFO[0m [2mtls_key_agent::transport::transport_manager[0m[2m:[0m 传输管理器启动成功
+[2m2025-11-06T06:18:04.947047Z[0m [32m INFO[0m [2mtls_key_agent::extractor[0m[2m:[0m 启动密钥提取器
+[2m2025-11-06T06:18:04.947049Z[0m [32m INFO[0m [2mtls_key_agent::transport::file_transport[0m[2m:[0m 启动文件传输器
+[2m2025-11-06T06:18:04.947060Z[0m [32m INFO[0m [2mtls_key_agent::transport::file_transport[0m[2m:[0m 创建新文件: /tmp/tls_keys_agent_1762409884_1.log
+[2m2025-11-06T06:18:04.947067Z[0m [32m INFO[0m [2mtls_key_agent::transport::transport_manager[0m[2m:[0m 消息分发器已启动
+[2m2025-11-06T06:18:04.947165Z[0m [32m INFO[0m [2mtls_key_agent::transport::file_transport[0m[2m:[0m 文件传输器启动成功
+[2m2025-11-06T06:18:04.947181Z[0m [32m INFO[0m [2mtls_key_agent::extractor::key_processor[0m[2m:[0m 会话处理回调已设置
+[2m2025-11-06T06:18:04.947184Z[0m [32m INFO[0m [2mtls_key_agent::extractor::ssl_hook[0m[2m:[0m 启动SSL Hook
+[2m2025-11-06T06:18:04.947186Z[0m [32m INFO[0m [2mtls_key_agent::extractor::ssl_hook[0m[2m:[0m OpenSSL Hook功能将在注入管理模块中实现
+[2m2025-11-06T06:18:04.947188Z[0m [32m INFO[0m [2mtls_key_agent::extractor::ssl_hook[0m[2m:[0m SSL Hook启动成功
+[2m2025-11-06T06:18:04.947190Z[0m [32m INFO[0m [2mtls_key_agent::extractor::session_manager[0m[2m:[0m 启动会话管理器
+[2m2025-11-06T06:18:04.947208Z[0m [32m INFO[0m [2mtls_key_agent::extractor::session_manager[0m[2m:[0m 会话管理器启动成功
+[2m2025-11-06T06:18:04.947223Z[0m [32m INFO[0m [2mtls_key_agent::extractor[0m[2m:[0m 密钥提取器启动成功
+[2m2025-11-06T06:18:04.947227Z[0m [32m INFO[0m [2mtls_key_agent[0m[2m:[0m TLS密钥Agent启动成功
+[2m2025-11-06T06:18:04.947230Z[0m [32m INFO[0m [2mtls_key_agent[0m[2m:[0m TLS密钥提取Agent已启动，按Ctrl+C停止
+[2m2025-11-06T06:18:04.947236Z[0m [32m INFO[0m [2mtls_key_agent::extractor::session_manager[0m[2m:[0m 会话处理任务已启动

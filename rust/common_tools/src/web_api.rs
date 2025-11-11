@@ -11,6 +11,7 @@ use crate::network_utils::NetworkUtils;
 use crate::packet_analyzer::PacketAnalyzer;
 use crate::regex_matcher::RegexMatcher;
 use crate::md5_utils::{Md5Request, process_md5_request};
+use crate::string_converter::{StringConvertRequest, StringConvertResponse, process_string_conversion};
 
 #[derive(Serialize, Deserialize)]
 struct ApiResponse<T> {
@@ -112,6 +113,11 @@ pub fn create_regex_routes() -> Router {
 pub fn create_md5_routes() -> Router {
     Router::new()
         .route("/calculate", post(md5_calculate))
+}
+
+pub fn create_string_routes() -> Router {
+    Router::new()
+        .route("/convert", post(string_convert))
 }
 
 async fn network_convert(
@@ -228,4 +234,16 @@ async fn md5_calculate(
 ) -> impl IntoResponse {
     let response = process_md5_request(request);
     Json(ApiResponse::success(response))
+}
+
+async fn string_convert(
+    Json(request): Json<StringConvertRequest>
+) -> impl IntoResponse {
+    match process_string_conversion(request) {
+        Ok(response) => Json(ApiResponse::success(response)).into_response(),
+        Err(error) => {
+            let error_response = ApiResponse::<StringConvertResponse>::error(error);
+            (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
+        }
+    }
 }

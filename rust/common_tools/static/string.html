@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字符串转换工具 - 开发者工具箱</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔤</text></svg>">
+
+    <style>
+        /* 字符串转换页面专用样式 */
+        .compact-card {
+            margin-bottom: 1rem;
+        }
+
+        .compact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            align-items: start;
+        }
+
+        .result-container {
+            min-height: 60px !important;
+        }
+
+        .form-textarea {
+            padding: 0.6rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+
+        .form-select {
+            padding: 0.6rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--background);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            margin: 0.2rem;
+            font-size: 0.85rem;
+        }
+
+        .string-result {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+            background: var(--background-secondary);
+            padding: 0.8rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.4;
+            min-height: 80px;
+            width: 100%;
+        }
+
+        .copy-btn {
+            background: var(--success-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            margin: 0.2rem;
+        }
+
+        .copy-btn:hover {
+            background: var(--success-color-dark);
+            transform: translateY(-1px);
+        }
+
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+
+        .example-section {
+            background: var(--background-secondary);
+            padding: 0.8rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            margin-top: 0.8rem;
+        }
+
+        .example-text {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            background: var(--background);
+            padding: 0.4rem;
+            border-radius: 4px;
+            margin: 0.3rem 0;
+            word-break: break-all;
+        }
+
+        .info-badge {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            margin-left: 0.3rem;
+        }
+
+        .btn-small {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.75rem;
+            margin: 0.1rem;
+        }
+
+        @media (max-width: 768px) {
+            .compact-grid {
+                grid-template-columns: 1fr;
+                gap: 0.8rem;
+            }
+
+            .string-result {
+                max-height: 150px;
+                font-size: 0.8rem;
+            }
+
+            .form-textarea {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">
+                <span style="font-size: 1.5rem; margin-right: 0.5rem;">🛠️</span>
+                <span>开发者工具箱</span>
+            </a>
+            <nav class="nav">
+                <a href="/" class="nav-link">主页</a>
+                <a href="/network.html" class="nav-link">网络转换</a>
+                <a href="/packet.html" class="nav-link">报文分析</a>
+                <a href="/regex.html" class="nav-link">正则匹配</a>
+                <a href="/md5.html" class="nav-link">MD5 计算</a>
+                <a href="/string.html" class="nav-link active">字符串转换</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 面包屑导航 -->
+    <nav style="background: var(--background); padding: 1rem 0; border-bottom: 1px solid var(--border-color);">
+        <div class="container">
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                <a href="/" style="color: var(--primary-color); text-decoration: none;">🏠 首页</a>
+                <span>›</span>
+                <span style="color: var(--text-primary); font-weight: 500;">字符串转换工具</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main">
+        <div class="container">
+            <!-- 页面标题 -->
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="card-title">🔤 字符串转义序列转换工具</h1>
+                    <p class="card-description">
+                        支持八进制格式（\000）和 Unicode 格式（\u0000）之间的双向转换，自动检测格式并提供精确转换
+                    </p>
+                </div>
+            </div>
+
+            <!-- 字符串转换工具 -->
+            <div class="card compact-card">
+                <div class="card-header">
+                    <h2 class="card-title">🔄 字符串格式转换</h2>
+                </div>
+                <div class="compact-grid">
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                输入字符串
+                                <span class="info-badge">支持包含转义序列的字符串</span>
+                            </label>
+                            <textarea id="inputText" class="form-textarea" rows="8"
+                                      placeholder="输入包含转义序列的字符串...&#10;例如: 4\000\000\000\n5.0.54\000"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">转换类型</label>
+                            <select id="conversionType" class="form-select">
+                                <option value="auto">🤖 自动检测</option>
+                                <option value="octal_to_unicode">\000 → \u0000 (八进制到Unicode)</option>
+                                <option value="unicode_to_octal">\u0000 → \000 (Unicode到八进制)</option>
+                            </select>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="convertString()">
+                                🔄 转换
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearInput()">
+                                🗑️ 清空
+                            </button>
+                            <button class="btn btn-info" onclick="swapInOut()">
+                                🔄 交换输入输出
+                            </button>
+                            <button class="copy-btn" onclick="copyResult()" id="copyResultBtn" style="display: none;">
+                                📋 复制结果
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label class="form-label">转换结果</label>
+                                <div id="resultText" class="string-result" style="display: none;"></div>
+                                <div id="placeholder" style="color: var(--text-secondary); text-align: center; padding: 0.6rem;">
+                                    点击"转换"按钮查看结果
+                                </div>
+
+                            <div id="resultInfo" style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.8rem;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 使用示例 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">💡 使用示例</h2>
+                </div>
+                <div class="card-content">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+                        <div class="example-section">
+                            <h3 style="color: var(--primary-color); margin-bottom: 0.6rem; font-size: 1rem;">🔢 八进制转 Unicode</h3>
+                            <div>
+                                <strong>输入格式:</strong> \000, \242, \002 等
+                                <div class="example-text">4\000\000\000\n5.0.54\000</div>
+                                <button class="btn btn-small" onclick="loadExample('octal')">
+                                    📋 加载示例
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="example-section">
+                            <h3 style="color: var(--primary-color); margin-bottom: 0.6rem; font-size: 1rem;">🌐 Unicode 转 八进制</h3>
+                            <div>
+                                <strong>输入格式:</strong> \u0000, \u00a2, \u0002 等
+                                <div class="example-text">4\u0000\u0000\u0000\n5.0.54\u0000</div>
+                                <button class="btn btn-small" onclick="loadExample('unicode')">
+                                    📋 加载示例
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="example-section">
+                            <h3 style="color: var(--primary-color); margin-bottom: 0.6rem; font-size: 1rem;">🧪 复杂示例</h3>
+                            <div>
+                                <strong>包含多种转义序列:</strong>
+                                <div class="example-text">4\000\000\000\n5.0.54\000^\000\000\000>~$4uth,\000,\242!\002</div>
+                                <button class="btn btn-small" onclick="loadExample('complex')">
+                                    📋 加载示例
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 使用说明 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📖 使用说明</h2>
+                </div>
+                <div class="card-content">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+                        <div>
+                            <h3 style="color: var(--primary-color); margin-bottom: 0.6rem; font-size: 1rem;">🔧 转换类型</h3>
+                            <ul style="line-height: 1.4; color: var(--text-secondary); font-size: 0.9rem;">
+                                <li><strong>自动检测:</strong> 智能识别输入格式并自动转换</li>
+                                <li><strong>八进制到Unicode:</strong> 将 \000 格式转为 \u0000</li>
+                                <li><strong>Unicode到八进制:</strong> 将 \u0000 格式转为 \000</li>
+                                <li>支持往返转换，确保数据完整性</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 style="color: var(--primary-color); margin-bottom: 0.6rem; font-size: 1rem;">📝 格式规范</h3>
+                            <ul style="line-height: 1.4; color: var(--text-secondary); font-size: 0.9rem;">
+                                <li><strong>八进制格式:</strong> 反斜杠 + 3位八进制数字 (\000-\377)</li>
+                                <li><strong>Unicode格式:</strong> 反斜杠 + u + 4位十六进制数字</li>
+                                <li>支持 0-255 范围内的字符编码转换</li>
+                                <li>保留非转义序列字符原样输出</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 style="color: var(--primary-color); margin-bottom: 0.6rem; font-size: 1rem;">🎯 应用场景</h3>
+                            <ul style="line-height: 1.4; color: var(--text-secondary); font-size: 0.9rem;">
+                                <li>调试输出格式化</li>
+                                <li>字符串编码转换</li>
+                                <li>日志文件处理</li>
+                                <li>协议数据分析</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 开发者工具箱. 免费开源工具集合.</p>
+        </div>
+    </footer>
+
+    <script>
+        let lastResult = '';
+
+        // 字符串转换
+        async function convertString() {
+            const inputText = document.getElementById('inputText').value.trim();
+            const conversionType = document.getElementById('conversionType').value;
+
+            if (!inputText) {
+                alert('请输入要转换的字符串');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/string/convert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        input: inputText,
+                        conversion_type: conversionType
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    displayResult(result.data);
+                } else {
+                    alert('转换失败: ' + (result.data?.error || result.error || '未知错误'));
+                }
+            } catch (error) {
+                alert('请求失败: ' + error.message);
+            }
+        }
+
+        // 显示转换结果
+        function displayResult(data) {
+            const resultText = document.getElementById('resultText');
+            const placeholder = document.getElementById('placeholder');
+            const resultInfo = document.getElementById('resultInfo');
+
+            resultText.textContent = data.result;
+            lastResult = data.result;
+
+            let infoText = `转换类型: ${getConversionTypeName(data.conversion_type)} | `;
+            infoText += `原始长度: ${data.original_length} | `;
+            infoText += `转换长度: ${data.converted_length}`;
+
+            if (data.auto_detected) {
+                infoText += ' | 🤖 自动检测格式';
+            }
+
+            resultInfo.textContent = infoText;
+
+            placeholder.style.display = 'none';
+            resultText.style.display = 'block';
+
+            // 显示复制按钮
+            document.getElementById('copyResultBtn').style.display = 'inline-block';
+        }
+
+        // 获取转换类型名称
+        function getConversionTypeName(type) {
+            const typeNames = {
+                'octal_to_unicode': '八进制→Unicode',
+                'unicode_to_octal': 'Unicode→八进制',
+                'auto': '自动检测'
+            };
+            return typeNames[type] || type;
+        }
+
+        // 加载示例
+        function loadExample(type) {
+            const inputText = document.getElementById('inputText');
+            const conversionType = document.getElementById('conversionType');
+
+            const examples = {
+                'octal': {
+                    text: '4\\000\\000\\000\\n5.0.54\\000',
+                    type: 'octal_to_unicode'
+                },
+                'unicode': {
+                    text: '4\\u0000\\u0000\\u0000\\n5.0.54\\u0000',
+                    type: 'unicode_to_octal'
+                },
+                'complex': {
+                    text: '4\\000\\000\\000\\n5.0.54\\000^\\000\\000\\000>~$4uth,\\000,\\242!\\002\\000\\000\\000\\000\\000\\000\\000\\000\\000\\000\\000\\000\\000\\000>612IWZ>fhWX\\000',
+                    type: 'auto'
+                }
+            };
+
+            const example = examples[type];
+            if (example) {
+                inputText.value = example.text;
+                conversionType.value = example.type;
+
+                // 自动执行转换
+                convertString();
+            }
+        }
+
+        // 清空输入
+        function clearInput() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('resultText').style.display = 'none';
+            document.getElementById('placeholder').style.display = 'block';
+            document.getElementById('copyResultBtn').style.display = 'none';
+            lastResult = '';
+        }
+
+        // 交换输入输出
+        function swapInOut() {
+            const inputText = document.getElementById('inputText');
+
+            if (lastResult) {
+                const temp = inputText.value;
+                inputText.value = lastResult;
+                lastResult = temp;
+
+                // 自动切换转换类型
+                const conversionType = document.getElementById('conversionType');
+                if (conversionType.value === 'octal_to_unicode') {
+                    conversionType.value = 'unicode_to_octal';
+                } else if (conversionType.value === 'unicode_to_octal') {
+                    conversionType.value = 'octal_to_unicode';
+                }
+
+                // 清空结果显示
+                document.getElementById('resultText').style.display = 'none';
+                document.getElementById('placeholder').style.display = 'block';
+                document.getElementById('copyResultBtn').style.display = 'none';
+            } else {
+                alert('没有可交换的结果，请先执行转换');
+            }
+        }
+
+        // 复制结果到剪贴板
+        async function copyResult() {
+            if (!lastResult) {
+                alert('没有可复制的结果');
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(lastResult);
+                // 临时改变按钮文本
+                const button = document.getElementById('copyResultBtn');
+                const originalText = button.textContent;
+                button.textContent = '✅ 已复制';
+                button.style.background = 'var(--success-color-dark)';
+
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = 'var(--success-color)';
+                }, 2000);
+            } catch (error) {
+                alert('复制失败: ' + error.message);
+            }
+        }
+
+        // 添加键盘快捷键支持
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Enter 执行转换
+            if (e.ctrlKey && e.key === 'Enter') {
+                convertString();
+            }
+            // Ctrl+K 清空输入
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                clearInput();
+            }
+            // Ctrl+S 交换输入输出
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                swapInOut();
+            }
+        });
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 加载默认示例
+            setTimeout(() => {
+                loadExample('complex');
+            }, 500);
+        });
+    </script>
+</body>
+</html>

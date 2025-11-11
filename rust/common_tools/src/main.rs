@@ -2,6 +2,7 @@ mod network_utils;
 mod packet_analyzer;
 mod regex_matcher;
 mod md5_utils;
+mod string_converter;
 mod web_api;
 
 use axum::{
@@ -110,6 +111,7 @@ fn create_router(app_state: Arc<AppState>) -> Router {
                     .unwrap_or_else(|_| "<h1>服务正在启动...</h1>".to_string())
             )
         }))
+        .route("/string.html", get(serve_string_page))
         .fallback(|| async {
             (StatusCode::NOT_FOUND, "页面未找到")
         })
@@ -121,6 +123,7 @@ fn create_api_routes(_app_state: Arc<AppState>) -> Router {
         .nest("/packet", web_api::create_packet_routes())
         .nest("/regex", web_api::create_regex_routes())
         .nest("/md5", web_api::create_md5_routes())
+        .nest("/string", web_api::create_string_routes())
 }
 
 async fn health_check() -> impl IntoResponse {
@@ -141,7 +144,8 @@ async fn api_info() -> impl IntoResponse {
             "network": "/api/network",
             "packet": "/api/packet",
             "regex": "/api/regex",
-            "md5": "/api/md5"
+            "md5": "/api/md5",
+            "string": "/api/string"
         }),
         description: "A collection of common utility tools for developers".to_string(),
     };
@@ -194,6 +198,13 @@ async fn serve_regex_page() -> impl IntoResponse {
 
 async fn serve_md5_page() -> impl IntoResponse {
     match std::fs::read_to_string("static/md5.html") {
+        Ok(contents) => axum::response::Html(contents).into_response(),
+        Err(_) => (StatusCode::NOT_FOUND, "页面未找到").into_response(),
+    }
+}
+
+async fn serve_string_page() -> impl IntoResponse {
+    match std::fs::read_to_string("static/string.html") {
         Ok(contents) => axum::response::Html(contents).into_response(),
         Err(_) => (StatusCode::NOT_FOUND, "页面未找到").into_response(),
     }

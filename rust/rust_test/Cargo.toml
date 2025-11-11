@@ -27,5 +27,5 @@ members = [
     "rust_trait4",
     "rust_trait5",
     "rust_use",
-    "rust_vec", "rust_drop_trait", "rust_rc",
+    "rust_vec", "rust_drop_trait", "rust_rc", "rust_refcell",
 ]
