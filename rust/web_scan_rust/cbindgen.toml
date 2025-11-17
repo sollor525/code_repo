@@ -1,0 +1,48 @@
+# cbindgen配置文件 - 用于生成C语言头文件
+# 
+# cbindgen是一个工具，可以将Rust代码自动转换为C语言头文件，
+# 使得C/C++程序可以调用Rust编写的库函数。
+
+# 指定生成的语言类型
+language = "C"
+
+# 头文件顶部的注释信息
+# 这些注释会出现在生成的.h文件的最开始
+header = """
+/* Web Scan Detection - Rust Implementation
+ * Auto-generated C bindings
+ * DO NOT EDIT MANUALLY
+ */
+"""
+
+# 是否在头文件中包含版本信息
+# 如果为true，会生成类似 #define VERSION "0.1.0" 的宏定义
+include_version = true
+
+# 命名空间前缀，用于避免C语言中的符号冲突
+# 所有导出的函数和类型都会加上这个前缀
+namespace = "WebScanRust"
+
+# 制表符宽度，影响生成的代码格式
+tab_width = 4
+
+# 每行的最大长度，超过这个长度会自动换行
+line_length = 100
+
+[export]
+# 导出配置：指定哪些Rust类型应该导出到C头文件中
+# 只有在这个列表中的类型才会出现在生成的.h文件中
+include = [
+    "WebScanResult",    # Web扫描检测结果结构体
+    "WebScanAction",    # Web扫描动作枚举
+    "WebScanConfig",    # Web扫描配置结构体
+    "WebScanStats",     # Web扫描统计信息结构体
+]
+
+[export.rename]
+# 重命名配置：将Rust类型名映射为C语言风格的类型名
+# 这有助于保持C语言代码的命名约定
+"WebScanResult" = "web_scan_result_t"      # 结构体类型名加上_t后缀
+"WebScanAction" = "web_scan_action_e"      # 枚举类型名加上_e后缀
+"WebScanConfig" = "web_scan_config_t"      # 配置结构体加上_t后缀
+"WebScanStats" = "web_scan_stats_t"        # 统计结构体加上_t后缀

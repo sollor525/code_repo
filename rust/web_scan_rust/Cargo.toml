@@ -1,0 +1,82 @@
+# Cargo.toml - Rust项目的配置文件
+# 
+# 这个文件定义了项目的基本信息、依赖关系和编译选项。
+# Cargo是Rust的包管理器和构建工具，类似于Node.js的npm或Python的pip。
+
+[package]
+# 包的基本信息
+name = "web_scan_rust"                    # 包名，用于crates.io和依赖引用
+version = "0.1.0"                         # 版本号，遵循语义化版本控制
+edition = "2021"                          # Rust版本，2021是最新的稳定版本
+authors = ["npatch team"]                  # 作者信息
+description = "High-performance web scanning detection engine in Rust"  # 项目描述
+
+[lib]
+# 库配置
+name = "web_scan_rust"                    # 库的名称
+# crate-type定义编译输出的类型
+# cdylib: C动态库，可以被C/C++程序调用
+# rlib: Rust静态库，可以被其他Rust程序使用
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# 项目依赖包列表
+# 每个依赖都指定了版本要求和特性
+
+# HTTP解析和协议检测相关依赖
+httparse = "1.8"                          # HTTP解析库，用于解析HTTP请求和响应
+regex = "1.10"                            # 正则表达式库，用于复杂的模式匹配
+
+# Intel Hyperscan 绑定
+# Hyperscan是Intel开发的高性能正则表达式匹配库
+# 这个 Rust crate 绑定到系统安装的 Hyperscan 库
+hyperscan = { version = "0.3" }
+
+# 会话管理相关依赖
+bytes = "1.5"                           # 高效字节缓冲区
+lru = "0.12"                            # LRU缓存，用于会话管理
+
+# 序列化/反序列化相关依赖，用于配置文件处理
+serde = { version = "1.0", features = ["derive"] }  # 序列化框架，derive特性允许自动实现
+serde_json = "1.0"                        # JSON序列化/反序列化支持
+toml = "0.8"                              # TOML配置文件格式支持
+
+# 日志记录相关依赖
+log = "0.4"                               # 日志门面库，定义日志接口
+env_logger = "0.10"                       # 环境变量配置的日志记录器
+
+# 错误处理相关依赖
+thiserror = "1.0"                         # 简化错误类型定义的宏库
+anyhow = "1.0"                            # 通用错误处理库，提供Result<T, anyhow::Error>
+
+# 性能和工具库
+once_cell = "1.19"                        # 延迟初始化的全局变量，比lazy_static更高效
+parking_lot = "0.12"                      # 高性能互斥锁实现，比标准库的Mutex更快
+memmap2 = "0.9"                           # 内存映射文件支持，用于高效读取大文件
+fnv = "1.0"                               # FNV哈希函数，比标准库的哈希函数更快
+
+# FFI（外部函数接口）工具
+libc = "0.2"                              # C语言标准库的Rust绑定
+
+[build-dependencies]
+# 构建时依赖，只在编译时使用，不会包含在最终二进制文件中
+cbindgen = "0.26"                         # 用于生成C语言头文件的工具
+pkg-config = "0.3"                        # pkg-config工具绑定，用于检测系统库
+
+[dev-dependencies]
+# 开发依赖，只在开发和测试时使用
+criterion = "0.5"                         # 性能基准测试库
+proptest = "1.4"                          # 基于属性的测试库，用于生成随机测试数据
+tempfile = "3.8"                          # 临时文件创建库，用于测试
+
+[[bench]]
+# 基准测试配置
+name = "detection_bench"                   # 基准测试的名称
+harness = false                            # 禁用默认的基准测试框架，使用criterion
+
+
+[profile.release]
+# 发布版本的编译优化配置
+lto = true                                # 启用链接时优化，提高性能但增加编译时间
+codegen-units = 1                         # 限制代码生成单元数量，提高优化效果
+panic = "abort"                           # panic时直接终止程序，减小二进制文件大小
