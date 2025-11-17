@@ -5,6 +5,9 @@
 //! - 分段数据包处理
 //! - 规则加载和匹配
 //! - FFI接口测试
+//!
+//! 注意：这些测试使用全局引擎实例，因此需要串行执行以避免状态干扰。
+//! 运行测试时建议使用: cargo test --test integration_tests -- --test-threads=1
 
 use web_scan_rust::{Protocol, WebScanResult, WebScanStats, WebScanAction};
 use std::ffi::{CStr, CString};
@@ -60,9 +63,13 @@ fn test_hyperscan_initialization() {
 /// 测试分段数据包处理
 #[test]
 fn test_segmented_payload_processing() {
-    // 初始化引擎
+    // 初始化引擎并确保启用
     let result = unsafe { web_scan_rust_init() };
     assert_eq!(result, 0);
+    unsafe { 
+        web_scan_rust_set_enabled(true);
+        web_scan_rust_reset_stats();  // 重置统计信息
+    }
     
     // 创建测试规则
     let rules_content = r#"
@@ -127,17 +134,23 @@ alert http any any -> any any (msg:"SQL injection"; content:"union select"; sid:
     assert!(result.is_matched);
     assert_eq!(result.rule_id, 1001);
     
-    // 清理
-    unsafe { web_scan_rust_cleanup() };
+    // 清理（但保持引擎启用，以便后续测试使用）
+    unsafe { 
+        web_scan_rust_set_enabled(true);  // 确保引擎保持启用
+    }
     std::fs::remove_file(rules_path).unwrap();
 }
 
 /// 测试Hyperscan规则格式
 #[test]
 fn test_hyperscan_rule_format() {
-    // 初始化引擎
+    // 初始化引擎并确保启用
     let result = unsafe { web_scan_rust_init() };
     assert_eq!(result, 0);
+    unsafe { 
+        web_scan_rust_set_enabled(true);
+        web_scan_rust_reset_stats();  // 重置统计信息
+    }
     
     // 创建Hyperscan格式规则
     let rules_content = r#"
@@ -178,43 +191,58 @@ alert http any any -> any any (msg:"XSS attempt"; content:"<script>"; sid:2003;)
     assert!(result.is_matched);
     assert_eq!(result.rule_id, 2001);
 
-    // 清理
-    unsafe { web_scan_rust_cleanup() };
+    // 清理（但保持引擎启用，以便后续测试使用）
+    unsafe { 
+        web_scan_rust_set_enabled(true);  // 确保引擎保持启用
+    }
     std::fs::remove_file(rules_path).unwrap();
 }
 
 /// 测试错误处理
 #[test]
 fn test_error_handling() {
-    // 不初始化引擎，直接调用函数
-    let mut result = WebScanResult::default();
-    let test_payload = b"GET /test HTTP/1.1\r\n\r\n";
+    // 初始化引擎（由于OnceLock的特性，引擎可能已经被初始化）
+    unsafe { web_scan_rust_init(); }
     
+    // 测试空指针错误处理
     let result_code = unsafe {
         web_scan_rust_process_payload(
-            test_payload.as_ptr(),
-            test_payload.len() as u32,
-            &mut result,
+            std::ptr::null(),
+            10,
+            std::ptr::null_mut(),
         )
     };
     
-    // 应该返回错误
-    assert!(result_code < 0, "Expected error code < 0, got {}", result_code);
+    // 应该返回错误（空指针）
+    assert!(result_code < 0, "Expected error code < 0 for null pointer, got {}", result_code);
     
     // 检查错误信息
     let error_ptr = unsafe { web_scan_rust_get_last_error() };
     assert!(!error_ptr.is_null(), "Error pointer should not be null");
     
     let error_str = unsafe { CStr::from_ptr(error_ptr) }.to_str().unwrap();
-    assert!(error_str.contains("not initialized"), "Error message should contain 'not initialized', got: {}", error_str);
+    assert!(error_str.contains("Null") || error_str.contains("null"), "Error message should contain 'Null' or 'null', got: {}", error_str);
+    
+    // 测试无效的规则路径
+    let invalid_path = CString::new("/nonexistent/path.rules").unwrap();
+    let result_code = unsafe {
+        web_scan_rust_load_rules(invalid_path.as_ptr())
+    };
+    
+    // 应该返回错误（文件不存在）
+    assert!(result_code < 0, "Expected error code < 0 for invalid path, got {}", result_code);
 }
 
 /// 测试统计信息
 #[test]
 fn test_statistics() {
-    // 初始化引擎
+    // 初始化引擎并确保启用
     let result = unsafe { web_scan_rust_init() };
     assert_eq!(result, 0);
+    unsafe { 
+        web_scan_rust_set_enabled(true);
+        web_scan_rust_reset_stats();  // 先重置统计信息
+    }
     
     // 创建测试规则
     let rules_content = r#"
@@ -232,7 +260,7 @@ alert http any any -> any any (msg:"Test rule"; content:"test"; sid:3001;)
         CStr::from_ptr(web_scan_rust_get_last_error()).to_str().unwrap_or("unknown error")
     });
     
-    // 重置统计
+    // 再次重置统计（确保在加载规则后重置）
     let result = unsafe { web_scan_rust_reset_stats() };
     assert_eq!(result, 0);
     
@@ -260,17 +288,20 @@ alert http any any -> any any (msg:"Test rule"; content:"test"; sid:3001;)
     assert!(stats.packets_processed >= 5);
     assert!(stats.packets_matched >= 5);
     
-    // 清理
-    unsafe { web_scan_rust_cleanup() };
+    // 清理（但保持引擎启用，以便后续测试使用）
+    unsafe { 
+        web_scan_rust_set_enabled(true);  // 确保引擎保持启用
+    }
     std::fs::remove_file(rules_path).unwrap();
 }
 
 /// 测试引擎控制功能
 #[test]
 fn test_engine_control() {
-    // 初始化引擎
+    // 初始化引擎并确保启用
     let result = unsafe { web_scan_rust_init() };
     assert_eq!(result, 0);
+    unsafe { web_scan_rust_set_enabled(true); }
     
     // 测试启用/禁用
     let result = unsafe { web_scan_rust_set_enabled(false) };
@@ -289,8 +320,10 @@ fn test_engine_control() {
     let result = unsafe { web_scan_rust_set_default_action(WebScanAction::Drop) };
     assert_eq!(result, 0);
     
-    // 清理
-    unsafe { web_scan_rust_cleanup() };
+    // 清理（但保持引擎启用，以便后续测试使用）
+    unsafe { 
+        web_scan_rust_set_enabled(true);  // 确保引擎保持启用
+    }
 }
 
 /// 测试并发安全性
@@ -299,9 +332,10 @@ fn test_concurrent_safety() {
     use std::thread;
     use std::sync::Arc;
     
-    // 初始化引擎
+    // 初始化引擎并确保启用
     let result = unsafe { web_scan_rust_init() };
     assert_eq!(result, 0);
+    unsafe { web_scan_rust_set_enabled(true); }
     
     // 创建测试规则
     let rules_content = r#"
@@ -343,7 +377,9 @@ alert http any any -> any any (msg:"Concurrent test"; content:"test"; sid:4001;)
         handle.join().unwrap();
     }
     
-    // 清理
-    unsafe { web_scan_rust_cleanup() };
+    // 清理（但保持引擎启用，以便后续测试使用）
+    unsafe { 
+        web_scan_rust_set_enabled(true);  // 确保引擎保持启用
+    }
     std::fs::remove_file(rules_path).unwrap();
 }

@@ -77,6 +77,8 @@ int web_scan_rust_load_rules(const char *rules_path);
 
 /**
  * Process a packet payload
+ * Note: This function creates a new stream for each call, suitable for non-streaming scenarios.
+ * For cross-packet matching, use web_scan_rust_process_payload_with_session.
  * @param payload Pointer to payload data
  * @param payload_len Length of payload in bytes
  * @param result Pointer to result structure to fill
@@ -85,7 +87,23 @@ int web_scan_rust_load_rules(const char *rules_path);
 int web_scan_rust_process_payload(const uint8_t *payload, uint32_t payload_len, web_scan_result_t *result);
 
 /**
+ * Process a packet payload with session management
+ * This function maintains independent Hyperscan streams for each session, supporting cross-packet matching.
+ * All packets of the same session must use the same session_id.
+ * @param session_id Session identifier, use the same ID for all packets of the same session
+ * @param payload Pointer to payload data
+ * @param payload_len Length of payload in bytes
+ * @param is_final Whether this is the last packet of the session (0=no, non-zero=yes)
+ * @param reset_on_request_end Whether to reset the stream when request ends (0=no, non-zero=yes, for HTTP request/response streams)
+ * @param result Pointer to result structure to fill
+ * @return 0 on success, negative error code on failure
+ */
+int web_scan_rust_process_payload_with_session(uint64_t session_id, const uint8_t *payload, uint32_t payload_len, int is_final, int reset_on_request_end, web_scan_result_t *result);
+
+/**
  * Process a segmented packet payload with stream reassembly
+ * Note: This function creates a new stream for each call, suitable for non-streaming scenarios.
+ * For cross-packet matching, use web_scan_rust_process_segmented_payload_with_session.
  * @param payload Pointer to payload data
  * @param payload_len Length of payload in bytes
  * @param stream_data Pointer to stream data buffer
@@ -103,6 +121,35 @@ int web_scan_rust_process_segmented_payload(
     uint32_t stream_len,
     uint32_t max_stream_len,
     int is_complete,
+    web_scan_result_t *result,
+    uint32_t *new_stream_len
+);
+
+/**
+ * Process a segmented packet payload with stream reassembly and session management
+ * This function maintains independent Hyperscan streams for each session, supporting cross-packet matching.
+ * All packets of the same session must use the same session_id.
+ * @param session_id Session identifier, use the same ID for all packets of the same session
+ * @param payload Pointer to payload data
+ * @param payload_len Length of payload in bytes
+ * @param stream_data Pointer to stream data buffer
+ * @param stream_len Current length of stream data buffer in bytes
+ * @param max_stream_len Maximum capacity of stream data buffer in bytes
+ * @param is_complete Whether this is a complete packet (0=no, non-zero=yes)
+ * @param is_final Whether this is the last packet of the session (0=no, non-zero=yes)
+ * @param result Pointer to result structure to fill
+ * @param new_stream_len Pointer to store new stream data length
+ * @return 0 on success, 1 if more data needed, negative error code on failure
+ */
+int web_scan_rust_process_segmented_payload_with_session(
+    uint64_t session_id,
+    const uint8_t *payload,
+    uint32_t payload_len,
+    uint8_t *stream_data,
+    uint32_t stream_len,
+    uint32_t max_stream_len,
+    int is_complete,
+    int is_final,
     web_scan_result_t *result,
     uint32_t *new_stream_len
 );
@@ -158,6 +205,31 @@ int web_scan_rust_reload_rules(const char *rules_path);
  * @return Pointer to error string, or NULL if no error
  */
 const char *web_scan_rust_get_last_error(void);
+
+/**
+ * Reset a specific session's Hyperscan stream
+ * Reset the stream state to allow matching from the beginning again, without closing the stream.
+ * This is useful for HTTP request/response streams: when an HTTP request ends,
+ * you can reset the stream to prepare for the next request without closing and recreating it.
+ * @param session_id Session identifier to reset
+ * @return 0 on success, negative error code on failure
+ */
+int web_scan_rust_reset_session(uint64_t session_id);
+
+/**
+ * Close a specific session's Hyperscan stream
+ * Call this function when a session ends to clean up resources.
+ * @param session_id Session identifier to close
+ * @return 0 on success, negative error code on failure
+ */
+int web_scan_rust_close_session(uint64_t session_id);
+
+/**
+ * Close all active sessions' Hyperscan streams
+ * This function closes and cleans up all active session streams.
+ * @return 0 on success, negative error code on failure
+ */
+int web_scan_rust_close_all_sessions(void);
 
 /**
  * Cleanup and shutdown the engine

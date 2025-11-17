@@ -17,10 +17,6 @@ use crate::hyperscan::{HyperscanCompiler, HyperscanScanner};
 use parking_lot::RwLock;
 // 导入原子引用计数智能指针，用于多线程共享数据
 use std::sync::Arc;
-// 导入HashMap用于会话管理
-use std::collections::HashMap;
-// 导入Rust Hyperscan相关类型
-use crate::hyperscan::MatchResult;
 
 /// Web扫描动作枚举
 /// 
@@ -119,18 +115,6 @@ impl WebScanEngine {
         }
     }
 
-    /// 创建新的Web扫描引擎实例（默认启用Hyperscan）
-    ///
-    /// 注意：此函数已废弃，请使用 new()，因为 Hyperscan 现在是默认启用的
-    ///
-    /// # 返回值
-    /// * `Self` - 引擎实例
-    #[deprecated(note = "Hyperscan is now enabled by default, use new() instead")]
-    pub fn new_with_hyperscan(_use_hyperscan: bool) -> Self {
-        // 忽略参数，总是启用 Hyperscan
-        Self::new()
-    }
-
     /// 使用规则文件初始化引擎
     /// 
     /// 从指定路径加载规则文件，初始化规则管理器。
@@ -207,9 +191,12 @@ impl WebScanEngine {
     /// # 返回值
     /// * `Result<WebScanResult>` - 检测结果，包含匹配信息和建议动作
     pub fn process_payload(&self, payload: &[u8]) -> Result<WebScanResult> {
-        // 如果引擎未启用，直接返回默认结果
+        // 如果引擎未启用，返回结果但记录payload长度
         if !self.enabled {
-            return Ok(WebScanResult::default());
+            return Ok(WebScanResult {
+                content_length: payload.len() as u32,  // 记录实际payload长度
+                ..Default::default()
+            });
         }
 
         // 更新统计信息：增加已处理的数据包计数
@@ -226,10 +213,12 @@ impl WebScanEngine {
         // matches!宏用于模式匹配，检查协议是否为Web协议
         if !matches!(protocol_result.protocol, Protocol::Http | Protocol::Https | Protocol::Http2) {
             // 如果不是Web流量，返回结果但不进行内容检测
+            // 注意：即使协议未知，也应该记录payload的实际长度
             return Ok(WebScanResult {
                 protocol: protocol_result.protocol,
                 confidence: protocol_result.confidence,
-                ..Default::default()  // 使用其他字段的默认值
+                content_length: payload.len() as u32,  // 记录实际payload长度
+                ..Default::default()
             });
         }
 
@@ -251,6 +240,7 @@ impl WebScanEngine {
                     return Ok(WebScanResult {
                         protocol: protocol_result.protocol,
                         confidence: protocol_result.confidence,
+                        content_length: payload.len() as u32,  // 记录实际payload长度
                         ..Default::default()
                     });
                 }
@@ -355,6 +345,211 @@ impl WebScanEngine {
             }
         }
         Ok(None)
+    }
+
+    /// 使用Hyperscan进行模式匹配（带会话管理）
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    /// * `data` - 要匹配的数据
+    /// * `is_final` - 是否为该会话的最后一个数据包
+    /// * `reset_on_request_end` - 是否在请求结束时重置流（用于HTTP请求/响应流）
+    ///
+    /// # 返回值
+    /// * `Result<Option<u32>>` - 匹配的规则ID，如果没有匹配返回None
+    fn _hyperscan_match_with_session(&self, session_id: u64, data: &[u8], is_final: bool, reset_on_request_end: bool) -> Result<Option<u32>> {
+        if let Some(ref scanner) = self.hyperscan_scanner {
+            let matches = scanner.scan_stream_with_session(session_id, data, is_final, reset_on_request_end)?;
+            if let Some(first_match) = matches.first() {
+                return Ok(Some(first_match.rule_id));
+            }
+        }
+        Ok(None)
+    }
+
+    /// 处理数据包载荷并返回检测结果（带会话管理）
+    /// 
+    /// 这是引擎的核心方法，执行完整的检测流程，支持跨数据包边界匹配。
+    /// 
+    /// # 参数
+    /// * `session_id` - 会话标识符，同一个会话使用相同的ID
+    /// * `payload` - 要检测的数据包载荷（字节数组）
+    /// * `is_final` - 是否为该会话的最后一个数据包
+    /// * `reset_on_request_end` - 是否在请求结束时重置流（用于HTTP请求/响应流，当规则只需要匹配请求包时使用）
+    /// 
+    /// # 返回值
+    /// * `Result<WebScanResult>` - 检测结果，包含匹配信息和建议动作
+    pub fn process_payload_with_session(&self, session_id: u64, payload: &[u8], is_final: bool, reset_on_request_end: bool) -> Result<WebScanResult> {
+        // 如果引擎未启用，返回结果但记录payload长度
+        if !self.enabled {
+            return Ok(WebScanResult {
+                content_length: payload.len() as u32,  // 记录实际payload长度
+                ..Default::default()
+            });
+        }
+
+        // 更新统计信息：增加已处理的数据包计数
+        self.stats.increment_packets_processed();
+
+        // 第一步：协议检测
+        // 分析数据包内容，判断是否为Web流量
+        let protocol_result = self.protocol_detector.detect(payload)?;
+
+        // 记录协议统计
+        self.stats.record_protocol(protocol_result.protocol);
+        
+        // 只处理Web流量（HTTP、HTTPS、HTTP/2）
+        if !matches!(protocol_result.protocol, Protocol::Http | Protocol::Https | Protocol::Http2) {
+            // 如果不是Web流量，返回结果但不进行内容检测
+            // 注意：即使协议未知，也应该记录payload的实际长度
+            return Ok(WebScanResult {
+                protocol: protocol_result.protocol,
+                confidence: protocol_result.confidence,
+                content_length: payload.len() as u32,  // 记录实际payload长度
+                ..Default::default()
+            });
+        }
+
+        // 第二步：内容转换
+        // 将字节数据转换为字符串，用于规则匹配
+        let content = match std::str::from_utf8(payload) {
+            Ok(s) => s,
+            Err(_) => {
+                // 如果UTF-8转换失败，尝试提取可打印的ASCII字符
+                let ascii_content: String = payload
+                    .iter()
+                    .filter(|&&b| b >= 32 && b <= 126)
+                    .map(|&b| b as char)
+                    .collect();
+                
+                if ascii_content.is_empty() {
+                    return Ok(WebScanResult {
+                        protocol: protocol_result.protocol,
+                        confidence: protocol_result.confidence,
+                        content_length: payload.len() as u32,  // 记录实际payload长度
+                        ..Default::default()
+                    });
+                }
+                
+                Box::leak(ascii_content.into_boxed_str())
+            }
+        };
+
+        // 第三步：规则匹配 - 优先使用 Hyperscan（带会话管理）
+        let (matched_rule_id, action) = if self.use_hyperscan && self.hyperscan_scanner.is_some() {
+            // 使用 Hyperscan 进行高性能匹配（带会话管理）
+            match self._hyperscan_match_with_session(session_id, payload, is_final, reset_on_request_end) {
+                Ok(Some(rule_id)) => {
+                    // 从规则管理器获取完整的规则信息
+                    let rule_manager = self.rule_manager.read();
+                    if let Some(rule) = rule_manager.get_rule(rule_id) {
+                        (Some(rule_id), Some(rule.action))
+                    } else {
+                        (Some(rule_id), None)
+                    }
+                }
+                Ok(None) => (None, None),
+                Err(e) => {
+                    log::warn!("Hyperscan matching failed: {}", e);
+                    (None, None)
+                }
+            }
+        } else {
+            // 回退到传统的 regex 匹配
+            let rule_manager = self.rule_manager.read();
+            match rule_manager.match_content(content) {
+                Some(rule) => (Some(rule.id), Some(rule.action)),
+                None => (None, None),
+            }
+        };
+
+        // 如果没有匹配的规则，返回"无匹配"结果
+        if matched_rule_id.is_none() {
+            return Ok(WebScanResult {
+                protocol: protocol_result.protocol,
+                confidence: protocol_result.confidence,
+                content_length: payload.len() as u32,
+                ..Default::default()
+            });
+        }
+
+        // 更新统计信息：增加匹配的数据包计数
+        self.stats.increment_packets_matched();
+
+        // 获取匹配的规则ID和动作
+        let rule_id = matched_rule_id.unwrap();
+
+        // 确定要执行的动作
+        let action = if let Some(rule_action) = action {
+            if rule_action == RuleAction::None {
+                self.default_action
+            } else {
+                rule_action.into()
+            }
+        } else {
+            log::warn!("Hyperscan matched rule ID {} but rule not found in manager", rule_id);
+            self.default_action
+        };
+
+        // 根据动作类型更新相应的统计信息
+        match action {
+            WebScanAction::Drop => self.stats.increment_packets_dropped(),
+            WebScanAction::Reset => self.stats.increment_packets_reset(),
+            _ => self.stats.increment_packets_alerted(),
+        }
+
+        // 构建并返回检测结果
+        Ok(WebScanResult {
+            is_matched: true,
+            rule_id,
+            action,
+            content_length: payload.len() as u32,
+            protocol: protocol_result.protocol,
+            confidence: protocol_result.confidence,
+        })
+    }
+
+    /// 重置指定会话的Hyperscan流
+    ///
+    /// 重置流的状态，使其可以重新开始匹配，但不关闭流。
+    /// 这对于处理HTTP请求/响应流非常有用：当一个HTTP请求结束时，
+    /// 可以重置流以准备处理下一个请求。
+    ///
+    /// # 参数
+    /// * `session_id` - 要重置的会话标识符
+    ///
+    /// # 返回值
+    /// * `Result<()>` - 成功返回Ok(())，失败返回错误
+    pub fn reset_session(&self, session_id: u64) -> Result<()> {
+        if let Some(ref scanner) = self.hyperscan_scanner {
+            scanner.reset_session(session_id)?;
+        }
+        Ok(())
+    }
+
+    /// 清理指定会话的Hyperscan流
+    ///
+    /// # 参数
+    /// * `session_id` - 要清理的会话标识符
+    ///
+    /// # 返回值
+    /// * `Result<()>` - 成功返回Ok(())，失败返回错误
+    pub fn close_session(&self, session_id: u64) -> Result<()> {
+        if let Some(ref scanner) = self.hyperscan_scanner {
+            scanner.close_session(session_id)?;
+        }
+        Ok(())
+    }
+
+    /// 清理所有会话的Hyperscan流
+    ///
+    /// # 返回值
+    /// * `Result<()>` - 成功返回Ok(())，失败返回错误
+    pub fn close_all_sessions(&self) -> Result<()> {
+        if let Some(ref scanner) = self.hyperscan_scanner {
+            scanner.close_all_sessions()?;
+        }
+        Ok(())
     }
 
     /// 启用或禁用检测引擎
@@ -499,5 +694,116 @@ mod tests {
         // 禁用状态下应该返回默认结果
         let result = engine.process_payload(b"GET / HTTP/1.1").unwrap();
         assert!(!result.is_matched);
+    }
+
+    /// 测试带会话的载荷处理
+    #[test]
+    fn test_process_payload_with_session() {
+        let engine = WebScanEngine::new();
+        
+        let session_id = 30001;
+        let http_payload = b"GET /admin/login.php HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        
+        // 处理载荷（带会话）
+        let result = engine.process_payload_with_session(session_id, http_payload, false, false).unwrap();
+        
+        // 验证结果
+        assert_eq!(result.protocol, Protocol::Http);
+        assert!(result.confidence > 0);
+        assert_eq!(result.content_length, http_payload.len() as u32);
+    }
+
+    /// 测试请求结束时重置
+    #[test]
+    fn test_reset_on_request_end() {
+        let engine = WebScanEngine::new();
+        
+        let session_id = 30002;
+        let request_payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        
+        // 第一次请求
+        let result1 = engine.process_payload_with_session(session_id, request_payload, false, true).unwrap();
+        assert_eq!(result1.protocol, Protocol::Http);
+        
+        // 第二次请求（重置后应该可以正常处理）
+        let result2 = engine.process_payload_with_session(session_id, request_payload, false, false).unwrap();
+        assert_eq!(result2.protocol, Protocol::Http);
+    }
+
+    /// 测试会话重置功能
+    #[test]
+    fn test_engine_reset_session() {
+        let engine = WebScanEngine::new();
+        
+        let session_id = 30003;
+        let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        
+        // 处理载荷
+        engine.process_payload_with_session(session_id, payload, false, false).unwrap();
+        
+        // 重置会话
+        assert!(engine.reset_session(session_id).is_ok());
+        
+        // 重置后应该可以继续使用
+        let result = engine.process_payload_with_session(session_id, payload, false, false).unwrap();
+        assert_eq!(result.protocol, Protocol::Http);
+    }
+
+    /// 测试关闭会话
+    #[test]
+    fn test_engine_close_session() {
+        let engine = WebScanEngine::new();
+        
+        let session_id = 30004;
+        let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        
+        // 创建会话
+        engine.process_payload_with_session(session_id, payload, false, false).unwrap();
+        
+        // 关闭会话
+        assert!(engine.close_session(session_id).is_ok());
+        
+        // 关闭后重置应该成功（但会话不存在）
+        assert!(engine.reset_session(session_id).is_ok());
+    }
+
+    /// 测试会话结束时自动关闭
+    #[test]
+    fn test_engine_session_final() {
+        let engine = WebScanEngine::new();
+        
+        let session_id = 30005;
+        let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        
+        // 处理载荷并标记为最终
+        let result = engine.process_payload_with_session(session_id, payload, true, false).unwrap();
+        assert_eq!(result.protocol, Protocol::Http);
+        
+        // 会话应该已经被关闭，再次使用应该创建新会话
+        let result2 = engine.process_payload_with_session(session_id, payload, false, false).unwrap();
+        assert_eq!(result2.protocol, Protocol::Http);
+    }
+
+    /// 测试多个会话并发处理
+    #[test]
+    fn test_engine_multiple_sessions() {
+        let engine = WebScanEngine::new();
+        
+        // 创建多个不同的会话
+        for i in 1..=3 {
+            let session_id = 30010 + i;
+            let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+            let result = engine.process_payload_with_session(session_id, payload, false, false).unwrap();
+            assert_eq!(result.protocol, Protocol::Http);
+        }
+        
+        // 验证所有会话都可以独立操作
+        for i in 1..=3 {
+            let session_id = 30010 + i;
+            assert!(engine.reset_session(session_id).is_ok());
+        }
+        
+        // 清理所有会话
+        assert!(engine.close_all_sessions().is_ok());
     }
 }

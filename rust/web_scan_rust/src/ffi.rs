@@ -141,6 +141,8 @@ pub extern "C" fn web_scan_rust_load_rules(rules_path: *const c_char) -> c_int {
 /// 处理数据包载荷
 ///
 /// 这是主要的检测函数，分析数据包内容并返回检测结果。
+/// 注意：此函数每次调用都创建新的流，适用于非流式场景。
+/// 对于需要跨数据包匹配的场景，请使用 `web_scan_rust_process_payload_with_session`。
 ///
 /// # 参数
 /// * `payload` - 指向数据包载荷的指针
@@ -199,10 +201,81 @@ pub extern "C" fn web_scan_rust_process_payload(
     }
 }
 
+/// 处理数据包载荷（带会话管理）
+///
+/// 这是支持流式匹配的检测函数，为每个会话维护独立的Hyperscan流。
+/// 同一个会话的所有数据包必须使用相同的session_id。
+///
+/// # 参数
+/// * `session_id` - 会话标识符，同一个会话使用相同的ID
+/// * `payload` - 指向数据包载荷的指针
+/// * `payload_len` - 载荷长度（字节数）
+/// * `is_final` - 是否为该会话的最后一个数据包（0=否，非0=是）
+/// * `reset_on_request_end` - 是否在请求结束时重置流（0=否，非0=是，用于HTTP请求/响应流）
+/// * `result` - 指向结果结构体的指针，用于存储检测结果
+///
+/// # 安全性
+/// 调用者必须确保：
+/// - `payload`指向至少`payload_len`字节的有效内存
+/// - `result`指向有效的WebScanResult结构体内存
+///
+/// # 返回值
+/// * `0` - 成功处理
+/// * 负数 - 错误代码
+#[no_mangle]
+pub extern "C" fn web_scan_rust_process_payload_with_session(
+    session_id: u64,
+    payload: *const u8,
+    payload_len: u32,
+    is_final: c_int,
+    reset_on_request_end: c_int,
+    result: *mut WebScanResult,
+) -> c_int {
+    // 检查指针是否为空
+    if payload.is_null() || result.is_null() {
+        set_last_error("Null pointer provided");
+        return -1;
+    }
+
+    // 从原始指针创建字节切片
+    let payload_slice = unsafe {
+        std::slice::from_raw_parts(payload, payload_len as usize)
+    };
+
+    // 获取全局引擎实例
+    let engine = match ENGINE.get() {
+        Some(e) => e,
+        None => {
+            set_last_error("Engine not initialized");
+            return -1;
+        }
+    };
+
+    // 处理数据包载荷（带会话管理）
+    let is_final_bool = is_final != 0;
+    let reset_on_request_end_bool = reset_on_request_end != 0;
+    match engine.read().process_payload_with_session(session_id, payload_slice, is_final_bool, reset_on_request_end_bool) {
+        Ok(scan_result) => {
+            // 将结果写入C代码提供的结果结构体
+            unsafe {
+                *result = scan_result;
+            }
+            0 // 成功
+        }
+        Err(e) => {
+            // 处理失败，设置错误信息并返回错误代码
+            set_last_error(&format!("Failed to process payload with session: {}", e));
+            e.to_error_code()
+        }
+    }
+}
+
 /// 处理分段数据包载荷
 ///
 /// 这个函数专门用于处理TCP分段数据包，支持流重组。
 /// 会话管理由外部程序负责，此函数仅处理当前分段数据。
+/// 注意：此函数每次调用都创建新的流，适用于非流式场景。
+/// 对于需要跨数据包匹配的场景，请使用 `web_scan_rust_process_segmented_payload_with_session`。
 ///
 /// # 参数
 /// * `payload` - 指向数据包载荷的指针
@@ -309,6 +382,131 @@ pub extern "C" fn web_scan_rust_process_segmented_payload(
         Err(e) => {
             // 处理失败，设置错误信息并返回错误代码
             set_last_error(&format!("Failed to process segmented payload: {}", e));
+            e.to_error_code()
+        }
+    }
+}
+
+/// 处理分段数据包载荷（带会话管理）
+///
+/// 这个函数专门用于处理TCP分段数据包，支持流重组和跨数据包边界匹配。
+/// 为每个会话维护独立的Hyperscan流，同一个会话的所有数据包必须使用相同的session_id。
+///
+/// # 参数
+/// * `session_id` - 会话标识符，同一个会话使用相同的ID
+/// * `payload` - 指向数据包载荷的指针
+/// * `payload_len` - 载荷长度（字节数）
+/// * `stream_data` - 指向流数据缓冲区的指针
+/// * `stream_len` - 流数据缓冲区的当前长度（字节数）
+/// * `max_stream_len` - 流数据缓冲区的最大容量（字节数）
+/// * `is_complete` - 是否为完整数据包（0=否，非0=是）
+/// * `is_final` - 是否为该会话的最后一个数据包（0=否，非0=是）
+/// * `result` - 指向结果结构体的指针，用于存储检测结果
+/// * `new_stream_len` - 指向存储新流数据长度的指针
+///
+/// # 安全性
+/// 调用者必须确保：
+/// - `payload`指向至少`payload_len`字节的有效内存
+/// - `stream_data`指向至少`stream_len`字节的有效内存
+/// - `max_stream_len`大于等于`stream_len`
+/// - `result`指向有效的WebScanResult结构体内存
+/// - `new_stream_len`指向有效的u32内存
+///
+/// # 返回值
+/// * `0` - 成功处理
+/// * `1` - 需要更多数据（流不完整）
+/// * 负数 - 错误代码
+#[no_mangle]
+pub extern "C" fn web_scan_rust_process_segmented_payload_with_session(
+    session_id: u64,
+    payload: *const u8,
+    payload_len: u32,
+    stream_data: *mut u8,
+    stream_len: u32,
+    max_stream_len: u32,
+    is_complete: c_int,
+    is_final: c_int,
+    result: *mut WebScanResult,
+    new_stream_len: *mut u32,
+) -> c_int {
+    // 检查指针是否为空
+    if payload.is_null() || result.is_null() || stream_data.is_null() || new_stream_len.is_null() {
+        set_last_error("Null pointer provided");
+        return -1;
+    }
+
+    // 检查缓冲区容量
+    if stream_len > max_stream_len {
+        set_last_error("Stream length exceeds maximum capacity");
+        return -1;
+    }
+
+    // 从原始指针创建字节切片
+    let payload_slice = unsafe {
+        std::slice::from_raw_parts(payload, payload_len as usize)
+    };
+
+    // 获取可变的流数据切片
+    let stream_slice = unsafe {
+        std::slice::from_raw_parts_mut(stream_data, stream_len as usize)
+    };
+
+    // 检查是否有足够空间追加新数据
+    let new_len = stream_len + payload_len;
+    if new_len > max_stream_len {
+        set_last_error("Insufficient buffer space for new data");
+        return -1;
+    }
+
+    // 追加新数据到流缓冲区
+    let stream_end = stream_slice.len();
+    unsafe {
+        let stream_extend = std::slice::from_raw_parts_mut(stream_data.add(stream_end), payload_len as usize);
+        stream_extend.copy_from_slice(payload_slice);
+    }
+
+    // 更新流长度
+    unsafe {
+        *new_stream_len = new_len;
+    }
+
+    // 获取全局引擎实例
+    let engine = match ENGINE.get() {
+        Some(e) => e,
+        None => {
+            set_last_error("Engine not initialized");
+            return -1;
+        }
+    };
+
+    // 如果数据不完整，返回需要更多数据（但需要先进行流式匹配）
+    let is_complete_bool = is_complete != 0;
+    let is_final_bool = is_final != 0;
+
+    // 创建完整的流数据切片进行检测（使用会话管理）
+    let full_stream_slice = unsafe {
+        std::slice::from_raw_parts(stream_data, new_len as usize)
+    };
+
+    // 处理流数据（带会话管理）
+    // 注意：即使数据不完整，我们也进行流式匹配，因为Hyperscan支持跨数据包匹配
+    // 对于分段载荷，默认不在请求结束时重置，由外部程序控制
+    match engine.read().process_payload_with_session(session_id, full_stream_slice, is_final_bool, false) {
+        Ok(scan_result) => {
+            // 将结果写入C代码提供的结果结构体
+            unsafe {
+                *result = scan_result;
+            }
+            // 如果数据不完整，返回需要更多数据
+            if !is_complete_bool {
+                1 // 需要更多数据
+            } else {
+                0 // 成功
+            }
+        }
+        Err(e) => {
+            // 处理失败，设置错误信息并返回错误代码
+            set_last_error(&format!("Failed to process segmented payload with session: {}", e));
             e.to_error_code()
         }
     }
@@ -616,6 +814,100 @@ pub extern "C" fn web_scan_rust_is_hyperscan_enabled() -> c_int {
     }
 }
 
+/// 重置指定会话的Hyperscan流
+///
+/// 重置流的状态，使其可以重新开始匹配，但不关闭流。
+/// 这对于处理HTTP请求/响应流非常有用：当一个HTTP请求结束时，
+/// 可以重置流以准备处理下一个请求，而不需要关闭和重新创建流。
+///
+/// # 参数
+/// * `session_id` - 要重置的会话标识符
+///
+/// # 返回值
+/// * `0` - 成功重置
+/// * 负数 - 错误代码
+#[no_mangle]
+pub extern "C" fn web_scan_rust_reset_session(session_id: u64) -> c_int {
+    // 获取全局引擎实例
+    let engine = match ENGINE.get() {
+        Some(e) => e,
+        None => {
+            set_last_error("Engine not initialized");
+            return -1;
+        }
+    };
+
+    // 重置会话
+    match engine.read().reset_session(session_id) {
+        Ok(_) => 0,
+        Err(e) => {
+            set_last_error(&format!("Failed to reset session: {}", e));
+            e.to_error_code()
+        }
+    }
+}
+
+/// 清理指定会话的Hyperscan流
+///
+/// 关闭并清理指定会话的Hyperscan流，释放相关资源。
+/// 当会话结束时，应该调用此函数来清理资源。
+///
+/// # 参数
+/// * `session_id` - 要清理的会话标识符
+///
+/// # 返回值
+/// * `0` - 成功清理
+/// * 负数 - 错误代码
+#[no_mangle]
+pub extern "C" fn web_scan_rust_close_session(session_id: u64) -> c_int {
+    // 获取全局引擎实例
+    let engine = match ENGINE.get() {
+        Some(e) => e,
+        None => {
+            set_last_error("Engine not initialized");
+            return -1;
+        }
+    };
+
+    // 清理会话
+    match engine.read().close_session(session_id) {
+        Ok(_) => 0,
+        Err(e) => {
+            set_last_error(&format!("Failed to close session: {}", e));
+            e.to_error_code()
+        }
+    }
+}
+
+/// 清理所有会话的Hyperscan流
+///
+/// 关闭并清理所有活跃会话的Hyperscan流，释放相关资源。
+/// 这个函数主要用于清理和重置。
+///
+/// # 返回值
+/// * `0` - 成功清理
+/// * 负数 - 错误代码
+#[no_mangle]
+pub extern "C" fn web_scan_rust_close_all_sessions() -> c_int {
+    // 获取全局引擎实例
+    let engine = match ENGINE.get() {
+        Some(e) => e,
+        None => {
+            set_last_error("Engine not initialized");
+            return -1;
+        }
+    };
+
+    // 清理所有会话
+    match engine.read().close_all_sessions() {
+        Ok(_) => 0,
+        Err(e) => {
+            set_last_error(&format!("Failed to close all sessions: {}", e));
+            e.to_error_code()
+        }
+    }
+}
+
 /// 清理资源
 ///
 /// 释放所有分配的资源，重置全局状态。
@@ -634,6 +926,8 @@ pub extern "C" fn web_scan_rust_cleanup() -> c_int {
     if ENGINE.get().is_some() {
         // 这里我们无法直接清空OnceLock，但可以重置引擎状态
         if let Some(engine) = ENGINE.get() {
+            // 先清理所有会话
+            let _ = engine.read().close_all_sessions();
             engine.write().reset_stats();
             engine.write().set_enabled(false);
         }
@@ -652,6 +946,8 @@ pub extern "C" fn web_scan_rust_cleanup() -> c_int {
 mod tests {
     // 导入父模块的所有公共项
     use super::*;
+    // 导入协议类型用于测试
+    use crate::protocol::Protocol;
 
     /// 测试引擎初始化
     #[test]
@@ -693,19 +989,274 @@ mod tests {
     /// 测试引擎状态控制
     #[test]
     fn test_engine_control() {
-        // 清理之前的状态
-        web_scan_rust_cleanup();
-        
-        // 初始化引擎
+        // 初始化引擎（cleanup可能不会完全重置状态）
         web_scan_rust_init();
         
         // 测试启用/禁用
-        assert_eq!(web_scan_rust_is_enabled(), 1); // 默认启用
+        // 注意：由于OnceLock的特性，引擎可能已经被初始化，状态可能不是默认值
+        // 所以我们先设置一个已知状态
+        web_scan_rust_set_enabled(1);
+        assert_eq!(web_scan_rust_is_enabled(), 1); // 已启用
         
         web_scan_rust_set_enabled(0);
         assert_eq!(web_scan_rust_is_enabled(), 0); // 已禁用
         
         web_scan_rust_set_enabled(1);
         assert_eq!(web_scan_rust_is_enabled(), 1); // 已启用
+    }
+
+    /// 测试带会话的载荷处理
+    #[test]
+    fn test_process_payload_with_session() {
+        // 初始化引擎并确保启用
+        web_scan_rust_init();
+        web_scan_rust_set_enabled(1);  // 确保引擎已启用
+        
+        let session_id = 40001;
+        let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        let mut result = WebScanResult::default();
+        
+        // 处理载荷（带会话）
+        let ret = web_scan_rust_process_payload_with_session(
+            session_id,
+            payload.as_ptr(),
+            payload.len() as u32,
+            0,  // is_final = 0
+            0,  // reset_on_request_end = 0
+            &mut result as *mut WebScanResult,
+        );
+        
+        assert_eq!(ret, 0);
+        // 标准的HTTP/1.1请求应该被正确识别为HTTP协议
+        assert_eq!(result.protocol, Protocol::Http, "Standard HTTP/1.1 request should be detected as HTTP protocol");
+        assert!(result.confidence >= 50, "HTTP detection confidence should be at least 50");
+        // content_length 应该始终等于payload的实际长度
+        assert_eq!(result.content_length, payload.len() as u32, "content_length should equal payload length");
+    }
+
+    /// 测试请求结束时自动重置
+    #[test]
+    fn test_reset_on_request_end() {
+        // 清理之前的状态
+        web_scan_rust_cleanup();
+        
+        // 初始化引擎
+        web_scan_rust_init();
+        
+        let session_id = 40002;
+        let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        let mut result = WebScanResult::default();
+        
+        // 第一次请求，不重置
+        let ret1 = web_scan_rust_process_payload_with_session(
+            session_id,
+            payload.as_ptr(),
+            payload.len() as u32,
+            0,  // is_final = 0
+            0,  // reset_on_request_end = 0
+            &mut result as *mut WebScanResult,
+        );
+        assert_eq!(ret1, 0);
+        
+        // 第二次请求，请求结束时重置
+        let ret2 = web_scan_rust_process_payload_with_session(
+            session_id,
+            payload.as_ptr(),
+            payload.len() as u32,
+            0,  // is_final = 0
+            1,  // reset_on_request_end = 1
+            &mut result as *mut WebScanResult,
+        );
+        assert_eq!(ret2, 0);
+        
+        // 重置后应该可以继续使用
+        let ret3 = web_scan_rust_process_payload_with_session(
+            session_id,
+            payload.as_ptr(),
+            payload.len() as u32,
+            0,  // is_final = 0
+            0,  // reset_on_request_end = 0
+            &mut result as *mut WebScanResult,
+        );
+        assert_eq!(ret3, 0);
+    }
+
+    /// 测试手动重置会话
+    #[test]
+    fn test_reset_session() {
+        // 清理之前的状态
+        web_scan_rust_cleanup();
+        
+        // 初始化引擎
+        web_scan_rust_init();
+        
+        let session_id = 40003;
+        let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        let mut result = WebScanResult::default();
+        
+        // 处理载荷
+        let ret = web_scan_rust_process_payload_with_session(
+            session_id,
+            payload.as_ptr(),
+            payload.len() as u32,
+            0,  // is_final = 0
+            0,  // reset_on_request_end = 0
+            &mut result as *mut WebScanResult,
+        );
+        assert_eq!(ret, 0);
+        
+        // 手动重置会话
+        let reset_ret = web_scan_rust_reset_session(session_id);
+        assert_eq!(reset_ret, 0);
+        
+        // 重置后应该可以继续使用
+        let ret2 = web_scan_rust_process_payload_with_session(
+            session_id,
+            payload.as_ptr(),
+            payload.len() as u32,
+            0,  // is_final = 0
+            0,  // reset_on_request_end = 0
+            &mut result as *mut WebScanResult,
+        );
+        assert_eq!(ret2, 0);
+    }
+
+    /// 测试关闭会话
+    #[test]
+    fn test_close_session() {
+        // 清理之前的状态
+        web_scan_rust_cleanup();
+        
+        // 初始化引擎
+        web_scan_rust_init();
+        
+        let session_id = 40004;
+        let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        let mut result = WebScanResult::default();
+        
+        // 创建会话
+        let ret = web_scan_rust_process_payload_with_session(
+            session_id,
+            payload.as_ptr(),
+            payload.len() as u32,
+            0,  // is_final = 0
+            0,  // reset_on_request_end = 0
+            &mut result as *mut WebScanResult,
+        );
+        assert_eq!(ret, 0);
+        
+        // 关闭会话
+        let close_ret = web_scan_rust_close_session(session_id);
+        assert_eq!(close_ret, 0);
+        
+        // 关闭后重置应该成功（但会话不存在）
+        let reset_ret = web_scan_rust_reset_session(session_id);
+        assert_eq!(reset_ret, 0);
+    }
+
+    /// 测试会话结束时自动关闭
+    #[test]
+    fn test_session_final_close() {
+        // 清理之前的状态
+        web_scan_rust_cleanup();
+        
+        // 初始化引擎
+        web_scan_rust_init();
+        
+        let session_id = 40005;
+        let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        let mut result = WebScanResult::default();
+        
+        // 处理载荷并标记为最终
+        let ret = web_scan_rust_process_payload_with_session(
+            session_id,
+            payload.as_ptr(),
+            payload.len() as u32,
+            1,  // is_final = 1
+            0,  // reset_on_request_end = 0
+            &mut result as *mut WebScanResult,
+        );
+        assert_eq!(ret, 0);
+        
+        // 会话应该已经被关闭，再次使用应该创建新会话
+        let ret2 = web_scan_rust_process_payload_with_session(
+            session_id,
+            payload.as_ptr(),
+            payload.len() as u32,
+            0,  // is_final = 0
+            0,  // reset_on_request_end = 0
+            &mut result as *mut WebScanResult,
+        );
+        assert_eq!(ret2, 0);
+    }
+
+    /// 测试多个会话
+    #[test]
+    fn test_multiple_sessions() {
+        // 初始化引擎并确保启用
+        web_scan_rust_init();
+        web_scan_rust_set_enabled(1);  // 确保引擎已启用
+        
+        let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        
+        // 创建多个不同的会话
+        for i in 1..=3 {
+            let session_id = 40010 + i;
+            let mut result = WebScanResult::default();
+            
+            let ret = web_scan_rust_process_payload_with_session(
+                session_id,
+                payload.as_ptr(),
+                payload.len() as u32,
+                0,  // is_final = 0
+                0,  // reset_on_request_end = 0
+                &mut result as *mut WebScanResult,
+            );
+            assert_eq!(ret, 0);
+            // 标准的HTTP/1.1请求应该被正确识别为HTTP协议
+            assert_eq!(result.protocol, Protocol::Http, "Standard HTTP/1.1 request should be detected as HTTP protocol");
+            assert!(result.confidence >= 50, "HTTP detection confidence should be at least 50");
+            // content_length 应该始终等于payload的实际长度
+            assert_eq!(result.content_length, payload.len() as u32, "content_length should equal payload length");
+        }
+        
+        // 验证所有会话都可以独立操作
+        for i in 1..=3 {
+            let session_id = 40010 + i;
+            let reset_ret = web_scan_rust_reset_session(session_id);
+            assert_eq!(reset_ret, 0);
+        }
+        
+        // 清理所有会话
+        let close_all_ret = web_scan_rust_close_all_sessions();
+        assert_eq!(close_all_ret, 0);
+    }
+
+    /// 测试空指针错误处理
+    #[test]
+    fn test_null_pointer_handling() {
+        // 清理之前的状态
+        web_scan_rust_cleanup();
+        
+        // 初始化引擎
+        web_scan_rust_init();
+        
+        let session_id = 40020;
+        let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        
+        // 测试空指针
+        let ret = web_scan_rust_process_payload_with_session(
+            session_id,
+            std::ptr::null(),
+            payload.len() as u32,
+            0,
+            0,
+            std::ptr::null_mut(),
+        );
+        assert_eq!(ret, -1);
+        
+        // 检查错误信息
+        let error_ptr = web_scan_rust_get_last_error();
+        assert!(!error_ptr.is_null());
     }
 }
