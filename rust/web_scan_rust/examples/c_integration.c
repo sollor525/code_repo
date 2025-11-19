@@ -31,7 +31,7 @@ int main() {
 
     // Initialize the engine with Hyperscan enabled
     printf("1. Initializing engine with Hyperscan...\n");
-    if (web_scan_rust_init_with_hyperscan(1) != 0) {
+    if (web_scan_rust_init_with_hyperscan() != 0) {
         fprintf(stderr, "Failed to initialize engine: %s\n", web_scan_rust_get_last_error());
         return 1;
     }
@@ -52,6 +52,7 @@ int main() {
     fprintf(rules_file, "alert http any any -> any any (msg:\"Admin access\"; content:\"/admin/\"; sid:1001;)\n");
     fprintf(rules_file, "drop http any any -> any any (msg:\"SQL injection\"; content:\"union select\"; sid:1002;)\n");
     fprintf(rules_file, "alert http any any -> any any (msg:\"Login page\"; content:\"login.php\"; sid:1003;)\n");
+    fprintf(rules_file, "alert http any any -> any any (msg:\"Multi-content: admin in URI and password in body\"; content:\"admin\"; http.uri; content:\"password\"; http.request_body; sid:1004;)\n");
     fclose(rules_file);
 
     // Load rules
@@ -119,8 +120,93 @@ int main() {
     printf("   Re-enabling engine...\n");
     web_scan_rust_set_enabled(true);
 
+    // Test session management
+    printf("\n6. Testing session management (cross-packet matching)...\n");
+    uint64_t session_id = 12345;
+    
+    // First packet: contains URI with "admin"
+    const char *packet1 = "GET /admin/login HTTP/1.1\r\nHost: example.com\r\nContent-Length: 20\r\n\r\n";
+    web_scan_result_t session_result1;
+    int ret1 = web_scan_rust_process_payload_with_session(
+        session_id,
+        (const uint8_t *)packet1,
+        strlen(packet1),
+        0,  // is_final = 0
+        0,  // reset_on_request_end = 0
+        &session_result1
+    );
+    
+    if (ret1 == 0) {
+        printf("   First packet processed: Matched=%s\n", session_result1.is_matched ? "Yes" : "No");
+    }
+    
+    // Second packet: contains body with "password"
+    const char *packet2 = "password=secret";
+    web_scan_result_t session_result2;
+    int ret2 = web_scan_rust_process_payload_with_session(
+        session_id,
+        (const uint8_t *)packet2,
+        strlen(packet2),
+        1,  // is_final = 1
+        0,  // reset_on_request_end = 0
+        &session_result2
+    );
+    
+    if (ret2 == 0) {
+        printf("   Second packet processed: Matched=%s, Rule ID=%u\n", 
+               session_result2.is_matched ? "Yes" : "No",
+               session_result2.rule_id);
+    }
+    
+    // Close session
+    web_scan_rust_close_session(session_id);
+    printf("   Session closed\n");
+
+    // Test segmented payload processing (using session management with internal stream buffer)
+    printf("\n7. Testing segmented payload processing...\n");
+    uint64_t seg_session_id = 67890;
+    
+    // First segment: incomplete HTTP header
+    const char *segment1 = "GET /admin/";
+    web_scan_result_t seg_result1;
+    int seg_ret1 = web_scan_rust_process_payload_with_session(
+        seg_session_id,
+        (const uint8_t *)segment1,
+        strlen(segment1),
+        0,  // is_final = 0
+        0,  // reset_on_request_end = 0
+        &seg_result1
+    );
+    
+    if (seg_ret1 == 0) {
+        printf("   First segment: Matched=%s (HTTP header incomplete, engine buffers internally)\n",
+               seg_result1.is_matched ? "Yes" : "No");
+    }
+    
+    // Second segment: completes HTTP header
+    const char *segment2 = "login.php HTTP/1.1\r\nHost: example.com\r\n\r\n";
+    web_scan_result_t seg_result2;
+    int seg_ret2 = web_scan_rust_process_payload_with_session(
+        seg_session_id,
+        (const uint8_t *)segment2,
+        strlen(segment2),
+        1,  // is_final = 1
+        0,  // reset_on_request_end = 0
+        &seg_result2
+    );
+    
+    if (seg_ret2 == 0) {
+        printf("   Second segment: Matched=%s, Rule ID=%u\n",
+               seg_result2.is_matched ? "Yes" : "No",
+               seg_result2.rule_id);
+    }
+    
+    // Close session
+    web_scan_rust_close_session(seg_session_id);
+    printf("   Segmented session closed\n");
+
     // Cleanup
-    printf("\n6. Cleaning up...\n");
+    printf("\n8. Cleaning up...\n");
     web_scan_rust_cleanup();
     remove("/tmp/test_rules.rules");
     

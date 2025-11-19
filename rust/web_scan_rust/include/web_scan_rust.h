@@ -63,10 +63,10 @@ int web_scan_rust_init(void);
 
 /**
  * Initialize the web scan detection engine with Hyperscan support
- * @param use_hyperscan Whether to enable Hyperscan acceleration (0=disable, non-zero=enable)
+ * Hyperscan acceleration is enabled by default.
  * @return 0 on success, negative error code on failure
  */
-int web_scan_rust_init_with_hyperscan(int use_hyperscan);
+int web_scan_rust_init_with_hyperscan(void);
 
 /**
  * Load rules from file
@@ -99,60 +99,6 @@ int web_scan_rust_process_payload(const uint8_t *payload, uint32_t payload_len, 
  * @return 0 on success, negative error code on failure
  */
 int web_scan_rust_process_payload_with_session(uint64_t session_id, const uint8_t *payload, uint32_t payload_len, int is_final, int reset_on_request_end, web_scan_result_t *result);
-
-/**
- * Process a segmented packet payload with stream reassembly
- * Note: This function creates a new stream for each call, suitable for non-streaming scenarios.
- * For cross-packet matching, use web_scan_rust_process_segmented_payload_with_session.
- * @param payload Pointer to payload data
- * @param payload_len Length of payload in bytes
- * @param stream_data Pointer to stream data buffer
- * @param stream_len Current length of stream data buffer in bytes
- * @param max_stream_len Maximum capacity of stream data buffer in bytes
- * @param is_complete Whether this is a complete packet (0=no, non-zero=yes)
- * @param result Pointer to result structure to fill
- * @param new_stream_len Pointer to store new stream data length
- * @return 0 on success, 1 if more data needed, negative error code on failure
- */
-int web_scan_rust_process_segmented_payload(
-    const uint8_t *payload,
-    uint32_t payload_len,
-    uint8_t *stream_data,
-    uint32_t stream_len,
-    uint32_t max_stream_len,
-    int is_complete,
-    web_scan_result_t *result,
-    uint32_t *new_stream_len
-);
-
-/**
- * Process a segmented packet payload with stream reassembly and session management
- * This function maintains independent Hyperscan streams for each session, supporting cross-packet matching.
- * All packets of the same session must use the same session_id.
- * @param session_id Session identifier, use the same ID for all packets of the same session
- * @param payload Pointer to payload data
- * @param payload_len Length of payload in bytes
- * @param stream_data Pointer to stream data buffer
- * @param stream_len Current length of stream data buffer in bytes
- * @param max_stream_len Maximum capacity of stream data buffer in bytes
- * @param is_complete Whether this is a complete packet (0=no, non-zero=yes)
- * @param is_final Whether this is the last packet of the session (0=no, non-zero=yes)
- * @param result Pointer to result structure to fill
- * @param new_stream_len Pointer to store new stream data length
- * @return 0 on success, 1 if more data needed, negative error code on failure
- */
-int web_scan_rust_process_segmented_payload_with_session(
-    uint64_t session_id,
-    const uint8_t *payload,
-    uint32_t payload_len,
-    uint8_t *stream_data,
-    uint32_t stream_len,
-    uint32_t max_stream_len,
-    int is_complete,
-    int is_final,
-    web_scan_result_t *result,
-    uint32_t *new_stream_len
-);
 
 /**
  * Get current statistics

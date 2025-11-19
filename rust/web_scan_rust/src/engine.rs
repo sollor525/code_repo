@@ -165,10 +165,10 @@ impl WebScanEngine {
         }
 
         // 编译数据库
-        let database = compiler.compile()?;
+        let (database, fast_database) = compiler.compile()?;
 
         // 创建扫描器
-        let scanner = Arc::new(HyperscanScanner::new(database)?);
+        let scanner = Arc::new(HyperscanScanner::new(database, fast_database)?);
 
         // 存储扫描器
         self.hyperscan_scanner = Some(scanner);
@@ -340,8 +340,24 @@ impl WebScanEngine {
     fn _hyperscan_match(&self, data: &[u8]) -> Result<Option<u32>> {
         if let Some(ref scanner) = self.hyperscan_scanner {
             let matches = scanner.scan_stream(data)?;
-            if let Some(first_match) = matches.first() {
-                return Ok(Some(first_match.rule_id));
+
+            // 对于单pattern规则，直接返回第一个匹配
+            // 对于多pattern规则，需要验证完整匹配
+            let rule_manager = self.rule_manager.read();
+
+            for hyp_match in matches.iter() {
+                if let Some(rule) = rule_manager.get_rule(hyp_match.rule_id) {
+                    // 只对多pattern规则进行完整匹配验证
+                    if rule.patterns.len() > 1 {
+                        let data_str = std::str::from_utf8(data).unwrap_or("");
+                        if crate::rules::Rule::does_rule_fully_match(rule, data_str) {
+                            return Ok(Some(hyp_match.rule_id));
+                        }
+                    } else {
+                        // 单pattern规则，直接相信Hyperscan的结果
+                        return Ok(Some(hyp_match.rule_id));
+                    }
+                }
             }
         }
         Ok(None)
@@ -360,11 +376,128 @@ impl WebScanEngine {
     fn _hyperscan_match_with_session(&self, session_id: u64, data: &[u8], is_final: bool, reset_on_request_end: bool) -> Result<Option<u32>> {
         if let Some(ref scanner) = self.hyperscan_scanner {
             let matches = scanner.scan_stream_with_session(session_id, data, is_final, reset_on_request_end)?;
-            if let Some(first_match) = matches.first() {
-                return Ok(Some(first_match.rule_id));
+            // 对于单pattern规则，直接返回第一个匹配
+            // 对于多pattern规则，需要验证完整匹配
+            let rule_manager = self.rule_manager.read();
+
+            for hyp_match in matches.iter() {
+                if let Some(rule) = rule_manager.get_rule(hyp_match.rule_id) {
+                    // 只对多pattern规则进行完整匹配验证
+                    if rule.patterns.len() > 1 {
+                        let data_str = std::str::from_utf8(data).unwrap_or("");
+                        if crate::rules::Rule::does_rule_fully_match(rule, data_str) {
+                            return Ok(Some(hyp_match.rule_id));
+                        }
+                    } else {
+                        // 单pattern规则，直接相信Hyperscan的结果
+                        return Ok(Some(hyp_match.rule_id));
+                    }
+                }
             }
         }
         Ok(None)
+    }
+
+    /// 使用Hyperscan进行匹配并返回完整的WebScanResult
+    fn _hyperscan_match_with_session_and_result(&self, session_id: u64, data: &[u8], is_final: bool, reset_on_request_end: bool, protocol: Option<crate::protocol::Protocol>) -> Result<WebScanResult> {
+        // 如果没有提供协议，进行协议检测
+        let protocol_result = if let Some(proto) = protocol {
+            crate::protocol::ProtocolResult {
+                protocol: proto,
+                confidence: 80u8,  // 0.8 * 100 = 80%
+            }
+        } else {
+            self.protocol_detector.detect(data)?
+        };
+
+        // 记录协议统计
+        self.stats.record_protocol(protocol_result.protocol);
+
+        // 只处理Web流量（HTTP、HTTPS、HTTP/2）
+        if !matches!(protocol_result.protocol, Protocol::Http | Protocol::Https | Protocol::Http2) {
+            return Ok(WebScanResult {
+                protocol: protocol_result.protocol,
+                confidence: protocol_result.confidence,
+                content_length: data.len() as u32,
+                ..Default::default()
+            });
+        }
+
+        // 执行Hyperscan匹配
+        let matched_rule = if let Some(ref scanner) = self.hyperscan_scanner {
+            match scanner.scan_stream_with_session(session_id, data, is_final, reset_on_request_end) {
+                Ok(matches) => {
+                    // 验证所有匹配的规则是否真正完整匹配
+                    let rule_manager = self.rule_manager.read();
+                    let mut matched_rule: Option<(u32, RuleAction)> = None;
+
+                    for hyp_match in matches.iter() {
+                        if let Some(rule) = rule_manager.get_rule(hyp_match.rule_id) {
+                            // 只对多pattern规则进行完整匹配验证
+                            if rule.patterns.len() > 1 {
+                                let data_str = std::str::from_utf8(data).unwrap_or("");
+                                if crate::rules::Rule::does_rule_fully_match(rule, data_str) {
+                                    matched_rule = Some((hyp_match.rule_id, rule.action));
+                                    break; // 返回第一个完整匹配的规则
+                                }
+                            } else {
+                                // 单pattern规则，直接相信Hyperscan的结果
+                                matched_rule = Some((hyp_match.rule_id, rule.action));
+                                break;
+                            }
+                        }
+                    }
+
+                    matched_rule
+                }
+                Err(e) => {
+                    log::warn!("Hyperscan matching failed: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        // 如果没有匹配的规则，返回"无匹配"结果
+        if matched_rule.is_none() {
+            return Ok(WebScanResult {
+                protocol: protocol_result.protocol,
+                confidence: protocol_result.confidence,
+                content_length: data.len() as u32,
+                ..Default::default()
+            });
+        }
+
+        // 更新统计信息：增加匹配的数据包计数
+        self.stats.increment_packets_matched();
+
+        // 获取匹配的规则ID和动作
+        let (rule_id, rule_action) = matched_rule.unwrap();
+
+        // 确定要执行的动作
+        let action = if rule_action == RuleAction::None {
+            self.default_action
+        } else {
+            rule_action.into()
+        };
+
+        // 根据动作类型更新相应的统计信息
+        match action {
+            WebScanAction::Drop => self.stats.increment_packets_dropped(),
+            WebScanAction::Reset => self.stats.increment_packets_reset(),
+            _ => self.stats.increment_packets_alerted(),
+        }
+
+        // 构建并返回检测结果
+        Ok(WebScanResult {
+            is_matched: true,
+            rule_id,
+            action,
+            content_length: data.len() as u32,
+            protocol: protocol_result.protocol,
+            confidence: protocol_result.confidence,
+        })
     }
 
     /// 处理数据包载荷并返回检测结果（带会话管理）
@@ -391,9 +524,160 @@ impl WebScanEngine {
         // 更新统计信息：增加已处理的数据包计数
         self.stats.increment_packets_processed();
 
+        // 流式处理：检查HTTP header完整性，处理分段逻辑
+        if let Some(ref scanner) = self.hyperscan_scanner {
+            let is_first_segment = scanner.is_first_segment(session_id);
+            log::debug!("Segment analysis: session={}, is_first_segment={}", session_id, is_first_segment);
+
+            if is_first_segment {
+                // 第一个分段：创建会话
+                log::debug!("First segment [payload_len={}]: creating session (session: {})", payload.len(), session_id);
+                let _ = scanner.scan_stream_with_session(session_id, &[], false, false)?;
+
+                // 检查HTTP header是否完整
+                if crate::hyperscan::HyperscanScanner::is_http_header_complete(payload) {
+                    // HTTP header完整，进行Fast pattern匹配
+                    log::debug!("First segment: HTTP header complete, performing fast pattern matching (session: {})", session_id);
+
+                    // 进行Fast pattern匹配
+                    let candidate_rules = scanner.scan_fast_patterns(session_id, payload)?;
+                    let should_continue_matching = if let Some(ref candidates) = candidate_rules {
+                        if candidates.is_empty() {
+                            // Fast pattern没有匹配任何规则，跳过完整匹配
+                            log::debug!("First segment: no fast patterns matched, skipping full matching (session: {})", session_id);
+                            scanner.update_session_state(session_id, Some(crate::protocol::Protocol::Http), true, false, Some(std::collections::HashSet::new()));
+                            return Ok(WebScanResult {
+                                content_length: payload.len() as u32,
+                                protocol: crate::protocol::Protocol::Http,
+                                confidence: 80u8,
+                                ..Default::default()
+                            });
+                        } else {
+                            log::debug!("First segment: fast patterns matched {} candidate rules, proceeding with full matching (session: {})", candidates.len(), session_id);
+                            true
+                        }
+                    } else {
+                        // 没有Fast pattern数据库，直接进行完整匹配
+                        log::debug!("First segment: no fast pattern database, proceeding with full matching (session: {})", session_id);
+                        true
+                    };
+
+                    if should_continue_matching {
+                        // 检查这是否是一个完整的HTTP请求（包含body）
+                        let payload_str = std::str::from_utf8(payload).unwrap_or("");
+                        if payload_str.contains("\r\n\r\n") {
+                            // 有HTTP body结束标记，可能是完整请求
+                            let body_start = payload_str.find("\r\n\r\n").map(|i| i + 4).unwrap_or(payload.len());
+                            if body_start < payload.len() {
+                                // 有body内容，可以进行完整匹配
+                                log::debug!("First segment: complete HTTP request with body, performing full matching (session: {})", session_id);
+                                // 累积数据到stream buffer
+                                scanner.append_to_stream_buffer(session_id, payload)?;
+                                scanner.update_session_state(session_id, Some(crate::protocol::Protocol::Http), true, true, candidate_rules.clone());
+                                return self._hyperscan_match_with_session_and_result(session_id, payload, is_final, reset_on_request_end, Some(crate::protocol::Protocol::Http));
+                            } else {
+                                // 完整header但没有body，进行完整匹配（因为Fast pattern已经匹配了）
+                                log::debug!("First segment: complete header with fast patterns, performing full matching (session: {})", session_id);
+                                // 累积数据到stream buffer
+                                scanner.append_to_stream_buffer(session_id, payload)?;
+                                scanner.update_session_state(session_id, Some(crate::protocol::Protocol::Http), true, true, candidate_rules);
+                                return self._hyperscan_match_with_session_and_result(session_id, payload, is_final, reset_on_request_end, Some(crate::protocol::Protocol::Http));
+                            }
+                        } else {
+                            // HTTP header不完整
+                            log::debug!("First segment: HTTP header incomplete, accumulating data (session: {})", session_id);
+                            scanner.append_to_stream_buffer(session_id, payload)?;
+                            scanner.update_session_state(session_id, Some(crate::protocol::Protocol::Http), true, false, None);
+                            return Ok(WebScanResult {
+                                content_length: payload.len() as u32,
+                                protocol: crate::protocol::Protocol::Http,
+                                confidence: 80u8,
+                                ..Default::default()
+                            });
+                        }
+                    }
+                } else {
+                    // HTTP header不完整，累积数据
+                    log::debug!("First segment: HTTP header incomplete, accumulating data (session: {})", session_id);
+                    scanner.append_to_stream_buffer(session_id, payload)?;
+
+                    // 更新会话状态，但不进行匹配
+                    scanner.update_session_state(session_id, Some(crate::protocol::Protocol::Http), true, false, None);
+                    log::debug!("First segment: session updated, waiting for more data (session: {})", session_id);
+
+                    // 返回空结果，等待更多数据
+                    return Ok(WebScanResult {
+                        content_length: payload.len() as u32,
+                        protocol: crate::protocol::Protocol::Http,  // 预设为HTTP，因为我们已经检测到HTTP模式
+                        confidence: 80u8,  // 给一个合理的置信度
+                        ..Default::default()
+                    });
+                }
+            } else {
+                // 后续分段
+                log::debug!("Subsequent segment: checking candidate rules and HTTP header completion (session: {})", session_id);
+
+                // 检查是否有候选规则
+                let session_state = scanner.get_session_state(session_id);
+                let (should_continue, _use_candidate_rules) = if let Some((_, _, _, ref candidate_rules)) = session_state {
+                    if let Some(ref candidates) = candidate_rules {
+                        if candidates.is_empty() {
+                        // Fast pattern没有匹配，但仍然需要完整匹配（对于Fast pattern不在header中的规则）
+                        log::debug!("Subsequent segment: no candidate rules from fast pattern, but proceeding with full matching for non-header fast pattern rules (session: {})", session_id);
+                        (true, false)
+                    } else {
+                            log::debug!("Subsequent segment: using {} candidate rules from fast pattern (session: {})", candidates.len(), session_id);
+                            (true, true)
+                        }
+                    } else {
+                        // 没有候选规则信息，可能是没有Fast pattern数据库的情况
+                        log::debug!("Subsequent segment: no candidate rules information, proceeding with full matching (session: {})", session_id);
+                        (true, false)
+                    }
+                } else {
+                    // 没有会话状态信息，可能是没有Fast pattern数据库的情况
+                    log::debug!("Subsequent segment: no session state information, proceeding with full matching (session: {})", session_id);
+                    (true, false)
+                };
+
+                if should_continue {
+                    // 累积数据
+                    scanner.append_to_stream_buffer(session_id, payload)?;
+                    let accumulated = scanner.get_stream_buffer(session_id).unwrap_or_default();
+                    log::debug!("Subsequent segment: accumulated {} bytes total (session: {})", accumulated.len(), session_id);
+
+                    // 检查HTTP header是否完整
+                    if crate::hyperscan::HyperscanScanner::is_http_header_complete(&accumulated) {
+                        // HTTP header现在完整了
+                        log::debug!("Subsequent segment: HTTP header now complete, proceeding with matching (session: {})", session_id);
+                        scanner.set_http_header_complete(session_id, true);
+                        scanner.update_session_state(session_id, Some(crate::protocol::Protocol::Http), true, true, session_state.and_then(|(_, _, _, rules)| rules));
+
+                        // 使用累积的数据进行匹配
+                        return self._hyperscan_match_with_session_and_result(session_id, &accumulated, is_final, reset_on_request_end, Some(crate::protocol::Protocol::Http));
+                    } else {
+                        // HTTP header仍然不完整
+                        log::debug!("Subsequent segment: HTTP header still incomplete (session: {})", session_id);
+                        scanner.update_session_state(session_id, Some(crate::protocol::Protocol::Http), true, false, session_state.and_then(|(_, _, _, rules)| rules));
+
+                        // 返回空结果，等待更多数据
+                        return Ok(WebScanResult {
+                            content_length: payload.len() as u32,
+                            protocol: crate::protocol::Protocol::Http,
+                            confidence: 80u8,
+                            ..Default::default()
+                        });
+                    }
+                }
+            }
+        }
+
+        // 没有Hyperscan扫描器或继续处理：使用原始payload
+        let actual_payload = payload;
+
         // 第一步：协议检测
         // 分析数据包内容，判断是否为Web流量
-        let protocol_result = self.protocol_detector.detect(payload)?;
+        let protocol_result = self.protocol_detector.detect(actual_payload)?;
 
         // 记录协议统计
         self.stats.record_protocol(protocol_result.protocol);

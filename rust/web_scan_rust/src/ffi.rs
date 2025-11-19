@@ -22,6 +22,8 @@ use std::ptr;
 use std::sync::{Mutex, OnceLock};
 // 导入高性能读写锁
 use parking_lot::RwLock;
+// 导入路径处理
+use std::path::Path;
 
 // 全局引擎实例
 // OnceLock确保引擎只被初始化一次，RwLock提供线程安全的访问
@@ -64,7 +66,36 @@ pub extern "C" fn web_scan_rust_init_with_hyperscan() -> c_int {
     crate::init();
 
     // 创建新的Web扫描引擎实例（默认启用Hyperscan）
-    let engine = WebScanEngine::new();
+    let mut engine = WebScanEngine::new();
+
+    // 尝试加载默认规则文件（如果存在）
+    // 首先尝试相对于当前工作目录的路径
+    let default_rules_paths = [
+        "rules/web_detect_rules.rules",
+        "../rules/web_detect_rules.rules",
+        "../../rules/web_detect_rules.rules",
+    ];
+    
+    let mut rules_loaded = false;
+    for rules_path in &default_rules_paths {
+        if Path::new(rules_path).exists() {
+            match engine.init_with_rules(rules_path) {
+                Ok(_) => {
+                    log::info!("Loaded default rules from {}", rules_path);
+                    rules_loaded = true;
+                    break;
+                }
+                Err(e) => {
+                    log::warn!("Failed to load default rules from {}: {}", rules_path, e);
+                    // 继续尝试其他路径
+                }
+            }
+        }
+    }
+    
+    if !rules_loaded {
+        log::debug!("Default rules file not found, engine initialized without rules");
+    }
 
     // 尝试将引擎存储到全局变量中
     match ENGINE.set(RwLock::new(engine)) {
@@ -265,248 +296,6 @@ pub extern "C" fn web_scan_rust_process_payload_with_session(
         Err(e) => {
             // 处理失败，设置错误信息并返回错误代码
             set_last_error(&format!("Failed to process payload with session: {}", e));
-            e.to_error_code()
-        }
-    }
-}
-
-/// 处理分段数据包载荷
-///
-/// 这个函数专门用于处理TCP分段数据包，支持流重组。
-/// 会话管理由外部程序负责，此函数仅处理当前分段数据。
-/// 注意：此函数每次调用都创建新的流，适用于非流式场景。
-/// 对于需要跨数据包匹配的场景，请使用 `web_scan_rust_process_segmented_payload_with_session`。
-///
-/// # 参数
-/// * `payload` - 指向数据包载荷的指针
-/// * `payload_len` - 载荷长度（字节数）
-/// * `stream_data` - 指向流数据缓冲区的指针
-/// * `stream_len` - 流数据缓冲区的当前长度（字节数）
-/// * `max_stream_len` - 流数据缓冲区的最大容量（字节数）
-/// * `is_complete` - 是否为完整数据包（0=否，非0=是）
-/// * `result` - 指向结果结构体的指针，用于存储检测结果
-/// * `new_stream_len` - 指向存储新流数据长度的指针
-///
-/// # 安全性
-/// 调用者必须确保：
-/// - `payload`指向至少`payload_len`字节的有效内存
-/// - `stream_data`指向至少`stream_len`字节的有效内存
-/// - `max_stream_len`大于等于`stream_len`
-/// - `result`指向有效的WebScanResult结构体内存
-/// - `new_stream_len`指向有效的u32内存
-///
-/// # 返回值
-/// * `0` - 成功处理
-/// * `1` - 需要更多数据（流不完整）
-/// * 负数 - 错误代码
-#[no_mangle]
-pub extern "C" fn web_scan_rust_process_segmented_payload(
-    payload: *const u8,
-    payload_len: u32,
-    stream_data: *mut u8,
-    stream_len: u32,
-    max_stream_len: u32,
-    is_complete: c_int,
-    result: *mut WebScanResult,
-    new_stream_len: *mut u32,
-) -> c_int {
-    // 检查指针是否为空
-    if payload.is_null() || result.is_null() || stream_data.is_null() || new_stream_len.is_null() {
-        set_last_error("Null pointer provided");
-        return -1;
-    }
-
-    // 检查缓冲区容量
-    if stream_len > max_stream_len {
-        set_last_error("Stream length exceeds maximum capacity");
-        return -1;
-    }
-
-    // 从原始指针创建字节切片
-    let payload_slice = unsafe {
-        std::slice::from_raw_parts(payload, payload_len as usize)
-    };
-
-    // 获取可变的流数据切片
-    let stream_slice = unsafe {
-        std::slice::from_raw_parts_mut(stream_data, stream_len as usize)
-    };
-
-    // 检查是否有足够空间追加新数据
-    let new_len = stream_len + payload_len;
-    if new_len > max_stream_len {
-        set_last_error("Insufficient buffer space for new data");
-        return -1;
-    }
-
-    // 追加新数据到流缓冲区
-    let stream_end = stream_slice.len();
-    unsafe {
-        let stream_extend = std::slice::from_raw_parts_mut(stream_data.add(stream_end), payload_len as usize);
-        stream_extend.copy_from_slice(payload_slice);
-    }
-
-    // 更新流长度
-    unsafe {
-        *new_stream_len = new_len;
-    }
-
-    // 获取全局引擎实例
-    let engine = match ENGINE.get() {
-        Some(e) => e,
-        None => {
-            set_last_error("Engine not initialized");
-            return -1;
-        }
-    };
-
-    // 如果数据不完整，返回需要更多数据
-    if is_complete == 0 {
-        return 1; // 需要更多数据
-    }
-
-    // 创建完整的流数据切片进行检测
-    let full_stream_slice = unsafe {
-        std::slice::from_raw_parts(stream_data, new_len as usize)
-    };
-
-    // 处理完整的流数据
-    match engine.read().process_payload(full_stream_slice) {
-        Ok(scan_result) => {
-            // 将结果写入C代码提供的结果结构体
-            unsafe {
-                *result = scan_result;
-            }
-            0 // 成功
-        }
-        Err(e) => {
-            // 处理失败，设置错误信息并返回错误代码
-            set_last_error(&format!("Failed to process segmented payload: {}", e));
-            e.to_error_code()
-        }
-    }
-}
-
-/// 处理分段数据包载荷（带会话管理）
-///
-/// 这个函数专门用于处理TCP分段数据包，支持流重组和跨数据包边界匹配。
-/// 为每个会话维护独立的Hyperscan流，同一个会话的所有数据包必须使用相同的session_id。
-///
-/// # 参数
-/// * `session_id` - 会话标识符，同一个会话使用相同的ID
-/// * `payload` - 指向数据包载荷的指针
-/// * `payload_len` - 载荷长度（字节数）
-/// * `stream_data` - 指向流数据缓冲区的指针
-/// * `stream_len` - 流数据缓冲区的当前长度（字节数）
-/// * `max_stream_len` - 流数据缓冲区的最大容量（字节数）
-/// * `is_complete` - 是否为完整数据包（0=否，非0=是）
-/// * `is_final` - 是否为该会话的最后一个数据包（0=否，非0=是）
-/// * `result` - 指向结果结构体的指针，用于存储检测结果
-/// * `new_stream_len` - 指向存储新流数据长度的指针
-///
-/// # 安全性
-/// 调用者必须确保：
-/// - `payload`指向至少`payload_len`字节的有效内存
-/// - `stream_data`指向至少`stream_len`字节的有效内存
-/// - `max_stream_len`大于等于`stream_len`
-/// - `result`指向有效的WebScanResult结构体内存
-/// - `new_stream_len`指向有效的u32内存
-///
-/// # 返回值
-/// * `0` - 成功处理
-/// * `1` - 需要更多数据（流不完整）
-/// * 负数 - 错误代码
-#[no_mangle]
-pub extern "C" fn web_scan_rust_process_segmented_payload_with_session(
-    session_id: u64,
-    payload: *const u8,
-    payload_len: u32,
-    stream_data: *mut u8,
-    stream_len: u32,
-    max_stream_len: u32,
-    is_complete: c_int,
-    is_final: c_int,
-    result: *mut WebScanResult,
-    new_stream_len: *mut u32,
-) -> c_int {
-    // 检查指针是否为空
-    if payload.is_null() || result.is_null() || stream_data.is_null() || new_stream_len.is_null() {
-        set_last_error("Null pointer provided");
-        return -1;
-    }
-
-    // 检查缓冲区容量
-    if stream_len > max_stream_len {
-        set_last_error("Stream length exceeds maximum capacity");
-        return -1;
-    }
-
-    // 从原始指针创建字节切片
-    let payload_slice = unsafe {
-        std::slice::from_raw_parts(payload, payload_len as usize)
-    };
-
-    // 获取可变的流数据切片
-    let stream_slice = unsafe {
-        std::slice::from_raw_parts_mut(stream_data, stream_len as usize)
-    };
-
-    // 检查是否有足够空间追加新数据
-    let new_len = stream_len + payload_len;
-    if new_len > max_stream_len {
-        set_last_error("Insufficient buffer space for new data");
-        return -1;
-    }
-
-    // 追加新数据到流缓冲区
-    let stream_end = stream_slice.len();
-    unsafe {
-        let stream_extend = std::slice::from_raw_parts_mut(stream_data.add(stream_end), payload_len as usize);
-        stream_extend.copy_from_slice(payload_slice);
-    }
-
-    // 更新流长度
-    unsafe {
-        *new_stream_len = new_len;
-    }
-
-    // 获取全局引擎实例
-    let engine = match ENGINE.get() {
-        Some(e) => e,
-        None => {
-            set_last_error("Engine not initialized");
-            return -1;
-        }
-    };
-
-    // 如果数据不完整，返回需要更多数据（但需要先进行流式匹配）
-    let is_complete_bool = is_complete != 0;
-    let is_final_bool = is_final != 0;
-
-    // 创建完整的流数据切片进行检测（使用会话管理）
-    let full_stream_slice = unsafe {
-        std::slice::from_raw_parts(stream_data, new_len as usize)
-    };
-
-    // 处理流数据（带会话管理）
-    // 注意：即使数据不完整，我们也进行流式匹配，因为Hyperscan支持跨数据包匹配
-    // 对于分段载荷，默认不在请求结束时重置，由外部程序控制
-    match engine.read().process_payload_with_session(session_id, full_stream_slice, is_final_bool, false) {
-        Ok(scan_result) => {
-            // 将结果写入C代码提供的结果结构体
-            unsafe {
-                *result = scan_result;
-            }
-            // 如果数据不完整，返回需要更多数据
-            if !is_complete_bool {
-                1 // 需要更多数据
-            } else {
-                0 // 成功
-            }
-        }
-        Err(e) => {
-            // 处理失败，设置错误信息并返回错误代码
-            set_last_error(&format!("Failed to process segmented payload with session: {}", e));
             e.to_error_code()
         }
     }

@@ -6,7 +6,7 @@
 // 导入错误处理类型
 use crate::error::{Result, WebScanError};
 // 导入正则表达式库，用于复杂的模式匹配
-use regex::Regex;
+use regex::{Regex, escape as regex_escape};
 // 导入序列化/反序列化trait，用于配置文件处理
 use serde::Deserialize;
 // 导入HashMap，用于快速查找规则
@@ -29,6 +29,361 @@ pub enum RuleAction {
     Reset = 3,  // 发送TCP重置包
 }
 
+/// HTTP匹配位置枚举
+/// 
+/// 定义规则应该在HTTP请求/响应的哪个部分进行匹配。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HttpMatchLocation {
+    Any,              // 任意位置（默认）
+    Method,            // HTTP方法（GET, POST等）
+    Uri,               // URI（已解码）
+    UriRaw,            // URI（原始，未解码）
+    Cookie,            // HTTP Cookie
+    RequestBody,       // HTTP请求体
+    RequestHeader,     // HTTP请求头
+}
+
+/// 带位置的模式结构
+/// 
+/// 用于表示一个模式及其对应的HTTP匹配位置和修饰符。
+#[derive(Debug, Clone)]
+pub struct PatternWithLocation {
+    pub pattern: String,
+    pub http_location: HttpMatchLocation,
+    pub startswith: bool,
+    pub endswith: bool,
+    pub distance: Option<u32>,
+    pub depth: Option<u32>,
+    pub offset: Option<u32>,
+    pub within: Option<u32>,
+}
+
+/// HTTP解析后的各部分内容
+/// 
+/// 用于存储从HTTP请求/响应中提取的各个部分。
+#[derive(Debug, Clone)]
+pub struct HttpParts {
+    pub full_content: &'static str,    // 完整内容
+    pub method: &'static str,           // HTTP方法
+    pub uri: &'static str,              // URI（已解码）
+    pub uri_raw: &'static str,          // URI（原始，未解码）
+    pub cookie: &'static str,           // Cookie
+    pub request_body: &'static str,      // 请求体
+    pub request_header: &'static str,   // 请求头
+    // 各部分在原始payload中的字节位置范围（用于验证Hyperscan匹配位置）
+    pub method_range: Option<(usize, usize)>,      // (start, end)
+    pub uri_range: Option<(usize, usize)>,        // (start, end)
+    pub uri_raw_range: Option<(usize, usize)>,    // (start, end)
+    pub cookie_range: Option<(usize, usize)>,     // (start, end)
+    pub request_body_range: Option<(usize, usize)>, // (start, end)
+    pub request_header_range: Option<(usize, usize)>, // (start, end)
+}
+
+impl HttpParts {
+    /// 从HTTP payload解析各部分
+    /// 
+    /// # 参数
+    /// * `payload` - HTTP payload字节数组
+    /// 
+    /// # 返回值
+    /// * `Result<HttpParts>` - 解析后的HTTP各部分
+    pub fn parse(payload: &[u8]) -> Result<Self> {
+        // 将payload转换为字符串
+        let content = std::str::from_utf8(payload)
+            .map_err(|_| WebScanError::RuleParsing("Invalid UTF-8 in HTTP payload".to_string()))?;
+        
+        // 使用Box::leak创建静态生命周期引用（在检测场景中是安全的）
+        let full_content = Box::leak(content.to_string().into_boxed_str());
+        
+        // 解析HTTP请求行并获取位置信息
+        let (method, uri_raw, method_range, uri_raw_range) = Self::parse_request_line_with_positions(content);
+        let method = Box::leak(method.to_string().into_boxed_str());
+        let uri_raw = Box::leak(uri_raw.to_string().into_boxed_str());
+        
+        // 解码URI（注意：解码后的URI位置可能与原始URI不同，这里使用原始URI的位置）
+        let uri = Self::url_decode(uri_raw);
+        let uri = Box::leak(uri.into_boxed_str());
+        let uri_range = uri_raw_range; // 使用原始URI的位置
+        
+        // 解析请求头并获取位置信息
+        let (request_header, request_header_range) = Self::extract_request_header_with_position(content);
+        let request_header = Box::leak(request_header.into_boxed_str());
+        
+        // 提取Cookie并获取位置信息
+        let (cookie, cookie_range) = Self::extract_cookie_with_position(content);
+        let cookie = Box::leak(cookie.into_boxed_str());
+        
+        // 提取请求体并获取位置信息
+        let (request_body, request_body_range) = Self::extract_request_body_with_position(content);
+        let request_body = Box::leak(request_body.into_boxed_str());
+        
+        Ok(HttpParts {
+            full_content,
+            method,
+            uri,
+            uri_raw,
+            cookie,
+            request_body,
+            request_header,
+            method_range,
+            uri_range,
+            uri_raw_range,
+            cookie_range,
+            request_body_range,
+            request_header_range,
+        })
+    }
+    
+    /// 检查匹配位置是否在指定的HTTP部分范围内
+    /// 
+    /// # 参数
+    /// * `match_from` - 匹配起始位置（字节偏移）
+    /// * `match_to` - 匹配结束位置（字节偏移）
+    /// * `location` - HTTP匹配位置
+    /// * `startswith` - 是否要求匹配在HTTP部分的开始
+    /// * `endswith` - 是否要求匹配在HTTP部分的结尾
+    /// 
+    /// # 返回值
+    /// * `bool` - 如果匹配位置在指定范围内返回true
+    pub fn is_match_in_location(&self, match_from: u64, match_to: u64, location: HttpMatchLocation, startswith: bool, endswith: bool) -> bool {
+        let range = match location {
+            HttpMatchLocation::Any => {
+                // 对于Any位置，如果使用了startswith/endswith，需要验证是否在payload的开始/结尾
+                if startswith {
+                    return match_from == 0;
+                }
+                if endswith {
+                    // 需要知道payload的总长度，这里我们使用full_content的长度
+                    let payload_end = self.full_content.len() as u64;
+                    return match_to == payload_end;
+                }
+                return true; // 任意位置都匹配
+            }
+            HttpMatchLocation::Method => self.method_range,
+            HttpMatchLocation::Uri => self.uri_range,
+            HttpMatchLocation::UriRaw => self.uri_raw_range,
+            HttpMatchLocation::Cookie => self.cookie_range,
+            HttpMatchLocation::RequestBody => self.request_body_range,
+            HttpMatchLocation::RequestHeader => self.request_header_range,
+        };
+        
+        if let Some((start, end)) = range {
+            // 检查匹配位置是否完全在指定范围内
+            let match_start = match_from as usize;
+            let match_end = match_to as usize;
+            
+            log::debug!("Location verification: location={:?}, range={:?}, match={}..{}, startswith={}, endswith={}", 
+                location, range, match_start, match_end, startswith, endswith);
+            
+            // 检查匹配位置是否与HTTP部分有重叠（匹配位置可能包含HTTP部分，或HTTP部分可能包含匹配位置）
+            // 我们要求匹配位置至少部分在HTTP部分范围内
+            if match_end <= start || match_start >= end {
+                log::debug!("Match outside range: match {}..{} not overlapping with {}..{}", match_start, match_end, start, end);
+                return false; // 不在范围内，没有重叠
+            }
+
+            // 改进的位置验证：要求匹配位置与HTTP部分有重叠，并且重叠部分至少包含pattern的核心内容
+            // 对于多pattern规则，我们更宽松一些，只要匹配位置与HTTP部分有重叠即可
+            
+            // 如果要求startswith，匹配必须在HTTP部分的开始
+            // 注意：Hyperscan可能匹配包含pattern的更长字符串，所以我们需要检查匹配是否从HTTP部分开始
+            if startswith {
+                // 匹配的开始位置应该在HTTP部分的开始位置（允许一些容差，因为Hyperscan可能匹配了包含pattern的更长字符串）
+                if match_start > start {
+                    log::debug!("startswith check failed: match_start {} > start {}", match_start, start);
+                    return false;
+                }
+                // 同时，匹配应该包含HTTP部分的开始位置
+                if match_end <= start {
+                    log::debug!("startswith check failed: match_end {} <= start {}", match_end, start);
+                    return false;
+                }
+            }
+            
+            // 如果要求endswith，匹配必须在HTTP部分的结尾
+            // 注意：Hyperscan可能匹配包含pattern的更长字符串，所以我们需要检查匹配是否到HTTP部分结束
+            if endswith {
+                // 匹配的结束位置应该在HTTP部分的结束位置（允许一些容差，因为Hyperscan可能匹配了包含pattern的更长字符串）
+                if match_end < end {
+                    log::debug!("endswith check failed: match_end {} < end {}", match_end, end);
+                    return false;
+                }
+                // 同时，匹配应该包含HTTP部分的结束位置
+                if match_start >= end {
+                    log::debug!("endswith check failed: match_start {} >= end {}", match_start, end);
+                    return false;
+                }
+            }
+            
+            log::debug!("Location verification passed");
+            true
+        } else {
+            // 如果没有位置信息，返回false（保守策略）
+            log::debug!("No range information available");
+            false
+        }
+    }
+    
+    /// 解析HTTP请求行
+    fn parse_request_line(content: &str) -> (String, String) {
+        if let Some(first_line) = content.lines().next() {
+            let parts: Vec<&str> = first_line.split_whitespace().collect();
+            if parts.len() >= 2 {
+                let method = parts[0].to_string();
+                let uri = parts[1].to_string();
+                return (method, uri);
+            }
+        }
+        (String::new(), String::new())
+    }
+    
+    /// 解析HTTP请求行并返回位置信息
+    fn parse_request_line_with_positions(content: &str) -> (String, String, Option<(usize, usize)>, Option<(usize, usize)>) {
+        if let Some(first_line) = content.lines().next() {
+            // 计算第一行在content中的起始位置
+            let first_line_start = first_line.as_ptr() as usize - content.as_ptr() as usize;
+            
+            let parts: Vec<&str> = first_line.split_whitespace().collect();
+            if parts.len() >= 2 {
+                let method = parts[0].to_string();
+                let uri = parts[1].to_string();
+                
+                // 计算method的位置（相对于content的起始位置）
+                let method_start = first_line_start + (parts[0].as_ptr() as usize - first_line.as_ptr() as usize);
+                let method_end = method_start + parts[0].len();
+                
+                // 计算URI的位置（相对于content的起始位置）
+                let uri_start = first_line_start + (parts[1].as_ptr() as usize - first_line.as_ptr() as usize);
+                let uri_end = uri_start + parts[1].len();
+                
+                return (method, uri, Some((method_start, method_end)), Some((uri_start, uri_end)));
+            }
+        }
+        (String::new(), String::new(), None, None)
+    }
+    
+    /// URL解码
+    fn url_decode(encoded: &str) -> String {
+        // 简单的URL解码实现
+        let mut decoded = String::new();
+        let mut chars = encoded.chars().peekable();
+        
+        while let Some(ch) = chars.next() {
+            if ch == '%' {
+                let mut hex = String::new();
+                if let Some(c1) = chars.next() {
+                    hex.push(c1);
+                    if let Some(c2) = chars.next() {
+                        hex.push(c2);
+                        if let Ok(byte_val) = u8::from_str_radix(&hex, 16) {
+                            decoded.push(byte_val as char);
+                            continue;
+                        }
+                    }
+                }
+                decoded.push('%');
+                decoded.push_str(&hex);
+            } else if ch == '+' {
+                decoded.push(' ');
+            } else {
+                decoded.push(ch);
+            }
+        }
+        
+        decoded
+    }
+    
+    /// 提取请求头部分
+    fn extract_request_header(content: &str) -> String {
+        if let Some(body_start) = content.find("\r\n\r\n") {
+            content[..body_start].to_string()
+        } else if let Some(body_start) = content.find("\n\n") {
+            content[..body_start].to_string()
+        } else {
+            content.to_string()
+        }
+    }
+    
+    /// 提取请求头部分并返回位置信息
+    fn extract_request_header_with_position(content: &str) -> (String, Option<(usize, usize)>) {
+        if let Some(body_start) = content.find("\r\n\r\n") {
+            let header = content[..body_start].to_string();
+            let range = Some((0, body_start));
+            (header, range)
+        } else if let Some(body_start) = content.find("\n\n") {
+            let header = content[..body_start].to_string();
+            let range = Some((0, body_start));
+            (header, range)
+        } else {
+            let header = content.to_string();
+            let range = Some((0, content.len()));
+            (header, range)
+        }
+    }
+    
+    /// 提取Cookie
+    fn extract_cookie(content: &str) -> String {
+        // 查找Cookie头
+        for line in content.lines() {
+            let line_lower = line.to_lowercase();
+            if line_lower.starts_with("cookie:") {
+                return line[7..].trim().to_string();
+            }
+        }
+        String::new()
+    }
+    
+    /// 提取Cookie并返回位置信息
+    fn extract_cookie_with_position(content: &str) -> (String, Option<(usize, usize)>) {
+        // 查找Cookie头
+        for line in content.lines() {
+            let line_lower = line.to_lowercase();
+            if line_lower.starts_with("cookie:") {
+                let cookie_value = line[7..].trim();
+                if !cookie_value.is_empty() {
+                    // 计算cookie值在content中的位置
+                    // 首先找到这一行在content中的起始位置
+                    let line_start = line.as_ptr() as usize - content.as_ptr() as usize;
+                    // 然后找到cookie值在这一行中的位置
+                    let cookie_value_start_in_line = line.find(cookie_value).unwrap_or(7);
+                    let cookie_start = line_start + cookie_value_start_in_line;
+                    let cookie_end = cookie_start + cookie_value.len();
+                    return (cookie_value.to_string(), Some((cookie_start, cookie_end)));
+                }
+            }
+        }
+        (String::new(), None)
+    }
+    
+    /// 提取请求体
+    fn extract_request_body(content: &str) -> String {
+        if let Some(body_start) = content.find("\r\n\r\n") {
+            content[body_start + 4..].to_string()
+        } else if let Some(body_start) = content.find("\n\n") {
+            content[body_start + 2..].to_string()
+        } else {
+            String::new()
+        }
+    }
+    
+    /// 提取请求体并返回位置信息
+    fn extract_request_body_with_position(content: &str) -> (String, Option<(usize, usize)>) {
+        if let Some(body_start) = content.find("\r\n\r\n") {
+            let body = content[body_start + 4..].to_string();
+            let body_start_pos = body_start + 4;
+            let body_end_pos = content.len();
+            (body, Some((body_start_pos, body_end_pos)))
+        } else if let Some(body_start) = content.find("\n\n") {
+            let body = content[body_start + 2..].to_string();
+            let body_start_pos = body_start + 2;
+            let body_end_pos = content.len();
+            (body, Some((body_start_pos, body_end_pos)))
+        } else {
+            (String::new(), None)
+        }
+    }
+}
+
 // 为RuleAction实现Default trait
 // 默认动作是Alert（告警），这是最安全的选择
 impl Default for RuleAction {
@@ -45,9 +400,12 @@ pub struct Rule {
     pub id: u32,                                    // 规则唯一标识符
     pub action: RuleAction,                         // 匹配时执行的动作
     pub message: String,                            // 规则描述信息
-    pub pattern: String,                            // 原始匹配模式
+    pub pattern: String,                            // 原始匹配模式（向后兼容，用于Hyperscan编译）
     pub compiled_regex: Option<Regex>,              // 编译后的正则表达式（可选）
+    pub http_location: HttpMatchLocation,           // HTTP匹配位置（向后兼容，用于单pattern规则）
     pub metadata: HashMap<String, String>,          // 额外的元数据
+    pub patterns: Vec<PatternWithLocation>,         // 多个模式及其位置（支持多content规则）
+    pub fast_pattern_index: Option<usize>,          // Fast pattern索引（用于优化：先匹配fast pattern，命中后再匹配其他pattern）
 }
 
 impl Rule {
@@ -63,15 +421,20 @@ impl Rule {
     /// * `Result<Self>` - 成功时返回Rule实例，失败时返回错误
     pub fn new(id: u32, action: RuleAction, message: String, pattern: String) -> Result<Self> {
         // 尝试编译正则表达式（如果模式不为空）
+        // 如果编译失败，将pattern作为字面字符串处理（Suricata规则中的content通常是字面字符串）
         let compiled_regex = if pattern.is_empty() {
             None  // 空模式不需要正则表达式
         } else {
             // 尝试编译正则表达式
-            // map_err()用于转换错误类型
-            Some(Regex::new(&pattern).map_err(|e| {
-                // 如果正则表达式编译失败，创建自定义错误
-                WebScanError::RuleParsing(format!("Invalid regex pattern '{}': {}", pattern, e))
-            })?)  // ?操作符传播错误
+            // 如果失败，将其作为字面字符串处理（不报错）
+            match Regex::new(&pattern) {
+                Ok(regex) => Some(regex),
+                Err(_) => {
+                    // 正则表达式编译失败，将其作为字面字符串处理
+                    // 这在Suricata规则中很常见，因为content选项通常是字面字符串
+                    None
+                }
+            }
         };
 
         // 创建并返回Rule实例
@@ -79,9 +442,21 @@ impl Rule {
             id,
             action,
             message,
-            pattern,
+            pattern: pattern.clone(),  // 向后兼容
             compiled_regex,
+            http_location: HttpMatchLocation::Any,  // 默认匹配任意位置（向后兼容）
             metadata: HashMap::new(),  // 初始化为空的HashMap
+            patterns: vec![PatternWithLocation {  // 默认只有一个pattern
+                pattern,
+                http_location: HttpMatchLocation::Any,
+                startswith: false,
+                endswith: false,
+                distance: None,
+                depth: None,
+                offset: None,
+                within: None,
+            }],
+            fast_pattern_index: Some(0),  // 单pattern规则，fast pattern就是它自己
         })
     }
 
@@ -99,6 +474,140 @@ impl Rule {
             Some(regex) => regex.is_match(content),
             // 如果没有正则表达式，使用简单的字符串包含检查
             None => content.contains(&self.pattern),
+        }
+    }
+
+    /// 检查此规则是否匹配HTTP内容
+    /// 
+    /// 根据规则的http_location，在相应的HTTP部分进行匹配。
+    /// 
+    /// # 参数
+    /// * `http_parts` - HTTP解析后的各部分内容
+    /// 
+    /// # 返回值
+    /// * `bool` - 如果匹配返回true，否则返回false
+    pub fn matches_http(&self, http_parts: &HttpParts) -> bool {
+        let target_content = match self.http_location {
+            HttpMatchLocation::Any => http_parts.full_content,
+            HttpMatchLocation::Method => http_parts.method,
+            HttpMatchLocation::Uri => http_parts.uri,
+            HttpMatchLocation::UriRaw => http_parts.uri_raw,
+            HttpMatchLocation::Cookie => http_parts.cookie,
+            HttpMatchLocation::RequestBody => http_parts.request_body,
+            HttpMatchLocation::RequestHeader => http_parts.request_header,
+        };
+
+        if target_content.is_empty() {
+            return false;
+        }
+
+        // 使用模式匹配检查是否有编译的正则表达式
+        match &self.compiled_regex {
+            // 如果有正则表达式，使用正则匹配
+            Some(regex) => regex.is_match(target_content),
+            // 如果没有正则表达式，使用简单的字符串包含检查
+            None => target_content.contains(&self.pattern),
+        }
+    }
+
+    /// 检查规则是否完全匹配（多条件规则）
+    ///
+    /// 这个方法验证规则的所有pattern是否都在正确的HTTP位置找到。
+    /// 对于多content规则，需要所有条件都满足才返回true。
+    ///
+    /// # 参数
+    /// * `data` - 完整的HTTP数据
+    ///
+    /// # 返回值
+    /// * `bool` - 如果规则完全匹配返回true，否则返回false
+    pub fn does_rule_fully_match(&self, data: &str) -> bool {
+        // 检查所有pattern是否都在正确的位置找到
+        for (pattern_idx, pattern_with_location) in self.patterns.iter().enumerate() {
+            let target_content = self.extract_http_part(data, pattern_with_location.http_location);
+
+            log::debug!("Rule {}: checking pattern {} '{}' in {:?} -> extracted: '{}' -> contains: {}",
+                     self.id, pattern_idx, pattern_with_location.pattern, pattern_with_location.http_location,
+                     target_content, target_content.contains(&pattern_with_location.pattern));
+
+            if target_content.is_empty() {
+                log::debug!("Rule {}: pattern {} failed - empty target content", self.id, pattern_idx);
+                return false;
+            }
+
+            // 检查pattern是否在正确的位置找到
+            if !target_content.contains(&pattern_with_location.pattern) {
+                log::debug!("Rule {}: pattern {} failed - '{}' not found in '{}'", self.id, pattern_idx, pattern_with_location.pattern, target_content);
+                return false;
+            } else {
+                log::debug!("Rule {}: pattern {} passed - '{}' found in '{}'", self.id, pattern_idx, pattern_with_location.pattern, target_content);
+            }
+        }
+
+        log::debug!("Rule {}: all patterns matched - fully matches", self.id);
+        true
+    }
+
+    /// 从HTTP数据中提取指定部分
+    ///
+    /// # 参数
+    /// * `data` - 完整的HTTP数据
+    /// * `location` - 要提取的HTTP部分
+    ///
+    /// # 返回值
+    /// * `&str` - 提取的HTTP部分
+    fn extract_http_part<'a>(&self, data: &'a str, location: HttpMatchLocation) -> &'a str {
+        match location {
+            HttpMatchLocation::Any => data,
+            HttpMatchLocation::Method => {
+                // 提取HTTP方法（第一行的第一个词）
+                if let Some(end) = data.find(' ') {
+                    &data[..end]
+                } else {
+                    ""
+                }
+            }
+            HttpMatchLocation::Uri | HttpMatchLocation::UriRaw => {
+                // 提取URI（第一个空格后的内容到第二个空格）
+                if let Some(start) = data.find(' ') {
+                    let uri_start = start + 1;
+                    if let Some(end) = data[uri_start..].find(' ') {
+                        &data[uri_start..uri_start + end]
+                    } else {
+                        ""
+                    }
+                } else {
+                    ""
+                }
+            }
+            HttpMatchLocation::Cookie => {
+                // 查找Cookie头部
+                if let Some(cookie_start) = data.to_lowercase().find("cookie:") {
+                    let start = cookie_start + 7; // 跳过"cookie:"
+                    if let Some(end) = data[start..].find("\r\n") {
+                        &data[start..start + end].trim()
+                    } else {
+                        ""
+                    }
+                } else {
+                    ""
+                }
+            }
+            HttpMatchLocation::RequestBody => {
+                // 查找HTTP body（在\r\n\r\n之后的内容）
+                if let Some(header_end) = data.find("\r\n\r\n") {
+                    &data[header_end + 4..]
+                } else {
+                    ""
+                }
+            }
+            HttpMatchLocation::RequestHeader => {
+                // 提取请求头（从第一行到\r\n\r\n）
+                if let Some(header_end) = data.find("\r\n\r\n") {
+                    &data[..header_end]
+                } else {
+                    ""
+                }
+            }
         }
     }
 
@@ -239,6 +748,25 @@ impl RuleManager {
         self.rules.values().find(|rule| rule.matches(content))
     }
 
+    /// 检查HTTP内容是否匹配任何规则
+    /// 
+    /// 根据规则的http_location在相应的HTTP部分进行匹配。
+    /// 
+    /// # 参数
+    /// * `http_parts` - HTTP解析后的各部分内容
+    /// 
+    /// # 返回值
+    /// * `Option<&Rule>` - 如果匹配到规则返回Some(规则引用)，否则返回None
+    pub fn match_http_content(&self, http_parts: &HttpParts) -> Option<&Rule> {
+        // 如果规则管理未启用，直接返回None
+        if !self.enabled {
+            return None;
+        }
+
+        // 遍历所有规则，找到第一个匹配的
+        self.rules.values().find(|rule| rule.matches_http(http_parts))
+    }
+
     /// 从文件加载规则
     ///
     /// 支持多种格式的规则文件，如JSON、TOML、Hyperscan等。
@@ -288,9 +816,23 @@ impl RuleManager {
             
             // 解析Suricata/Snort格式规则
             // 格式: action protocol source_ip source_port -> dest_ip dest_port (options)
-            if let Ok(rule) = self._parse_suricata_rule(trimmed_line, line_num + 1) {
-                self.add_rule(rule)?;
-                loaded_count += 1;
+            match self._parse_suricata_rule(trimmed_line, line_num + 1) {
+                Ok(rule) => {
+                    // 如果添加规则失败（比如ID冲突），记录警告但继续处理其他规则
+                    match self.add_rule(rule) {
+                        Ok(_) => {
+                            loaded_count += 1;
+                        }
+                        Err(e) => {
+                            // 记录添加失败，但不中断整个加载过程
+                            log::warn!("Failed to add rule at line {}: {}", line_num + 1, e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    // 记录解析失败，但不中断整个加载过程
+                    log::warn!("Failed to parse rule at line {}: {}", line_num + 1, e);
+                }
             }
         }
         
@@ -329,9 +871,10 @@ impl RuleManager {
         };
         
         // 检查是否为HTTP规则
+        // 如果不是HTTP规则（如TCP），跳过该规则（不报错，因为规则文件中可能包含多种协议）
         if parts[1] != "http" {
             return Err(WebScanError::RuleParsing(
-                format!("Only HTTP rules are supported at line {}", line_num)
+                format!("Skipping non-HTTP rule (protocol: {}) at line {}", parts[1], line_num)
             ));
         }
         
@@ -349,8 +892,24 @@ impl RuleManager {
         
         // 解析选项
         let mut message = "Unknown rule".to_string();
-        let mut pattern = String::new();
         let mut sid = 0u32;
+        
+        // 用于收集多个pattern及其位置信息
+        let mut patterns: Vec<PatternWithLocation> = Vec::new();
+        
+        // 当前正在解析的pattern的状态
+        let mut current_pattern = String::new();
+        let mut current_http_location = HttpMatchLocation::Any;
+        let mut current_startswith = false;
+        let mut current_endswith = false;
+        let mut current_distance: Option<u32> = None;
+        let mut current_depth: Option<u32> = None;
+        let mut current_offset: Option<u32> = None;
+        let mut current_within: Option<u32> = None;
+        
+        // 辅助函数：保存当前pattern并开始新的
+        // 注意：不能使用闭包，因为会捕获可变引用，导致借用冲突
+        // 改为在需要的地方直接内联代码
         
         for option in options_str.split(';') {
             let option = option.trim();
@@ -364,7 +923,32 @@ impl RuleManager {
                 
                 match key {
                     "msg" => message = value.to_string(),
-                    "content" => pattern = value.to_string(),
+                    "content" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                            });
+                            // 重置当前pattern状态（但保留http_location，因为它可能应用到下一个content）
+                            current_pattern.clear();
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            // 注意：不重置current_http_location，因为下一个content可能继承它
+                        }
+                        // 处理Suricata规则中的十六进制编码（如 |28 29 20 7b|）
+                        current_pattern = Self::_decode_suricata_content(value);
+                    }
                     "sid" => {
                         sid = value.parse().map_err(|_| {
                             WebScanError::RuleParsing(
@@ -372,9 +956,95 @@ impl RuleManager {
                             )
                         })?;
                     }
-                    _ => {} // 忽略其他选项
+                    "pcre" => {
+                        // PCRE选项：如果还没有content pattern，尝试使用PCRE作为pattern
+                        // 注意：Hyperscan可能不支持完整的PCRE语法，需要转义特殊字符
+                        if current_pattern.is_empty() {
+                            // PCRE格式通常是 /pattern/flags 或 "pattern"
+                            let pcre_value = value.trim_matches('"');
+                            if pcre_value.starts_with('/') && pcre_value.len() > 1 {
+                                // 格式：/pattern/flags
+                                let pcre_without_first_slash = &pcre_value[1..];
+                                if let Some(flags_pos) = pcre_without_first_slash.rfind('/') {
+                                    let pcre_pattern = &pcre_without_first_slash[..flags_pos];
+                                    // 转义Hyperscan不支持的特殊字符，但保留基本的正则表达式功能
+                                    current_pattern = Self::_escape_hyperscan_pattern(pcre_pattern);
+                                } else {
+                                    // 没有flags分隔符，整个作为pattern
+                                    current_pattern = Self::_escape_hyperscan_pattern(pcre_without_first_slash);
+                                }
+                            } else {
+                                // 没有斜杠分隔符，直接使用
+                                current_pattern = Self::_escape_hyperscan_pattern(pcre_value);
+                            }
+                        }
+                    }
+                    "http.method" => {
+                        current_http_location = HttpMatchLocation::Method;
+                    }
+                    "http.uri" => {
+                        current_http_location = HttpMatchLocation::Uri;
+                    }
+                    "http.uri.raw" => {
+                        current_http_location = HttpMatchLocation::UriRaw;
+                    }
+                    "http.cookie" => {
+                        current_http_location = HttpMatchLocation::Cookie;
+                    }
+                    "http.request_body" => {
+                        current_http_location = HttpMatchLocation::RequestBody;
+                    }
+                    "http.request_header" => {
+                        current_http_location = HttpMatchLocation::RequestHeader;
+                    }
+                    "startswith" => {
+                        current_startswith = true;
+                    }
+                    "endswith" => {
+                        current_endswith = true;
+                    }
+                    "distance" => {
+                        current_distance = value.parse().ok();
+                    }
+                    "depth" => {
+                        current_depth = value.parse().ok();
+                    }
+                    "offset" => {
+                        current_offset = value.parse().ok();
+                    }
+                    "within" => {
+                        current_within = value.parse().ok();
+                    }
+                    _ => {} // 忽略其他选项（如flow, fast_pattern, nocase等）
+                }
+            } else {
+                // 没有等号的选项（如 startswith, endswith, http.uri, http.method等）
+                match option {
+                    "startswith" => current_startswith = true,
+                    "endswith" => current_endswith = true,
+                    "http.method" => current_http_location = HttpMatchLocation::Method,
+                    "http.uri" => current_http_location = HttpMatchLocation::Uri,
+                    "http.uri.raw" => current_http_location = HttpMatchLocation::UriRaw,
+                    "http.cookie" => current_http_location = HttpMatchLocation::Cookie,
+                    "http.request_body" => current_http_location = HttpMatchLocation::RequestBody,
+                    "http.request_header" => current_http_location = HttpMatchLocation::RequestHeader,
+                    _ => {} // 忽略其他标志选项
                 }
             }
+        }
+        
+        // 保存最后一个pattern
+        if !current_pattern.is_empty() {
+            patterns.push(PatternWithLocation {
+                pattern: current_pattern.clone(),
+                http_location: current_http_location,
+                startswith: current_startswith,
+                endswith: current_endswith,
+                distance: current_distance,
+                depth: current_depth,
+                offset: current_offset,
+                within: current_within,
+            });
         }
         
         if sid == 0 {
@@ -383,14 +1053,302 @@ impl RuleManager {
             ));
         }
         
-        if pattern.is_empty() {
+        if patterns.is_empty() {
             return Err(WebScanError::RuleParsing(
                 format!("Missing content pattern at line {}", line_num)
             ));
         }
         
+        // 应用 startswith、endswith 等选项，转换为 Hyperscan 正则表达式
+        // 注意：对于HTTP特定位置的规则，startswith/endswith不应该在pattern中添加^/$锚点
+        // 因为^/$会匹配整个payload的开头/结尾，而不是HTTP部分的开头/结尾
+        // 我们会在匹配后通过位置验证来处理startswith/endswith
+        let mut processed_patterns = Vec::new();
+        let mut first_pattern_for_hyperscan = String::new();
+        
+        for mut pattern_with_loc in patterns {
+            let has_http_location = pattern_with_loc.http_location != HttpMatchLocation::Any;
+            let pattern_startswith = if has_http_location { false } else { pattern_with_loc.startswith };
+            let pattern_endswith = if has_http_location { false } else { pattern_with_loc.endswith };
+            
+            let processed_pattern = Self::_apply_pattern_modifiers(
+                pattern_with_loc.pattern.clone(),
+                pattern_startswith,
+                pattern_endswith,
+                pattern_with_loc.distance,
+                pattern_with_loc.depth,
+                pattern_with_loc.offset,
+                pattern_with_loc.within,
+            );
+            
+            // 保存处理后的pattern（用于位置验证）
+            pattern_with_loc.pattern = processed_pattern.clone();
+            processed_patterns.push(pattern_with_loc);
+            
+            // 第一个pattern用于Hyperscan编译（向后兼容）
+            if first_pattern_for_hyperscan.is_empty() {
+                first_pattern_for_hyperscan = processed_pattern;
+            }
+        }
+        
         // 创建规则
-        Rule::new(sid, action, message, pattern)
+        let mut rule = Rule::new(sid, action, message, first_pattern_for_hyperscan)?;
+        // 设置patterns
+        rule.patterns = processed_patterns;
+        
+        // 向后兼容：设置第一个pattern的http_location和metadata
+        if let Some(first_pattern) = rule.patterns.first() {
+            rule.http_location = first_pattern.http_location;
+            if first_pattern.startswith {
+                rule.metadata.insert("startswith".to_string(), "true".to_string());
+            }
+            if first_pattern.endswith {
+                rule.metadata.insert("endswith".to_string(), "true".to_string());
+            }
+        }
+        
+        Ok(rule)
+    }
+
+    /// 解码Suricata规则中的content值
+    /// 
+    /// 处理Suricata规则中的特殊格式：
+    /// - 十六进制编码：|28 29 20 7b| -> 转换为对应的字节
+    /// - 混合格式：bash|20 2d|c -> bash -c（|20|是空格，|2d|是-）
+    /// 
+    /// # 参数
+    /// * `content` - Suricata规则中的content值
+    /// 
+    /// # 返回值
+    /// * `String` - 解码后的字符串
+    fn _decode_suricata_content(content: &str) -> String {
+        let mut result = String::new();
+        let mut i = 0;
+        let bytes = content.as_bytes();
+        
+        while i < bytes.len() {
+            if bytes[i] == b'|' {
+                // 找到十六进制编码的开始
+                let hex_start = i + 1;
+                let mut hex_end = hex_start;
+                
+                // 查找结束的|
+                while hex_end < bytes.len() && bytes[hex_end] != b'|' {
+                    hex_end += 1;
+                }
+                
+                if hex_end < bytes.len() {
+                    // 提取十六进制部分
+                    let hex_str = &content[hex_start..hex_end];
+                    // 解析十六进制字节
+                    let hex_bytes: Vec<&str> = hex_str.split_whitespace().collect();
+                    for hex_byte in hex_bytes {
+                        if let Ok(byte_val) = u8::from_str_radix(hex_byte, 16) {
+                            // 只添加可打印的ASCII字符，其他字符跳过（Hyperscan可能不支持）
+                            if byte_val >= 32 && byte_val <= 126 {
+                                result.push(byte_val as char);
+                            }
+                        }
+                    }
+                    i = hex_end + 1;
+                } else {
+                    // 没有找到结束的|，作为普通字符处理
+                    result.push(bytes[i] as char);
+                    i += 1;
+                }
+            } else {
+                result.push(bytes[i] as char);
+                i += 1;
+            }
+        }
+        
+        result
+    }
+
+    /// 应用模式修饰符，转换为 Hyperscan 正则表达式
+    /// 
+    /// 将 Suricata 规则中的 startswith、endswith、distance、depth、offset、within 等选项
+    /// 转换为 Hyperscan 正则表达式。
+    /// 
+    /// # 参数
+    /// * `pattern` - 原始模式字符串
+    /// * `startswith` - 是否从开始匹配
+    /// * `endswith` - 是否在结尾匹配
+    /// * `distance` - 与前一个 content 的距离（字节数）
+    /// * `depth` - 搜索深度（从开始位置）
+    /// * `offset` - 偏移量
+    /// * `within` - 搜索范围
+    /// 
+    /// # 返回值
+    /// * `String` - 转换后的 Hyperscan 正则表达式
+    fn _apply_pattern_modifiers(
+        pattern: String,
+        startswith: bool,
+        endswith: bool,
+        distance: Option<u32>,
+        depth: Option<u32>,
+        offset: Option<u32>,
+        within: Option<u32>,
+    ) -> String {
+        let mut result = pattern;
+        
+        // 检查是否已经包含正则表达式特殊字符
+        // 如果已经包含，说明是正则表达式，不需要转义
+        // 如果不包含，需要转义特殊字符以作为字面字符串匹配
+        let has_regex_chars = result.chars().any(|c| matches!(c, '^' | '$' | '.' | '*' | '+' | '?' | '[' | ']' | '(' | ')' | '|' | '\\'));
+        
+        // 如果模式不包含正则表达式特殊字符，且不是PCRE模式，则转义特殊字符
+        // 但要注意：如果已经应用了 startswith 或 endswith，说明需要作为正则表达式处理
+        if !has_regex_chars && !startswith && !endswith {
+            // 转义特殊字符，使其作为字面字符串匹配
+            result = regex_escape(&result);
+        } else if !has_regex_chars {
+            // 如果包含 startswith 或 endswith，需要转义特殊字符但保留位置锚点
+            // 转义特殊字符（除了已经添加的 ^ 和 $）
+            result = regex_escape(&result);
+        }
+        
+        // 应用 startswith：在模式前添加 ^
+        if startswith && !result.starts_with('^') {
+            result = format!("^{}", result);
+        }
+        
+        // 应用 endswith：在模式后添加 $
+        if endswith && !result.ends_with('$') {
+            result = format!("{}$", result);
+        }
+        
+        // 应用 depth：限制搜索深度
+        // depth 表示从开始位置最多搜索 depth 字节
+        // 在 Hyperscan 中，可以使用 (?<=.{0,depth}) 或直接限制搜索范围
+        // 简化处理：如果指定了 depth，且没有 startswith，可以添加 (?<=.{0,depth}) 前缀
+        // 但 Hyperscan 可能不支持 lookbehind，所以这里先简化处理
+        if let Some(_d) = depth {
+            if !startswith {
+                // depth 限制从开始位置搜索的深度
+                // 在 Hyperscan 中，可以通过限制匹配位置来实现
+                // 这里先记录到 metadata，后续可以在匹配时处理
+                // 暂时不修改 pattern
+            }
+        }
+        
+        // 应用 offset：指定偏移量
+        // offset 表示从开始位置的偏移量
+        // 在 Hyperscan 中，可以通过 (?<=.{offset}) 来实现
+        // 但 Hyperscan 可能不支持 lookbehind，所以这里先简化处理
+        if let Some(_o) = offset {
+            if !startswith {
+                // offset 指定从开始位置的偏移量
+                // 暂时不修改 pattern，后续可以在匹配时处理
+            }
+        }
+        
+        // 应用 distance：与前一个 content 的距离
+        // distance 表示与前一个匹配的距离
+        // 在 Suricata 中，多个 content 选项可以组合
+        // 这里先简化处理，后续可以支持多个 content 的组合
+        if let Some(_d) = distance {
+            // distance 需要与前一个 content 配合使用
+            // 暂时不修改 pattern，后续可以支持多个 content 的组合
+        }
+        
+        // 应用 within：搜索范围
+        // within 表示在指定范围内搜索
+        // 在 Hyperscan 中，可以通过限制匹配位置来实现
+        // 暂时不修改 pattern，后续可以在匹配时处理
+        if let Some(_w) = within {
+            // within 需要与前一个 content 配合使用
+            // 暂时不修改 pattern，后续可以支持多个 content 的组合
+        }
+        
+        result
+    }
+
+    /// 转义Hyperscan模式中的特殊字符
+    /// 
+    /// Hyperscan支持基本的正则表达式，但某些PCRE特性可能不支持。
+    /// 这个函数尝试转义可能导致问题的字符。
+    /// 
+    /// # 参数
+    /// * `pattern` - PCRE模式字符串
+    /// 
+    /// # 返回值
+    /// * `String` - 转义后的模式字符串
+    fn _escape_hyperscan_pattern(pattern: &str) -> String {
+        // Hyperscan支持基本的正则表达式，但某些复杂的PCRE特性可能不支持
+        // 这里尝试转义可能导致问题的字符
+        // 注意：这是一个简化的处理，复杂的PCRE模式可能需要更复杂的转换
+        
+        // 首先处理字符类中的转义序列（如 [\s>]）
+        let mut result = String::new();
+        let mut in_char_class = false;
+        let bytes = pattern.as_bytes();
+        let mut i = 0;
+        
+        while i < bytes.len() {
+            if bytes[i] == b'[' && (i == 0 || bytes[i-1] != b'\\') {
+                in_char_class = true;
+                result.push(bytes[i] as char);
+                i += 1;
+            } else if bytes[i] == b']' && (i == 0 || bytes[i-1] != b'\\') {
+                in_char_class = false;
+                result.push(bytes[i] as char);
+                i += 1;
+            } else if in_char_class && bytes[i] == b'\\' && i + 1 < bytes.len() {
+                // 在字符类中处理转义序列
+                match bytes[i + 1] {
+                    b's' => {
+                        // \s 在字符类中展开为空白字符
+                        result.push_str(" \t\n\r");
+                        i += 2;
+                    }
+                    b'S' => {
+                        // \S 在字符类中不能直接使用，保留原样或跳过
+                        result.push(bytes[i] as char);
+                        result.push(bytes[i + 1] as char);
+                        i += 2;
+                    }
+                    b'w' => {
+                        // \w 在字符类中展开为单词字符
+                        result.push_str("a-zA-Z0-9_");
+                        i += 2;
+                    }
+                    b'W' => {
+                        // \W 在字符类中不能直接使用，保留原样或跳过
+                        result.push(bytes[i] as char);
+                        result.push(bytes[i + 1] as char);
+                        i += 2;
+                    }
+                    b'd' => {
+                        // \d 在字符类中展开为数字
+                        result.push_str("0-9");
+                        i += 2;
+                    }
+                    b'D' => {
+                        // \D 在字符类中不能直接使用，保留原样或跳过
+                        result.push(bytes[i] as char);
+                        result.push(bytes[i + 1] as char);
+                        i += 2;
+                    }
+                    _ => {
+                        result.push(bytes[i] as char);
+                        i += 1;
+                    }
+                }
+            } else {
+                result.push(bytes[i] as char);
+                i += 1;
+            }
+        }
+        
+        // 然后处理字符类外的转义序列
+        result
+            .replace(r"\W", r"[^a-zA-Z0-9_]")  // \W -> 非单词字符
+            .replace(r"\w", r"[a-zA-Z0-9_]")   // \w -> 单词字符
+            .replace(r"\d", r"[0-9]")          // \d -> 数字
+            .replace(r"\D", r"[^0-9]")          // \D -> 非数字
+            .replace(r"\s", r"[ \t\n\r]")      // \s -> 空白字符（字符类外）
+            .replace(r"\S", r"[^ \t\n\r]")     // \S -> 非空白字符（字符类外）
     }
 
     /// 解析JSON格式的规则

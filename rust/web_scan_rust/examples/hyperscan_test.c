@@ -9,7 +9,7 @@ int main() {
 
     // Initialize the engine with Hyperscan
     printf("1. Initializing engine with Hyperscan...\n");
-    if (web_scan_rust_init_with_hyperscan(1) != 0) {
+    if (web_scan_rust_init_with_hyperscan() != 0) {
         fprintf(stderr, "Failed to initialize engine: %s\n", web_scan_rust_get_last_error());
         return 1;
     }

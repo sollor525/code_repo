@@ -175,7 +175,7 @@ fi
 
 echo "12. 运行Rust单元测试..."
 cd ..
-cargo test
+cargo test -- --test-threads=1
 
 if [ $? -eq 0 ]; then
     echo

@@ -30,10 +30,13 @@ use std::collections::HashMap;
 /// Hyperscan 编译器
 ///
 /// 专门用于创建高性能的流式Hyperscan数据库。
+/// 支持分别编译fast pattern数据库和完整数据库。
 #[derive(Debug)]
 pub struct HyperscanCompiler {
-    /// 存储模式和对应的规则 ID
+    /// 存储模式和对应的规则 ID（完整数据库）
     patterns: Vec<(String, u32)>,
+    /// 存储fast pattern和对应的规则 ID（fast pattern数据库）
+    fast_patterns: Vec<(String, u32)>,
 }
 
 /// 匹配结果结构体
@@ -60,6 +63,7 @@ impl HyperscanCompiler {
     pub fn new() -> Self {
         Self {
             patterns: Vec::new(),
+            fast_patterns: Vec::new(),
         }
     }
 
@@ -70,33 +74,95 @@ impl HyperscanCompiler {
     ///
     /// # 返回值
     /// * `Result<()>` - 成功返回Ok(())，失败返回错误
+    /// 
+    /// 注意：只有fast pattern在HTTP header中的规则才会被添加到fast pattern数据库。
+    /// fast pattern不在header中的规则只添加到完整数据库，不使用fast pattern过滤。
     pub fn add_rule(&mut self, rule: &Rule) -> Result<()> {
-        // 添加模式字符串和对应的规则 ID
-        self.patterns.push((rule.pattern.clone(), rule.id));
+        // 对于多pattern规则，将所有pattern都添加到完整数据库中
+        // 只有fast pattern在header中的规则才会添加到fast pattern数据库
+        if rule.patterns.len() > 1 {
+            // 多pattern规则：添加所有pattern到完整数据库
+            for (idx, pattern_with_loc) in rule.patterns.iter().enumerate() {
+                log::debug!("Adding Hyperscan pattern {} for rule {}: '{}' (location: {:?})", 
+                    idx, rule.id, pattern_with_loc.pattern, pattern_with_loc.http_location);
+                self.patterns.push((pattern_with_loc.pattern.clone(), rule.id));
+            }
+            
+            // 只有fast pattern在header中的规则才添加到fast pattern数据库
+            if let Some(fast_idx) = rule.fast_pattern_index {
+                if let Some(fast_pattern) = rule.patterns.get(fast_idx) {
+                    // 检查fast pattern是否在header中
+                    let is_header_location = matches!(fast_pattern.http_location, 
+                        crate::rules::HttpMatchLocation::Method | 
+                        crate::rules::HttpMatchLocation::Uri | 
+                        crate::rules::HttpMatchLocation::UriRaw | 
+                        crate::rules::HttpMatchLocation::Cookie | 
+                        crate::rules::HttpMatchLocation::RequestHeader);
+                    
+                    if is_header_location {
+                        log::debug!("Adding fast pattern for rule {}: '{}' (header location: {:?})", 
+                            rule.id, fast_pattern.pattern, fast_pattern.http_location);
+                        self.fast_patterns.push((fast_pattern.pattern.clone(), rule.id));
+                    } else {
+                        log::debug!("Skipping fast pattern for rule {}: '{}' (non-header location: {:?}), rule will use full matching only", 
+                            rule.id, fast_pattern.pattern, fast_pattern.http_location);
+                    }
+                }
+            }
+        } else {
+            // 单pattern规则：向后兼容
+            log::debug!("Adding Hyperscan pattern for rule {}: '{}'", rule.id, rule.pattern);
+            self.patterns.push((rule.pattern.clone(), rule.id));
+            
+            // 检查单pattern规则的http_location
+            let is_header_location = if let Some(first_pattern) = rule.patterns.first() {
+                matches!(first_pattern.http_location, 
+                    crate::rules::HttpMatchLocation::Method | 
+                    crate::rules::HttpMatchLocation::Uri | 
+                    crate::rules::HttpMatchLocation::UriRaw | 
+                    crate::rules::HttpMatchLocation::Cookie | 
+                    crate::rules::HttpMatchLocation::RequestHeader)
+            } else {
+                // 如果没有patterns（向后兼容），检查http_location字段
+                matches!(rule.http_location, 
+                    crate::rules::HttpMatchLocation::Method | 
+                    crate::rules::HttpMatchLocation::Uri | 
+                    crate::rules::HttpMatchLocation::UriRaw | 
+                    crate::rules::HttpMatchLocation::Cookie | 
+                    crate::rules::HttpMatchLocation::RequestHeader)
+            };
+            
+            if is_header_location {
+                // 单pattern规则，fast pattern就是它自己，且它在header中
+                log::debug!("Adding fast pattern for rule {}: '{}' (header location)", rule.id, rule.pattern);
+                self.fast_patterns.push((rule.pattern.clone(), rule.id));
+            } else {
+                log::debug!("Skipping fast pattern for rule {}: '{}' (non-header location), rule will use full matching only", 
+                    rule.id, rule.pattern);
+            }
+        }
         Ok(())
     }
 
     /// 编译模式为流式数据库
     ///
     /// # 返回值
-    /// * `Result<HyperscanDatabase>` - 编译后的流式数据库
-    pub fn compile(self) -> Result<HyperscanDatabase> {
+    /// * `Result<(HyperscanDatabase, Option<HyperscanDatabase>)>` - 编译后的完整数据库和fast pattern数据库（如果存在）
+    pub fn compile(self) -> Result<(HyperscanDatabase, Option<HyperscanDatabase>)> {
         if self.patterns.is_empty() {
             return Err(WebScanError::Hyperscan("No patterns to compile".to_string()));
         }
 
-        // 创建多个模式，每个模式都有对应的规则 ID
+        // 编译完整数据库
         let mut patterns = Vec::new();
         for (pattern_str, rule_id) in self.patterns.iter() {
             match Pattern::new(pattern_str.as_str()) {
                 Ok(mut pattern) => {
-                    // 设置规则 ID
                     pattern.id = Some(*rule_id as usize);
                     patterns.push(pattern);
                 }
                 Err(e) => {
                     log::warn!("Failed to create Hyperscan pattern '{}': {}", pattern_str, e);
-                    // 跳过无效的模式，继续编译其他模式
                 }
             }
         }
@@ -105,15 +171,41 @@ impl HyperscanCompiler {
             return Err(WebScanError::Hyperscan("No valid patterns to compile".to_string()));
         }
 
-        // 使用 hyperscan 的 Patterns 包装
         let patterns = Patterns(patterns);
-
-        // 使用 Builder API 编译流式数据库
         let db = patterns.build::<Streaming>()
             .map_err(|e| WebScanError::Hyperscan(format!("Failed to compile stream database: {}", e)))?;
 
         log::info!("Compiled Hyperscan stream database with {} patterns", self.patterns.len());
-        Ok(HyperscanDatabase { inner: db })
+
+        // 编译fast pattern数据库（如果存在）
+        let fast_db = if !self.fast_patterns.is_empty() {
+            let mut fast_patterns = Vec::new();
+            for (pattern_str, rule_id) in self.fast_patterns.iter() {
+                match Pattern::new(pattern_str.as_str()) {
+                    Ok(mut pattern) => {
+                        pattern.id = Some(*rule_id as usize);
+                        fast_patterns.push(pattern);
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to create Hyperscan fast pattern '{}': {}", pattern_str, e);
+                    }
+                }
+            }
+
+            if !fast_patterns.is_empty() {
+                let fast_patterns = Patterns(fast_patterns);
+                let fast_db = fast_patterns.build::<Streaming>()
+                    .map_err(|e| WebScanError::Hyperscan(format!("Failed to compile fast pattern database: {}", e)))?;
+                log::info!("Compiled Hyperscan fast pattern database with {} patterns", self.fast_patterns.len());
+                Some(HyperscanDatabase { inner: fast_db })
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Ok((HyperscanDatabase { inner: db }, fast_db))
     }
 }
 
@@ -143,11 +235,28 @@ struct HyperscanStreamSession {
 /// Hyperscan流会话内部数据
 ///
 /// 包含实际的流和scratch空间，由Mutex保护。
+/// 由于单个TCP流只会在单个线程处理，状态字段已经在Mutex保护下，无需额外同步。
 struct HyperscanStreamSessionInner {
     /// Hyperscan流实例
     stream: hyperscan::Stream,
     /// Scratch空间，用于流扫描
     scratch: hyperscan::Scratch,
+    /// 是否已处理第一个分段
+    is_initialized: bool,
+    /// 检测到的协议类型
+    protocol: Option<crate::protocol::Protocol>,
+    /// HTTP解析是否成功
+    http_parse_success: bool,
+    /// Fast pattern是否命中
+    fast_pattern_matched: bool,
+    /// Fast pattern命中的候选规则ID集合
+    candidate_rules: Option<std::collections::HashSet<u32>>,
+    /// 每个规则已匹配的pattern索引集合（用于多pattern规则）
+    matched_patterns_by_rule: std::collections::HashMap<u32, std::collections::HashSet<usize>>,
+    /// 流数据缓冲区，用于累积不完整的HTTP数据包
+    stream_buffer: Vec<u8>,
+    /// HTTP header是否已完整解析
+    http_header_complete: bool,
 }
 
 /// Hyperscan扫描器
@@ -155,10 +264,13 @@ struct HyperscanStreamSessionInner {
 /// 提供高性能模式匹配功能，支持多会话流式匹配。
 /// 会话表是全局的，但每个会话只被单个线程使用，通过Arc实现并发安全。
 pub struct HyperscanScanner {
-    database: Arc<RwLock<HyperscanDatabase>>,  // 数据库实例
+    database: Arc<RwLock<HyperscanDatabase>>,  // 完整数据库实例
+    fast_database: Option<Arc<RwLock<HyperscanDatabase>>>,  // Fast pattern数据库实例（可选）
     /// 会话到流的映射，每个会话维护独立的stream
     /// 使用Arc包装会话，允许在释放sessions锁后继续使用会话
     sessions: Arc<RwLock<HashMap<u64, Arc<HyperscanStreamSession>>>>,
+    /// Fast pattern会话到流的映射
+    fast_sessions: Arc<RwLock<HashMap<u64, Arc<HyperscanStreamSession>>>>,
 }
 
 impl HyperscanScanner {
@@ -166,13 +278,16 @@ impl HyperscanScanner {
     ///
     /// # 参数
     /// * `database` - 已编译的Hyperscan流式数据库
+    /// * `fast_database` - Fast pattern数据库（可选）
     ///
     /// # 返回值
     /// * `Result<Self>` - 成功返回扫描器实例，失败返回错误
-    pub fn new(database: HyperscanDatabase) -> Result<Self> {
+    pub fn new(database: HyperscanDatabase, fast_database: Option<HyperscanDatabase>) -> Result<Self> {
         Ok(Self {
             database: Arc::new(RwLock::new(database)),
+            fast_database: fast_database.map(|db| Arc::new(RwLock::new(db))),
             sessions: Arc::new(RwLock::new(HashMap::new())),
+            fast_sessions: Arc::new(RwLock::new(HashMap::new())),
         })
     }
 
@@ -194,10 +309,97 @@ impl HyperscanScanner {
         self._stream_scan(&db.inner, data)
     }
 
+    /// 执行fast pattern扫描（无会话，每次创建新流）
+    ///
+    /// # 参数
+    /// * `data` - 要扫描的数据
+    ///
+    /// # 返回值
+    /// * `Result<Vec<MatchResult>>` - 匹配结果列表
+    ///
+    /// # 注意
+    /// 此方法用于快速过滤，只匹配fast pattern。
+    /// 如果fast pattern数据库不存在，返回空列表。
+    pub fn scan_fast_pattern(&self, data: &[u8]) -> Result<Vec<MatchResult>> {
+        if let Some(ref fast_db) = self.fast_database {
+            let db = fast_db.read();
+            self._stream_scan(&db.inner, data)
+        } else {
+            // 没有fast pattern数据库，返回空列表
+            Ok(Vec::new())
+        }
+    }
+
+    /// Fast pattern匹配：用于HTTP header完整时的快速过滤
+    ///
+    /// 这个方法专门用于Fast pattern匹配，返回可能匹配的候选规则ID集合。
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    /// * `data` - HTTP header数据
+    ///
+    /// # 返回值
+    /// * `Result<Option<std::collections::HashSet<u32>>>` - 匹配的候选规则ID集合，如果没有fast pattern数据库或没有匹配则返回None
+    pub fn scan_fast_patterns(&self, session_id: u64, data: &[u8]) -> Result<Option<std::collections::HashSet<u32>>> {
+        // 如果没有fast pattern数据库，直接返回None
+        let fast_db = if let Some(ref fast_db) = self.fast_database {
+            fast_db
+        } else {
+            return Ok(None);
+        };
+
+        // 获取或创建fast pattern会话
+        let fast_session = {
+            let mut fast_sessions = self.fast_sessions.write();
+            fast_sessions.entry(session_id).or_insert_with(|| {
+                let stream = fast_db.read().inner.open_stream()
+                    .expect("Failed to open fast pattern stream");
+                let scratch = fast_db.read().inner.alloc_scratch()
+                    .expect("Failed to allocate fast pattern scratch");
+                Arc::new(HyperscanStreamSession {
+                    inner: Mutex::new(HyperscanStreamSessionInner {
+                        stream,
+                        scratch,
+                        is_initialized: false,
+                        protocol: None,
+                        http_parse_success: false,
+                        fast_pattern_matched: false,
+                        candidate_rules: None,
+                        matched_patterns_by_rule: std::collections::HashMap::new(),
+                        stream_buffer: Vec::new(),
+                        http_header_complete: false,
+                    }),
+                })
+            }).clone()
+        };
+
+        // 执行fast pattern匹配
+        let mut matched_rules = std::collections::HashSet::new();
+
+        if !data.is_empty() {
+            let session_inner = fast_session.inner.lock().unwrap();
+
+            session_inner.stream.scan(data, &session_inner.scratch, |id, from, to, _flags| {
+                matched_rules.insert(id as u32);
+                log::debug!("Fast pattern matched rule {} at {}..{} (session: {})", id, from, to, session_id);
+                Matching::Continue
+            }).map_err(|e| WebScanError::Hyperscan(format!("Fast pattern scan failed: {}", e)))?;
+        }
+
+        if matched_rules.is_empty() {
+            log::debug!("No fast patterns matched (session: {})", session_id);
+            Ok(Some(std::collections::HashSet::new()))  // 返回空集合表示没有匹配
+        } else {
+            log::debug!("Fast patterns matched {} rules (session: {})", matched_rules.len(), session_id);
+            Ok(Some(matched_rules))
+        }
+    }
+
     /// 执行流式模式扫描（带会话管理）
     ///
     /// 为每个会话维护独立的Hyperscan流，支持跨数据包边界匹配。
     /// 优化了锁的使用：只在查找/创建会话时短暂持有sessions锁，然后立即释放，
+    /// 支持Fast pattern优化：HTTP header完整时先进行fast pattern匹配。
     /// 允许不同线程并发处理不同的会话。
     ///
     /// # 参数
@@ -225,6 +427,14 @@ impl HyperscanScanner {
                     inner: Mutex::new(HyperscanStreamSessionInner {
                         stream,
                         scratch,
+                        is_initialized: false,
+                        protocol: None,
+                        http_parse_success: false,
+                        fast_pattern_matched: false,
+                        candidate_rules: None,
+                        matched_patterns_by_rule: std::collections::HashMap::new(),
+                        stream_buffer: Vec::new(),
+                        http_header_complete: false,
                     }),
                 })
             }).clone()  // 克隆Arc，这样可以在释放sessions锁后继续使用
@@ -245,7 +455,7 @@ impl HyperscanScanner {
             session_inner.stream.scan(data, &session_inner.scratch, |id, from, to, flags| {
                 let mut results = results_ref.borrow_mut();
                 results.push(MatchResult {
-                    rule_id: id,
+                    rule_id: id as u32,  // Hyperscan返回usize，需要转换为u32
                     from,
                     to,
                     flags,
@@ -260,12 +470,21 @@ impl HyperscanScanner {
         // 第三步：如果需要在请求结束时重置流
         if reset_on_request_end {
             // 获取会话的内部数据锁并重置流
-            let session_inner = session.inner.lock().unwrap();
+            let mut session_inner = session.inner.lock().unwrap();
             session_inner.stream.reset(&session_inner.scratch, |_id, _from, _to, _flags| {
                 // 重置时不应该触发匹配，但为了API兼容性，提供一个空回调
                 Matching::Continue
             }).map_err(|e| WebScanError::Hyperscan(format!("Stream reset failed: {}", e)))?;
-            log::debug!("Reset stream session {} after request end", session_id);
+            
+            // 重置所有状态字段
+            session_inner.is_initialized = false;
+            session_inner.protocol = None;
+            session_inner.http_parse_success = false;
+            session_inner.fast_pattern_matched = false;
+            session_inner.candidate_rules = None;
+            session_inner.matched_patterns_by_rule.clear();
+            
+            log::debug!("Reset stream session {} after request end and cleared all state", session_id);
         }
 
         // 第四步：如果是最后一个数据包，关闭流并清理会话
@@ -288,7 +507,7 @@ impl HyperscanScanner {
                         session_inner.stream.close(&session_inner.scratch, |id, from, to, flags| {
                             let mut results = results_ref.borrow_mut();
                             results.push(MatchResult {
-                                rule_id: id,
+                                rule_id: id as u32,  // Hyperscan返回usize，需要转换为u32
                                 from,
                                 to,
                                 flags,
@@ -313,6 +532,366 @@ impl HyperscanScanner {
         Ok(results)
     }
 
+    /// 执行fast pattern流式模式扫描（带会话管理）
+    ///
+    /// 与scan_stream_with_session类似，但使用fast pattern数据库。
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    /// * `data` - 要扫描的数据
+    /// * `is_final` - 是否为该会话的最后一个数据包
+    /// * `reset_on_request_end` - 是否在请求结束时重置流
+    ///
+    /// # 返回值
+    /// * `Result<Vec<MatchResult>>` - 匹配结果列表
+    pub fn scan_fast_pattern_with_session(&self, session_id: u64, data: &[u8], is_final: bool, reset_on_request_end: bool) -> Result<Vec<MatchResult>> {
+        if let Some(ref fast_db) = self.fast_database {
+            // 使用fast pattern数据库进行扫描，逻辑与scan_stream_with_session相同
+            let session = {
+                let db = fast_db.read();
+                let mut sessions = self.fast_sessions.write();
+                sessions.entry(session_id).or_insert_with(|| {
+                    let stream = db.inner.open_stream()
+                        .expect("Failed to open fast pattern stream");
+                    let scratch = db.inner.alloc_scratch()
+                        .expect("Failed to allocate scratch");
+                    Arc::new(HyperscanStreamSession {
+                        inner: Mutex::new(HyperscanStreamSessionInner {
+                            stream,
+                            scratch,
+                            is_initialized: false,
+                            protocol: None,
+                            http_parse_success: false,
+                            fast_pattern_matched: false,
+                            candidate_rules: None,
+                            matched_patterns_by_rule: std::collections::HashMap::new(),
+                            stream_buffer: Vec::new(),
+                            http_header_complete: false,
+                        }),
+                    })
+                }).clone()
+            };
+
+            let mut results = Vec::new();
+
+            if !data.is_empty() {
+                let session_inner = session.inner.lock().unwrap();
+                use std::cell::RefCell;
+                let results_ref = RefCell::new(&mut results);
+
+                session_inner.stream.scan(data, &session_inner.scratch, |id, from, to, flags| {
+                    let mut results = results_ref.borrow_mut();
+                    results.push(MatchResult {
+                        rule_id: id as u32,
+                        from,
+                        to,
+                        flags,
+                    });
+                    Matching::Continue
+                }).map_err(|e| WebScanError::Hyperscan(format!("Fast pattern stream scan failed: {}", e)))?;
+            }
+
+            if reset_on_request_end {
+                let mut session_inner = session.inner.lock().unwrap();
+                session_inner.stream.reset(&session_inner.scratch, |_id, _from, _to, _flags| {
+                    Matching::Continue
+                }).map_err(|e| WebScanError::Hyperscan(format!("Fast pattern stream reset failed: {}", e)))?;
+                
+                // 重置fast pattern session的状态（简化版本）
+                session_inner.is_initialized = false;
+                session_inner.fast_pattern_matched = false;
+            }
+
+            if is_final {
+                let mut sessions = self.fast_sessions.write();
+                if let Some(session_arc) = sessions.remove(&session_id) {
+                    match Arc::try_unwrap(session_arc) {
+                        Ok(session_to_close) => {
+                            let session_inner = session_to_close.inner.into_inner().unwrap();
+                            use std::cell::RefCell;
+                            let results_ref = RefCell::new(&mut results);
+
+                            session_inner.stream.close(&session_inner.scratch, |id, from, to, flags| {
+                                let mut results = results_ref.borrow_mut();
+                                results.push(MatchResult {
+                                    rule_id: id as u32,
+                                    from,
+                                    to,
+                                    flags,
+                                });
+                                Matching::Continue
+                            }).map_err(|e| WebScanError::Hyperscan(format!("Fast pattern stream close failed: {}", e)))?;
+                        }
+                        Err(_) => {
+                            log::warn!("Cannot close fast pattern stream session {}: Arc has multiple references", session_id);
+                        }
+                    }
+                }
+            }
+
+            Ok(results)
+        } else {
+            // 没有fast pattern数据库，返回空列表
+            Ok(Vec::new())
+        }
+    }
+
+    /// 检查是否有fast pattern数据库
+    ///
+    /// # 返回值
+    /// * `bool` - 如果有fast pattern数据库返回true
+    pub fn has_fast_pattern_database(&self) -> bool {
+        self.fast_database.is_some()
+    }
+
+    /// 获取会话状态（用于检查是否是第一个分段）
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    ///
+    /// # 返回值
+    /// * `bool` - 如果session不存在或未初始化返回true（表示是第一个分段）
+    pub fn is_first_segment(&self, session_id: u64) -> bool {
+        let sessions = self.sessions.read();
+        log::debug!("is_first_segment check: session_id={}, total_sessions={}", session_id, sessions.len());
+        if let Some(session) = sessions.get(&session_id) {
+            let session_inner = session.inner.lock().unwrap();
+            let result = !session_inner.is_initialized;
+            log::debug!("is_first_segment: session_id={}, is_initialized={}, result={}", session_id, session_inner.is_initialized, result);
+            result
+        } else {
+            log::debug!("is_first_segment: session_id={} not found in sessions, returning true", session_id);
+            true  // 新session，是第一个分段
+        }
+    }
+
+    /// 更新会话状态
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    /// * `protocol` - 协议类型
+    /// * `http_parse_success` - HTTP解析是否成功
+    /// * `fast_pattern_matched` - Fast pattern是否命中
+    /// * `candidate_rules` - Fast pattern命中的候选规则ID集合
+    pub fn update_session_state(&self, session_id: u64, protocol: Option<crate::protocol::Protocol>, http_parse_success: bool, fast_pattern_matched: bool, candidate_rules: Option<std::collections::HashSet<u32>>) {
+        log::debug!("update_session_state called: session={}, protocol={:?}, http_parse_success={}", session_id, protocol, http_parse_success);
+        let sessions = self.sessions.read();
+        if let Some(session) = sessions.get(&session_id) {
+            let mut session_inner = session.inner.lock().unwrap();
+            let was_initialized = session_inner.is_initialized;
+            session_inner.is_initialized = true;
+            log::debug!("Session {} initialized: {} -> {}", session_id, was_initialized, session_inner.is_initialized);
+            if let Some(p) = protocol {
+                session_inner.protocol = Some(p);
+            }
+            session_inner.http_parse_success = http_parse_success;
+            session_inner.fast_pattern_matched = fast_pattern_matched;
+            session_inner.candidate_rules = candidate_rules;
+        }
+    }
+
+    /// 获取会话状态（用于后续分段检查）
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    ///
+    /// # 返回值
+    /// * `Option<(Option<crate::protocol::Protocol>, bool, bool, Option<std::collections::HashSet<u32>>)>` - 
+    ///   如果session存在返回(protocol, http_parse_success, fast_pattern_matched, candidate_rules)，否则返回None
+    pub fn get_session_state(&self, session_id: u64) -> Option<(Option<crate::protocol::Protocol>, bool, bool, Option<std::collections::HashSet<u32>>)> {
+        let sessions = self.sessions.read();
+        if let Some(session) = sessions.get(&session_id) {
+            let session_inner = session.inner.lock().unwrap();
+            Some((
+                session_inner.protocol,
+                session_inner.http_parse_success,
+                session_inner.fast_pattern_matched,
+                session_inner.candidate_rules.clone(),
+            ))
+        } else {
+            None
+        }
+    }
+
+    /// 更新规则已匹配的pattern集合
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    /// * `rule_id` - 规则ID
+    /// * `matched_patterns` - 已匹配的pattern索引集合
+    pub fn update_matched_patterns(&self, session_id: u64, rule_id: u32, matched_patterns: std::collections::HashSet<usize>) {
+        let sessions = self.sessions.read();
+        if let Some(session) = sessions.get(&session_id) {
+            let mut session_inner = session.inner.lock().unwrap();
+            session_inner.matched_patterns_by_rule.insert(rule_id, matched_patterns);
+        }
+    }
+
+    /// 获取规则已匹配的pattern集合
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    /// * `rule_id` - 规则ID
+    ///
+    /// # 返回值
+    /// * `std::collections::HashSet<usize>` - 已匹配的pattern索引集合
+    pub fn get_matched_patterns(&self, session_id: u64, rule_id: u32) -> std::collections::HashSet<usize> {
+        let sessions = self.sessions.read();
+        if let Some(session) = sessions.get(&session_id) {
+            let session_inner = session.inner.lock().unwrap();
+            session_inner.matched_patterns_by_rule.get(&rule_id)
+                .cloned()
+                .unwrap_or_default()
+        } else {
+            std::collections::HashSet::new()
+        }
+    }
+
+    /// 追加数据到会话的流缓冲区
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    /// * `data` - 要追加的数据
+    ///
+    /// # 返回值
+    /// * `Result<()>` - 成功或错误
+    pub fn append_to_stream_buffer(&self, session_id: u64, data: &[u8]) -> Result<()> {
+        let sessions = self.sessions.read();
+        if let Some(session) = sessions.get(&session_id) {
+            let mut session_inner = session.inner.lock().unwrap();
+            session_inner.stream_buffer.extend_from_slice(data);
+            Ok(())
+        } else {
+            Err(crate::error::WebScanError::InvalidInput("Session not found".to_string()))
+        }
+    }
+
+    /// 获取会话的累积流数据
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    ///
+    /// # 返回值
+    /// * `Option<Vec<u8>>` - 累积的流数据，如果会话不存在返回None
+    pub fn get_stream_buffer(&self, session_id: u64) -> Option<Vec<u8>> {
+        let sessions = self.sessions.read();
+        if let Some(session) = sessions.get(&session_id) {
+            let session_inner = session.inner.lock().unwrap();
+            Some(session_inner.stream_buffer.clone())
+        } else {
+            None
+        }
+    }
+
+    /// 扫描完整数据（用于header刚刚完成的情况）
+    ///
+    /// 这种情况下，我们需要扫描整个累积数据，而不是使用流式扫描
+    /// 因为流式扫描是增量的，不能重复扫描已经扫描过的数据
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    /// * `data` - 要扫描的完整数据
+    ///
+    /// # 返回值
+    /// * `Result<Vec<MatchResult>>` - 匹配结果列表
+    pub fn scan_complete_data_with_session(&self, session_id: u64, data: &[u8]) -> Result<Vec<MatchResult>> {
+        if data.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        log::debug!("Scanning complete data of {} bytes for session {}", data.len(), session_id);
+
+        // 创建一个临时的reader来扫描数据
+        use std::io::Cursor;
+        let mut reader = Cursor::new(data);
+
+        // 使用数据库进行一次性的完整扫描，不是流式扫描
+        let db = self.database.read();
+
+        // 分配scratch空间
+        let scratch = db.inner.alloc_scratch()
+            .map_err(|e| WebScanError::Hyperscan(format!("Failed to allocate scratch: {}", e)))?;
+
+        let mut results = Vec::new();
+
+        // 使用 Cell 来避免借用检查问题
+        use std::cell::RefCell;
+        let results_ref = RefCell::new(&mut results);
+
+        // 执行一次性扫描，匹配时调用回调函数
+        db.inner.scan(&mut reader, &scratch, |id, from, to, flags| {
+            let mut results = results_ref.borrow_mut();
+            results.push(MatchResult {
+                rule_id: id as u32,  // Hyperscan返回usize，需要转换为u32
+                from,
+                to,
+                flags,
+            });
+            log::debug!("Complete scan matched rule {} at {}..{} (session: {})", id, from, to, session_id);
+
+            Matching::Continue
+        }).map_err(|e| WebScanError::Hyperscan(format!("Complete scan failed: {}", e)))?;
+
+        log::debug!("Complete scan completed for session {}, found {} matches", session_id, results.len());
+        Ok(results)
+    }
+
+    /// 清空会话的流缓冲区
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    pub fn clear_stream_buffer(&self, session_id: u64) {
+        let sessions = self.sessions.read();
+        if let Some(session) = sessions.get(&session_id) {
+            let mut session_inner = session.inner.lock().unwrap();
+            session_inner.stream_buffer.clear();
+            session_inner.http_header_complete = false;
+        }
+    }
+
+    /// 检查HTTP header是否完整（包含\r\n\r\n）
+    ///
+    /// # 参数
+    /// * `data` - 要检查的数据
+    ///
+    /// # 返回值
+    /// * `bool` - 如果HTTP header完整返回true
+    pub fn is_http_header_complete(data: &[u8]) -> bool {
+        // 查找HTTP header结束标记 \r\n\r\n
+        let header_end = b"\r\n\r\n";
+        data.windows(header_end.len()).any(|window| window == header_end)
+    }
+
+    /// 检查会话的HTTP header是否已完整解析
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    ///
+    /// # 返回值
+    /// * `bool` - 如果HTTP header已完整解析返回true
+    pub fn is_http_header_complete_for_session(&self, session_id: u64) -> bool {
+        let sessions = self.sessions.read();
+        if let Some(session) = sessions.get(&session_id) {
+            let session_inner = session.inner.lock().unwrap();
+            session_inner.http_header_complete
+        } else {
+            false
+        }
+    }
+
+    /// 设置会话的HTTP header完整状态
+    ///
+    /// # 参数
+    /// * `session_id` - 会话标识符
+    /// * `complete` - 是否完整
+    pub fn set_http_header_complete(&self, session_id: u64, complete: bool) {
+        let sessions = self.sessions.read();
+        if let Some(session) = sessions.get(&session_id) {
+            let mut session_inner = session.inner.lock().unwrap();
+            session_inner.http_header_complete = complete;
+        }
+    }
+
     /// 重置指定会话的Hyperscan流
     ///
     /// 重置流的状态，使其可以重新开始匹配，但不关闭流。
@@ -332,8 +911,8 @@ impl HyperscanScanner {
         };  // 这里sessions锁被释放
 
         if let Some(session) = session {
-            // 获取会话的内部数据锁
-            let session_inner = session.inner.lock().unwrap();
+            // 获取会话的内部数据锁（需要可变引用以重置状态）
+            let mut session_inner = session.inner.lock().unwrap();
             
             // 重置流，不触发任何匹配回调（使用空的回调函数）
             session_inner.stream.reset(&session_inner.scratch, |_id, _from, _to, _flags| {
@@ -341,7 +920,17 @@ impl HyperscanScanner {
                 Matching::Continue
             }).map_err(|e| WebScanError::Hyperscan(format!("Stream reset failed: {}", e)))?;
 
-            log::debug!("Reset stream session {}", session_id);
+            // 重置所有状态字段
+            session_inner.is_initialized = false;
+            session_inner.protocol = None;
+            session_inner.http_parse_success = false;
+            session_inner.fast_pattern_matched = false;
+            session_inner.candidate_rules = None;
+            session_inner.matched_patterns_by_rule.clear();
+            session_inner.stream_buffer.clear();
+            session_inner.http_header_complete = false;
+
+            log::debug!("Reset stream session {} and all state", session_id);
         } else {
             log::debug!("Session {} not found, nothing to reset", session_id);
         }
@@ -424,7 +1013,7 @@ impl HyperscanScanner {
                         session_inner.stream.close(&session_inner.scratch, |id, from, to, flags| {
                             let mut results = results_ref.borrow_mut();
                             results.push(MatchResult {
-                                rule_id: id,
+                                rule_id: id as u32,  // Hyperscan返回usize，需要转换为u32
                                 from,
                                 to,
                                 flags,
@@ -443,7 +1032,39 @@ impl HyperscanScanner {
             }
         }
 
-        log::info!("Closed all {} stream sessions", session_count);
+        // 关闭fast pattern会话
+        let mut fast_sessions = self.fast_sessions.write();
+        let fast_session_ids: Vec<u64> = fast_sessions.keys().cloned().collect();
+        let mut fast_closed_count = 0;
+        for session_id in fast_session_ids {
+            if let Some(session_arc) = fast_sessions.remove(&session_id) {
+                match Arc::try_unwrap(session_arc) {
+                    Ok(session_to_close) => {
+                        let session_inner = session_to_close.inner.into_inner().unwrap();
+                        let mut final_results = Vec::new();
+                        use std::cell::RefCell;
+                        let results_ref = RefCell::new(&mut final_results);
+                        
+                        session_inner.stream.close(&session_inner.scratch, |id, from, to, flags| {
+                            let mut results = results_ref.borrow_mut();
+                            results.push(MatchResult {
+                                rule_id: id as u32,
+                                from,
+                                to,
+                                flags,
+                            });
+                            Matching::Continue
+                        }).map_err(|e| WebScanError::Hyperscan(format!("Fast pattern stream close failed: {}", e)))?;
+                        fast_closed_count += 1;
+                    }
+                    Err(_) => {
+                        log::warn!("Cannot close fast pattern stream session {}: Arc has multiple references", session_id);
+                    }
+                }
+            }
+        }
+
+        log::info!("Closed all {} stream sessions ({} fast pattern)", session_count, fast_closed_count);
         Ok(())
     }
 
@@ -474,7 +1095,7 @@ impl HyperscanScanner {
         stream.scan(data, &scratch, |id, from, to, flags| {
             let mut results = results_ref.borrow_mut();
             results.push(MatchResult {
-                rule_id: id,
+                rule_id: id as u32,  // Hyperscan返回usize，需要转换为u32
                 from,
                 to,
                 flags,
@@ -489,7 +1110,7 @@ impl HyperscanScanner {
         stream.close(&scratch, |id, from, to, flags| {
             let mut results = results_ref.borrow_mut();
             results.push(MatchResult {
-                rule_id: id,
+                rule_id: id as u32,  // Hyperscan返回usize，需要转换为u32
                 from,
                 to,
                 flags,
@@ -567,8 +1188,8 @@ mod tests {
         let rule = Rule::new(1, RuleAction::Alert, "Test rule".to_string(), "test".to_string()).unwrap();
         compiler.add_rule(&rule).unwrap();
         
-        let database = compiler.compile().unwrap();
-        let scanner = HyperscanScanner::new(database).unwrap();
+        let (database, fast_database) = compiler.compile().unwrap();
+        let scanner = HyperscanScanner::new(database, fast_database).unwrap();
         
         let session_id = 12345;
         let data = b"test data";
@@ -589,8 +1210,8 @@ mod tests {
         let rule = Rule::new(1, RuleAction::Alert, "Test rule".to_string(), "test".to_string()).unwrap();
         compiler.add_rule(&rule).unwrap();
         
-        let database = compiler.compile().unwrap();
-        let scanner = HyperscanScanner::new(database).unwrap();
+        let (database, fast_database) = compiler.compile().unwrap();
+        let scanner = HyperscanScanner::new(database, fast_database).unwrap();
         
         let session_id = 12346;
         let data = b"test";
@@ -613,8 +1234,8 @@ mod tests {
         let rule = Rule::new(1, RuleAction::Alert, "Test rule".to_string(), "test".to_string()).unwrap();
         compiler.add_rule(&rule).unwrap();
         
-        let database = compiler.compile().unwrap();
-        let scanner = HyperscanScanner::new(database).unwrap();
+        let (database, fast_database) = compiler.compile().unwrap();
+        let scanner = HyperscanScanner::new(database, fast_database).unwrap();
         
         let session_id = 12347;
         let data = b"test";
@@ -637,8 +1258,8 @@ mod tests {
         let rule = Rule::new(1, RuleAction::Alert, "Test rule".to_string(), "test".to_string()).unwrap();
         compiler.add_rule(&rule).unwrap();
         
-        let database = compiler.compile().unwrap();
-        let scanner = HyperscanScanner::new(database).unwrap();
+        let (database, fast_database) = compiler.compile().unwrap();
+        let scanner = HyperscanScanner::new(database, fast_database).unwrap();
         
         let session_id = 12348;
         let data = b"test";
@@ -660,8 +1281,8 @@ mod tests {
         let rule = Rule::new(1, RuleAction::Alert, "Test rule".to_string(), "test".to_string()).unwrap();
         compiler.add_rule(&rule).unwrap();
         
-        let database = compiler.compile().unwrap();
-        let scanner = HyperscanScanner::new(database).unwrap();
+        let (database, fast_database) = compiler.compile().unwrap();
+        let scanner = HyperscanScanner::new(database, fast_database).unwrap();
         
         let session_id = 12349;
         let data = b"test";
@@ -681,8 +1302,8 @@ mod tests {
         let rule = Rule::new(1, RuleAction::Alert, "Test rule".to_string(), "test".to_string()).unwrap();
         compiler.add_rule(&rule).unwrap();
         
-        let database = compiler.compile().unwrap();
-        let scanner = HyperscanScanner::new(database).unwrap();
+        let (database, fast_database) = compiler.compile().unwrap();
+        let scanner = HyperscanScanner::new(database, fast_database).unwrap();
         
         // 创建多个不同的会话
         for i in 1..=5 {
@@ -710,8 +1331,8 @@ mod tests {
         let rule = Rule::new(1, RuleAction::Alert, "Test rule".to_string(), "hello.*world".to_string()).unwrap();
         compiler.add_rule(&rule).unwrap();
         
-        let database = compiler.compile().unwrap();
-        let scanner = HyperscanScanner::new(database).unwrap();
+        let (database, fast_database) = compiler.compile().unwrap();
+        let scanner = HyperscanScanner::new(database, fast_database).unwrap();
         
         let session_id = 12350;
         
