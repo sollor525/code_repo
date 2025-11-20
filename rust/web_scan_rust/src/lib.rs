@@ -18,6 +18,7 @@ pub mod stats;     // 统计收集模块
 pub mod ffi;       // FFI接口模块
 pub mod error;     // 错误处理模块
 pub mod hyperscan; // Hyperscan集成模块
+pub mod pcre;      // PCRE处理模块
 
 // 重新导出协议类型，供测试使用
 pub use crate::protocol::Protocol;

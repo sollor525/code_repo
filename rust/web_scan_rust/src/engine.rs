@@ -84,10 +84,9 @@ pub struct WebScanEngine {
     protocol_detector: ProtocolDetector,        // 协议检测器
     rule_manager: Arc<RwLock<RuleManager>>,     // 规则管理器（线程安全）
     stats: Arc<StatsCollector>,         // 统计收集器（线程安全）
-    hyperscan_scanner: Option<Arc<HyperscanScanner>>, // Hyperscan扫描器（可选）
+    hyperscan_scanner: Option<Arc<HyperscanScanner>>,    // Hyperscan扫描器（将在规则加载后初始化）
     enabled: bool,                              // 引擎是否启用
     default_action: WebScanAction,              // 默认动作
-    use_hyperscan: bool,                       // 是否使用Hyperscan
 }
 
 impl Default for WebScanEngine {
@@ -99,7 +98,7 @@ impl Default for WebScanEngine {
 impl WebScanEngine {
     /// 创建新的Web扫描引擎实例
     ///
-    /// 初始化所有组件，设置默认配置。默认启用Hyperscan。
+    /// 初始化所有组件，设置默认配置。Hyperscan将在规则加载后初始化。
     /// Arc<RwLock<T>>模式允许多线程安全地共享和修改数据。
     pub fn new() -> Self {
         Self {
@@ -108,10 +107,9 @@ impl WebScanEngine {
             // RwLock::new()创建读写锁，允许多个读者或一个写者
             rule_manager: Arc::new(RwLock::new(RuleManager::new())),
             stats: Arc::new(StatsCollector::new()),
-            hyperscan_scanner: None,
-            enabled: true,                              // 默认启用
+            hyperscan_scanner: None, // 将在规则加载后初始化
+            enabled: true,           // 默认启用
             default_action: WebScanAction::Alert,       // 默认告警动作
-            use_hyperscan: true,                        // 默认使用Hyperscan
         }
     }
 
@@ -133,13 +131,11 @@ impl WebScanEngine {
             count
         };
         
-        // 如果启用了Hyperscan，编译规则为Hyperscan数据库
-        if self.use_hyperscan {
-            let rule_manager = self.rule_manager.read();
-            let rules: Vec<_> = rule_manager.get_all_rules().values().cloned().collect();
-            drop(rule_manager); // 显式释放锁
-            self._compile_hyperscan_database(&rules)?;
-        }
+        // 编译规则为Hyperscan数据库（Hyperscan始终启用）
+        let rule_manager = self.rule_manager.read();
+        let rules: Vec<_> = rule_manager.get_all_rules().values().cloned().collect();
+        drop(rule_manager); // 显式释放锁
+        self._compile_hyperscan_database(&rules)?;
         
         // 记录加载成功的规则数量
         log::info!("Loaded {} rules from {}", count, rules_path);
@@ -168,10 +164,10 @@ impl WebScanEngine {
         let (database, fast_database) = compiler.compile()?;
 
         // 创建扫描器
-        let scanner = Arc::new(HyperscanScanner::new(database, fast_database)?);
+        let scanner = HyperscanScanner::new(database, fast_database)?;
 
         // 存储扫描器
-        self.hyperscan_scanner = Some(scanner);
+        self.hyperscan_scanner = Some(Arc::new(scanner));
 
         log::info!("Hyperscan database compiled successfully");
         Ok(())
@@ -224,7 +220,7 @@ impl WebScanEngine {
 
         // 第二步：内容转换
         // 将字节数据转换为字符串，用于规则匹配
-        let content = match std::str::from_utf8(payload) {
+        let _content = match std::str::from_utf8(payload) {
             Ok(s) => s,  // 如果成功转换为UTF-8，直接使用
             Err(_) => {
                 // 如果UTF-8转换失败，尝试提取可打印的ASCII字符
@@ -251,9 +247,9 @@ impl WebScanEngine {
             }
         };
 
-        // 第三步：规则匹配 - 优先使用 Hyperscan
-        let (matched_rule_id, action) = if self.use_hyperscan && self.hyperscan_scanner.is_some() {
-            // 使用 Hyperscan 进行高性能匹配
+        // 第三步：规则匹配 - 使用 Hyperscan
+        let (matched_rule_id, action) = {
+            // 使用 Hyperscan 进行高性能匹配（始终启用）
             match self._hyperscan_match(payload) {
                 Ok(Some(rule_id)) => {
                     // 从规则管理器获取完整的规则信息
@@ -272,14 +268,10 @@ impl WebScanEngine {
                     (None, None)
                 }
             }
-        } else {
-            // 回退到传统的 regex 匹配
-            let rule_manager = self.rule_manager.read();
-            match rule_manager.match_content(content) {
-                Some(rule) => (Some(rule.id), Some(rule.action)),
-                None => (None, None),
-            }
         };
+
+        // 注释：不再需要回退到regex匹配，Hyperscan始终启用
+        // 保留此代码段以备需要时的PCRE fallback处理
 
         // 如果没有匹配的规则，返回"无匹配"结果
         if matched_rule_id.is_none() {
@@ -338,7 +330,7 @@ impl WebScanEngine {
     /// # 返回值
     /// * `Result<Option<u32>>` - 匹配的规则ID，如果没有匹配返回None
     fn _hyperscan_match(&self, data: &[u8]) -> Result<Option<u32>> {
-        if let Some(ref scanner) = self.hyperscan_scanner {
+        if let Some(ref scanner) = &self.hyperscan_scanner {
             let matches = scanner.scan_stream(data)?;
 
             // 对于单pattern规则，直接返回第一个匹配
@@ -374,7 +366,7 @@ impl WebScanEngine {
     /// # 返回值
     /// * `Result<Option<u32>>` - 匹配的规则ID，如果没有匹配返回None
     fn _hyperscan_match_with_session(&self, session_id: u64, data: &[u8], is_final: bool, reset_on_request_end: bool) -> Result<Option<u32>> {
-        if let Some(ref scanner) = self.hyperscan_scanner {
+        if let Some(ref scanner) = &self.hyperscan_scanner {
             let matches = scanner.scan_stream_with_session(session_id, data, is_final, reset_on_request_end)?;
             // 对于单pattern规则，直接返回第一个匹配
             // 对于多pattern规则，需要验证完整匹配
@@ -424,7 +416,7 @@ impl WebScanEngine {
         }
 
         // 执行Hyperscan匹配
-        let matched_rule = if let Some(ref scanner) = self.hyperscan_scanner {
+        let matched_rule = if let Some(ref scanner) = &self.hyperscan_scanner {
             match scanner.scan_stream_with_session(session_id, data, is_final, reset_on_request_end) {
                 Ok(matches) => {
                     // 验证所有匹配的规则是否真正完整匹配
@@ -525,7 +517,7 @@ impl WebScanEngine {
         self.stats.increment_packets_processed();
 
         // 流式处理：检查HTTP header完整性，处理分段逻辑
-        if let Some(ref scanner) = self.hyperscan_scanner {
+        if let Some(ref scanner) = &self.hyperscan_scanner {
             let is_first_segment = scanner.is_first_segment(session_id);
             log::debug!("Segment analysis: session={}, is_first_segment={}", session_id, is_first_segment);
 
@@ -696,7 +688,7 @@ impl WebScanEngine {
 
         // 第二步：内容转换
         // 将字节数据转换为字符串，用于规则匹配
-        let content = match std::str::from_utf8(payload) {
+        let _content = match std::str::from_utf8(payload) {
             Ok(s) => s,
             Err(_) => {
                 // 如果UTF-8转换失败，尝试提取可打印的ASCII字符
@@ -719,9 +711,9 @@ impl WebScanEngine {
             }
         };
 
-        // 第三步：规则匹配 - 优先使用 Hyperscan（带会话管理）
-        let (matched_rule_id, action) = if self.use_hyperscan && self.hyperscan_scanner.is_some() {
-            // 使用 Hyperscan 进行高性能匹配（带会话管理）
+        // 第三步：规则匹配 - 使用 Hyperscan（带会话管理）
+        let (matched_rule_id, action) = {
+            // 使用 Hyperscan 进行高性能匹配（带会话管理，始终启用）
             match self._hyperscan_match_with_session(session_id, payload, is_final, reset_on_request_end) {
                 Ok(Some(rule_id)) => {
                     // 从规则管理器获取完整的规则信息
@@ -738,14 +730,10 @@ impl WebScanEngine {
                     (None, None)
                 }
             }
-        } else {
-            // 回退到传统的 regex 匹配
-            let rule_manager = self.rule_manager.read();
-            match rule_manager.match_content(content) {
-                Some(rule) => (Some(rule.id), Some(rule.action)),
-                None => (None, None),
-            }
         };
+
+        // 注释：不再需要回退到regex匹配，Hyperscan始终启用
+        // 保留此代码段以备需要时的PCRE fallback处理
 
         // 如果没有匹配的规则，返回"无匹配"结果
         if matched_rule_id.is_none() {
@@ -805,7 +793,7 @@ impl WebScanEngine {
     /// # 返回值
     /// * `Result<()>` - 成功返回Ok(())，失败返回错误
     pub fn reset_session(&self, session_id: u64) -> Result<()> {
-        if let Some(ref scanner) = self.hyperscan_scanner {
+        if let Some(ref scanner) = &self.hyperscan_scanner {
             scanner.reset_session(session_id)?;
         }
         Ok(())
@@ -819,7 +807,7 @@ impl WebScanEngine {
     /// # 返回值
     /// * `Result<()>` - 成功返回Ok(())，失败返回错误
     pub fn close_session(&self, session_id: u64) -> Result<()> {
-        if let Some(ref scanner) = self.hyperscan_scanner {
+        if let Some(ref scanner) = &self.hyperscan_scanner {
             scanner.close_session(session_id)?;
         }
         Ok(())
@@ -830,7 +818,7 @@ impl WebScanEngine {
     /// # 返回值
     /// * `Result<()>` - 成功返回Ok(())，失败返回错误
     pub fn close_all_sessions(&self) -> Result<()> {
-        if let Some(ref scanner) = self.hyperscan_scanner {
+        if let Some(ref scanner) = &self.hyperscan_scanner {
             scanner.close_all_sessions()?;
         }
         Ok(())
@@ -909,13 +897,11 @@ impl WebScanEngine {
             count
         };
         
-        // 如果启用了Hyperscan，重新编译数据库
-        if self.use_hyperscan {
-            let rule_manager = self.rule_manager.read();
-            let rules: Vec<_> = rule_manager.get_all_rules().values().cloned().collect();
-            drop(rule_manager); // 显式释放锁
-            self._compile_hyperscan_database(&rules)?;
-        }
+        // 重新编译Hyperscan数据库（Hyperscan始终启用）
+        let rule_manager = self.rule_manager.read();
+        let rules: Vec<_> = rule_manager.get_all_rules().values().cloned().collect();
+        drop(rule_manager); // 显式释放锁
+        self._compile_hyperscan_database(&rules)?;
         
         // 记录重新加载的信息
         log::info!("Reloaded {} rules from {}", count, rules_path);
@@ -923,12 +909,12 @@ impl WebScanEngine {
         Ok(count)
     }
 
-    /// 检查是否启用了Hyperscan
+    /// Hyperscan始终启用，此方法已移除
     ///
-    /// # 返回值
-    /// * `bool` - 如果启用了Hyperscan返回true，否则返回false
+    /// 为了向后兼容性，提供此方法，但始终返回true
+    #[deprecated(note = "Hyperscan is now always enabled")]
     pub fn is_hyperscan_enabled(&self) -> bool {
-        self.use_hyperscan && self.hyperscan_scanner.is_some()
+        true
     }
 }
 

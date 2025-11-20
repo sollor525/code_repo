@@ -1,7 +1,8 @@
 //! 规则管理和解析模块
-//! 
+//!
 //! 负责加载、解析和管理Web扫描检测规则。
 //! 支持Suricata格式的规则文件，提供高效的规则匹配功能。
+//! 支持PCRE（Perl Compatible Regular Expressions）字段。
 
 // 导入错误处理类型
 use crate::error::{Result, WebScanError};
@@ -15,6 +16,10 @@ use std::collections::HashMap;
 use std::fs;
 // 导入路径处理
 use std::path::Path;
+// 导入PCRE处理模块
+use crate::pcre::{PcreProcessor, PcrePattern, PcreMatchType};
+// 导入Hyperscan数据库类型
+use crate::hyperscan::HyperscanDatabase;
 
 /// 规则动作枚举
 /// 
@@ -44,22 +49,96 @@ pub enum HttpMatchLocation {
 }
 
 /// 带位置的模式结构
-/// 
+///
 /// 用于表示一个模式及其对应的HTTP匹配位置和修饰符。
 #[derive(Debug, Clone)]
 pub struct PatternWithLocation {
     pub pattern: String,
     pub http_location: HttpMatchLocation,
+    pub is_fast_pattern: bool,        // 新增：标识是否为fast pattern
+    pub nocase: bool,                 // 新增：不区分大小写
     pub startswith: bool,
     pub endswith: bool,
     pub distance: Option<u32>,
     pub depth: Option<u32>,
     pub offset: Option<u32>,
     pub within: Option<u32>,
+    pub hyperscan_flags: u32,         // 新增：Hyperscan编译标志
+    pub requires_fallback: bool,      // 新增：是否需要regex fallback
+}
+
+/// 三层匹配器
+///
+/// 管理三个匹配层级的数据库和元数据
+#[derive(Debug)]
+pub struct ThreeLayerMatcher {
+    pub fast_pattern_db: Option<HyperscanDatabase>,        // 第一层：fast pattern
+    pub full_content_db: Option<HyperscanDatabase>,       // 第二层：完整content
+    pub regex_fallback_rules: std::collections::HashMap<u32, Vec<PcrePattern>>, // 第三层：regex fallback
+    pub rule_metadata: std::collections::HashMap<u32, RuleMetadata>,        // 规则元数据
+}
+
+/// 规则元数据
+#[derive(Debug, Clone)]
+pub struct RuleMetadata {
+    pub has_fast_pattern: bool,
+    pub fast_pattern_in_header: bool,
+    pub has_pcre_fallback: bool,
+    pub total_patterns: usize,
+}
+
+/// 修饰符到Hyperscan标志的转换
+pub fn modifiers_to_hyperscan_flags(
+    nocase: bool,
+    startswith: bool,
+    _endswith: bool,
+) -> u32 {
+    let mut flags = 0u32;
+
+    // Hyperscan标志常量定义
+    const HS_FLAG_CASELESS: u32 = 0x1;
+    const HS_FLAG_SOM_LEFTMOST: u32 = 0x2;
+
+    if nocase {
+        flags |= HS_FLAG_CASELESS;
+    }
+    if startswith {
+        flags |= HS_FLAG_SOM_LEFTMOST;
+    }
+
+    // endswith需要特殊处理，通过模式调整实现
+    flags
+}
+
+/// 应用修饰符到模式
+pub fn apply_modifier_pattern(
+    pattern: &str,
+    startswith: bool,
+    endswith: bool,
+    offset: Option<u32>,
+    _depth: Option<u32>,
+) -> (String, u32) {
+    let mut processed_pattern = pattern.to_string();
+    let flags = 0;
+
+    // 处理startswith/endswith
+    if startswith && !processed_pattern.starts_with('^') {
+        processed_pattern = format!("^{}", processed_pattern);
+    }
+    if endswith && !processed_pattern.ends_with('$') {
+        processed_pattern = format!("{}$", processed_pattern);
+    }
+
+    // 处理offset/depth - 转换为Hyperscan语法
+    if let Some(offset_val) = offset {
+        processed_pattern = format!("^.{{{}}}{}", offset_val, processed_pattern);
+    }
+
+    (processed_pattern, flags)
 }
 
 /// HTTP解析后的各部分内容
-/// 
+///
 /// 用于存储从HTTP请求/响应中提取的各个部分。
 #[derive(Debug, Clone)]
 pub struct HttpParts {
@@ -225,6 +304,7 @@ impl HttpParts {
     }
     
     /// 解析HTTP请求行
+    #[allow(dead_code)]
     fn parse_request_line(content: &str) -> (String, String) {
         if let Some(first_line) = content.lines().next() {
             let parts: Vec<&str> = first_line.split_whitespace().collect();
@@ -294,6 +374,7 @@ impl HttpParts {
     }
     
     /// 提取请求头部分
+    #[allow(dead_code)]
     fn extract_request_header(content: &str) -> String {
         if let Some(body_start) = content.find("\r\n\r\n") {
             content[..body_start].to_string()
@@ -322,6 +403,7 @@ impl HttpParts {
     }
     
     /// 提取Cookie
+    #[allow(dead_code)]
     fn extract_cookie(content: &str) -> String {
         // 查找Cookie头
         for line in content.lines() {
@@ -356,6 +438,7 @@ impl HttpParts {
     }
     
     /// 提取请求体
+    #[allow(dead_code)]
     fn extract_request_body(content: &str) -> String {
         if let Some(body_start) = content.find("\r\n\r\n") {
             content[body_start + 4..].to_string()
@@ -393,8 +476,9 @@ impl Default for RuleAction {
 }
 
 /// 检测规则结构体
-/// 
+///
 /// 表示一个完整的Web扫描检测规则，包含匹配模式、动作和元数据。
+/// 支持content模式和PCRE模式。
 #[derive(Debug, Clone)]
 pub struct Rule {
     pub id: u32,                                    // 规则唯一标识符
@@ -406,6 +490,7 @@ pub struct Rule {
     pub metadata: HashMap<String, String>,          // 额外的元数据
     pub patterns: Vec<PatternWithLocation>,         // 多个模式及其位置（支持多content规则）
     pub fast_pattern_index: Option<usize>,          // Fast pattern索引（用于优化：先匹配fast pattern，命中后再匹配其他pattern）
+    pub pcre_patterns: Vec<PcrePattern>,            // PCRE模式列表
 }
 
 impl Rule {
@@ -449,14 +534,19 @@ impl Rule {
             patterns: vec![PatternWithLocation {  // 默认只有一个pattern
                 pattern,
                 http_location: HttpMatchLocation::Any,
+                is_fast_pattern: false,       // 默认不是fast pattern
+                nocase: false,                // 默认区分大小写
                 startswith: false,
                 endswith: false,
                 distance: None,
                 depth: None,
                 offset: None,
                 within: None,
+                hyperscan_flags: modifiers_to_hyperscan_flags(false, false, false),  // 计算flags
+                requires_fallback: false,     // 默认不需要fallback
             }],
             fast_pattern_index: Some(0),  // 单pattern规则，fast pattern就是它自己
+            pcre_patterns: Vec::new(),  // 初始化为空的PCRE模式列表
         })
     }
 
@@ -555,7 +645,7 @@ impl Rule {
     ///
     /// # 返回值
     /// * `&str` - 提取的HTTP部分
-    fn extract_http_part<'a>(&self, data: &'a str, location: HttpMatchLocation) -> &'a str {
+    pub fn extract_http_part<'a>(&self, data: &'a str, location: HttpMatchLocation) -> &'a str {
         match location {
             HttpMatchLocation::Any => data,
             HttpMatchLocation::Method => {
@@ -623,25 +713,154 @@ impl Rule {
     }
 
     /// 获取元数据值
-    /// 
+    ///
     /// # 参数
     /// * `key` - 要查找的元数据键
-    /// 
+    ///
     /// # 返回值
     /// * `Option<&String>` - 如果找到返回Some(值)，否则返回None
     pub fn get_metadata(&self, key: &str) -> Option<&String> {
         self.metadata.get(key)
     }
+
+    /// 添加PCRE模式
+    ///
+    /// # 参数
+    /// * `pcre_pattern` - PCRE模式
+    pub fn add_pcre_pattern(&mut self, pcre_pattern: PcrePattern) {
+        self.pcre_patterns.push(pcre_pattern);
+    }
+
+    /// 检查规则是否有PCRE模式
+    ///
+    /// # 返回值
+    /// * `bool` - 如果有PCRE模式返回true
+    pub fn has_pcre_patterns(&self) -> bool {
+        !self.pcre_patterns.is_empty()
+    }
+
+    /// 检查PCRE模式是否匹配内容
+    ///
+    /// # 参数
+    /// * `content` - 要检查的内容
+    ///
+    /// # 返回值
+    /// * `bool` - 如果有任何PCRE模式匹配返回true
+    pub fn pcre_matches(&self, content: &str) -> bool {
+        for pcre_pattern in &self.pcre_patterns {
+            match pcre_pattern.match_type {
+                PcreMatchType::RegexFallback => {
+                    if let Some(ref regex) = pcre_pattern.compiled_regex {
+                        if regex.is_match(content) {
+                            log::debug!("PCRE fallback pattern '{}' matched for rule {}", pcre_pattern.raw_pattern, self.id);
+                            return true;
+                        }
+                    }
+                }
+                // Hyperscan和ConvertedHyperscan在规则解析阶段已经处理
+                // 这里只处理fallback情况
+                _ => {
+                    log::debug!("PCRE pattern '{}' (type: {:?}) should be handled by Hyperscan for rule {}",
+                              pcre_pattern.raw_pattern, pcre_pattern.match_type, self.id);
+                }
+            }
+        }
+        false
+    }
+
+    /// 检查PCRE模式是否匹配HTTP内容的特定部分
+    ///
+    /// # 参数
+    /// * `http_parts` - HTTP解析后的各部分内容
+    ///
+    /// # 返回值
+    /// * `bool` - 如果有任何PCRE模式在指定位置匹配返回true
+    pub fn pcre_matches_http(&self, http_parts: &HttpParts) -> bool {
+        for pcre_pattern in &self.pcre_patterns {
+            // 根据PCRE模式的位置选择目标内容
+            let target_content = match pcre_pattern.http_location {
+                HttpMatchLocation::Any => http_parts.full_content,
+                HttpMatchLocation::Method => http_parts.method,
+                HttpMatchLocation::Uri => http_parts.uri,
+                HttpMatchLocation::UriRaw => http_parts.uri_raw,
+                HttpMatchLocation::Cookie => http_parts.cookie,
+                HttpMatchLocation::RequestBody => http_parts.request_body,
+                HttpMatchLocation::RequestHeader => http_parts.request_header,
+            };
+
+            if target_content.is_empty() {
+                continue;
+            }
+
+            match pcre_pattern.match_type {
+                PcreMatchType::RegexFallback => {
+                    if let Some(ref regex) = pcre_pattern.compiled_regex {
+                        if regex.is_match(target_content) {
+                            log::debug!("PCRE fallback pattern '{}' matched in {:?} for rule {}",
+                                      pcre_pattern.raw_pattern, pcre_pattern.http_location, self.id);
+                            return true;
+                        }
+                    }
+                }
+                // Hyperscan和ConvertedHyperscan在规则解析阶段已经处理
+                _ => {
+                    log::debug!("PCRE pattern '{}' (type: {:?}) should be handled by Hyperscan for rule {}",
+                              pcre_pattern.raw_pattern, pcre_pattern.match_type, self.id);
+                }
+            }
+        }
+        false
+    }
+
+    /// 获取所有用于Hyperscan编译的模式
+    ///
+    /// 返回所有content pattern和兼容Hyperscan的PCRE pattern
+    ///
+    /// # 返回值
+    /// * `Vec<(String, u32)>` - 模式字符串和规则ID的元组列表
+    pub fn get_hyperscan_patterns(&self) -> Vec<(String, u32)> {
+        let mut patterns = Vec::new();
+
+        // 添加content patterns
+        for pattern_with_loc in &self.patterns {
+            patterns.push((pattern_with_loc.pattern.clone(), self.id));
+        }
+
+        // 添加兼容Hyperscan的PCRE patterns
+        for pcre_pattern in &self.pcre_patterns {
+            match pcre_pattern.match_type {
+                PcreMatchType::Hyperscan | PcreMatchType::ConvertedHyperscan => {
+                    patterns.push((pcre_pattern.processed_pattern.clone(), self.id));
+                }
+                PcreMatchType::RegexFallback => {
+                    // Fallback模式不添加到Hyperscan编译
+                    log::debug!("Skipping fallback PCRE pattern '{}' for Hyperscan compilation",
+                              pcre_pattern.raw_pattern);
+                }
+            }
+        }
+
+        patterns
+    }
+
+    /// 检查规则是否需要fallback处理
+    ///
+    /// # 返回值
+    /// * `bool` - 如果有任何PCRE模式需要fallback处理返回true
+    pub fn needs_fallback_processing(&self) -> bool {
+        self.pcre_patterns.iter().any(|p| p.match_type == PcreMatchType::RegexFallback)
+    }
 }
 
 /// 规则管理器结构体
-/// 
+///
 /// 负责管理所有检测规则，包括加载、存储、查找和匹配规则。
 /// 使用HashMap提供O(1)时间复杂度的规则查找。
 pub struct RuleManager {
     rules: HashMap<u32, Rule>,           // 规则存储：ID -> Rule
     rule_count: u32,                     // 当前规则总数
     enabled: bool,                       // 是否启用规则管理
+    pcre_processor: PcreProcessor,       // PCRE处理器
 }
 
 impl Default for RuleManager {
@@ -652,13 +871,14 @@ impl Default for RuleManager {
 
 impl RuleManager {
     /// 创建新的规则管理器实例
-    /// 
+    ///
     /// 初始化空的规则集合和默认配置。
     pub fn new() -> Self {
         Self {
             rules: HashMap::new(),        // 创建空的HashMap
             rule_count: 0,                // 初始规则数量为0
             enabled: true,                // 默认启用
+            pcre_processor: PcreProcessor::new(),  // 创建PCRE处理器
         }
     }
 
@@ -847,7 +1067,7 @@ impl RuleManager {
     ///
     /// # 返回值
     /// * `Result<Rule>` - 解析后的规则
-    fn _parse_suricata_rule(&self, rule_line: &str, line_num: usize) -> Result<Rule> {
+    fn _parse_suricata_rule(&mut self, rule_line: &str, line_num: usize) -> Result<Rule> {
         // 简单的规则解析，支持基本的Suricata格式
         // 示例: alert http any any -> any any (msg:"Admin access"; content:"/admin/"; sid:1001;)
         
@@ -896,10 +1116,14 @@ impl RuleManager {
         
         // 用于收集多个pattern及其位置信息
         let mut patterns: Vec<PatternWithLocation> = Vec::new();
-        
+
+        // 用于收集PCRE模式
+        let mut pcre_patterns: Vec<PcrePattern> = Vec::new();
+
         // 当前正在解析的pattern的状态
         let mut current_pattern = String::new();
         let mut current_http_location = HttpMatchLocation::Any;
+        let mut current_nocase = false;          // 新增：nocase修饰符状态
         let mut current_startswith = false;
         let mut current_endswith = false;
         let mut current_distance: Option<u32> = None;
@@ -926,18 +1150,29 @@ impl RuleManager {
                     "content" => {
                         // 如果已经有pattern，先保存前一个
                         if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
                             patterns.push(PatternWithLocation {
                                 pattern: current_pattern.clone(),
                                 http_location: current_http_location,
+                                is_fast_pattern: false,       // 默认不是fast pattern
+                                nocase: current_nocase,       // 使用解析的nocase状态
                                 startswith: current_startswith,
                                 endswith: current_endswith,
                                 distance: current_distance,
                                 depth: current_depth,
                                 offset: current_offset,
                                 within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
                             });
                             // 重置当前pattern状态（但保留http_location，因为它可能应用到下一个content）
                             current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
                             current_startswith = false;
                             current_endswith = false;
                             current_distance = None;
@@ -957,25 +1192,37 @@ impl RuleManager {
                         })?;
                     }
                     "pcre" => {
-                        // PCRE选项：如果还没有content pattern，尝试使用PCRE作为pattern
-                        // 注意：Hyperscan可能不支持完整的PCRE语法，需要转义特殊字符
-                        if current_pattern.is_empty() {
-                            // PCRE格式通常是 /pattern/flags 或 "pattern"
-                            let pcre_value = value.trim_matches('"');
-                            if pcre_value.starts_with('/') && pcre_value.len() > 1 {
-                                // 格式：/pattern/flags
-                                let pcre_without_first_slash = &pcre_value[1..];
-                                if let Some(flags_pos) = pcre_without_first_slash.rfind('/') {
-                                    let pcre_pattern = &pcre_without_first_slash[..flags_pos];
-                                    // 转义Hyperscan不支持的特殊字符，但保留基本的正则表达式功能
-                                    current_pattern = Self::_escape_hyperscan_pattern(pcre_pattern);
-                                } else {
-                                    // 没有flags分隔符，整个作为pattern
-                                    current_pattern = Self::_escape_hyperscan_pattern(pcre_without_first_slash);
+                        // PCRE选项：使用新的PCRE处理器处理
+                        match self.pcre_processor.process_pcre_pattern(
+                            value,
+                            current_http_location,
+                            current_startswith,
+                            current_endswith,
+                            current_distance,
+                            current_depth,
+                            current_offset,
+                            current_within,
+                        ) {
+                            Ok(pcre_pattern) => {
+                                // 如果没有content pattern，对于Hyperscan兼容的PCRE，使用处理后的模式作为主要content
+                                if current_pattern.is_empty() {
+                                    match pcre_pattern.match_type {
+                                        PcreMatchType::Hyperscan | PcreMatchType::ConvertedHyperscan => {
+                                            current_pattern = pcre_pattern.processed_pattern.clone();
+                                        }
+                                        PcreMatchType::RegexFallback => {
+                                            // 对于需要fallback的PCRE，创建一个占位符content以便Hyperscan编译
+                                            current_pattern = format!("PCRE_FALLBACK_{}", pcre_patterns.len() + 1);
+                                        }
+                                    }
                                 }
-                            } else {
-                                // 没有斜杠分隔符，直接使用
-                                current_pattern = Self::_escape_hyperscan_pattern(pcre_value);
+                                // 将PCRE模式添加到临时列表
+                                pcre_patterns.push(pcre_pattern);
+                                log::debug!("Processed PCRE pattern and added to rule");
+                            }
+                            Err(e) => {
+                                log::warn!("Failed to process PCRE pattern '{}' at line {}: {}", value, line_num, e);
+                                // 继续处理其他选项，不中断规则解析
                             }
                         }
                     }
@@ -996,6 +1243,9 @@ impl RuleManager {
                     }
                     "http.request_header" => {
                         current_http_location = HttpMatchLocation::RequestHeader;
+                    }
+                    "nocase" => {
+                        current_nocase = true;
                     }
                     "startswith" => {
                         current_startswith = true;
@@ -1035,15 +1285,25 @@ impl RuleManager {
         
         // 保存最后一个pattern
         if !current_pattern.is_empty() {
+            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                current_nocase,
+                current_startswith,
+                current_endswith,
+            );
+
             patterns.push(PatternWithLocation {
                 pattern: current_pattern.clone(),
                 http_location: current_http_location,
+                is_fast_pattern: false,       // 默认不是fast pattern
+                nocase: current_nocase,       // 使用解析的nocase状态
                 startswith: current_startswith,
                 endswith: current_endswith,
                 distance: current_distance,
                 depth: current_depth,
                 offset: current_offset,
                 within: current_within,
+                hyperscan_flags,             // 使用计算的flags
+                requires_fallback: false,     // 默认不需要fallback
             });
         }
         
@@ -1095,7 +1355,12 @@ impl RuleManager {
         let mut rule = Rule::new(sid, action, message, first_pattern_for_hyperscan)?;
         // 设置patterns
         rule.patterns = processed_patterns;
-        
+
+        // 添加PCRE模式到规则
+        for pcre_pattern in pcre_patterns {
+            rule.add_pcre_pattern(pcre_pattern);
+        }
+
         // 向后兼容：设置第一个pattern的http_location和metadata
         if let Some(first_pattern) = rule.patterns.first() {
             rule.http_location = first_pattern.http_location;
@@ -1106,7 +1371,7 @@ impl RuleManager {
                 rule.metadata.insert("endswith".to_string(), "true".to_string());
             }
         }
-        
+
         Ok(rule)
     }
 
@@ -1492,6 +1757,246 @@ impl RuleManager {
     pub fn clear_rules(&mut self) {
         self.rules.clear();              // 清空HashMap
         self.rule_count = 0;             // 重置计数
+    }
+}
+
+/// ThreeLayerMatcher 的实现
+impl ThreeLayerMatcher {
+    /// 创建新的三层匹配器
+    pub fn new() -> Self {
+        Self {
+            fast_pattern_db: None,
+            full_content_db: None,
+            regex_fallback_rules: std::collections::HashMap::new(),
+            rule_metadata: std::collections::HashMap::new(),
+        }
+    }
+
+    /// 编译规则到三层匹配系统
+    pub fn compile_rules(&mut self, rules: &[Rule]) -> crate::error::Result<()> {
+        use crate::hyperscan::HyperscanCompiler;
+
+        // 创建编译器
+        let mut compiler = HyperscanCompiler::new();
+
+        // 分类规则并创建两个规则集合
+        let mut full_rules = Vec::new();
+        let mut fast_rules = Vec::new();
+        let mut regex_fallback_map = std::collections::HashMap::new();
+
+        for rule in rules {
+            let mut metadata = RuleMetadata {
+                has_fast_pattern: rule.fast_pattern_index.is_some(),
+                fast_pattern_in_header: false,
+                has_pcre_fallback: false,
+                total_patterns: rule.patterns.len() + rule.pcre_patterns.len(),
+            };
+
+            // 检查是否有fast pattern且在HTTP header中
+            if let Some(fast_pattern_idx) = rule.fast_pattern_index {
+                if let Some(fast_pattern) = rule.patterns.get(fast_pattern_idx) {
+                    metadata.fast_pattern_in_header = matches!(
+                        fast_pattern.http_location,
+                        HttpMatchLocation::RequestHeader |
+                        HttpMatchLocation::Method |
+                        HttpMatchLocation::Uri |
+                        HttpMatchLocation::UriRaw |
+                        HttpMatchLocation::Cookie
+                    );
+                }
+            }
+
+            // 处理PCRE patterns
+            let mut regex_fallbacks = Vec::new();
+            for pcre_pattern in &rule.pcre_patterns {
+                if pcre_pattern.match_type == PcreMatchType::RegexFallback {
+                    metadata.has_pcre_fallback = true;
+                    regex_fallbacks.push(pcre_pattern.clone());
+                }
+            }
+
+            // 添加规则到对应的列表
+            full_rules.push(rule.clone());
+            if metadata.fast_pattern_in_header {
+                fast_rules.push(rule.clone());
+            }
+
+            // 保存元数据
+            self.rule_metadata.insert(rule.id, metadata);
+
+            // 如果有regex fallback patterns，保存到单独的map
+            if !regex_fallbacks.is_empty() {
+                regex_fallback_map.insert(rule.id, regex_fallbacks);
+            }
+        }
+
+        // 编译完整数据库
+        for rule in &full_rules {
+            compiler.add_rule(rule)?;
+        }
+
+        let (full_db, fast_db) = compiler.compile()?;
+
+        self.full_content_db = Some(full_db);
+        self.fast_pattern_db = fast_db;
+        self.regex_fallback_rules = regex_fallback_map;
+
+        log::info!("ThreeLayerMatcher compiled: {} rules ({} with fast patterns)",
+                   rules.len(), fast_rules.len());
+
+        Ok(())
+    }
+
+    /// 执行三层匹配
+    pub fn match_data(&self, data: &[u8], candidate_rule_ids: Option<&[u32]>) -> Vec<u32> {
+        let mut matched_rules = std::collections::HashSet::new();
+
+        // 将数据转换为字符串用于HTTP解析
+        let data_str = match std::str::from_utf8(data) {
+            Ok(s) => s,
+            Err(_) => {
+                log::warn!("Invalid UTF-8 data, skipping regex fallback");
+                return Vec::new();
+            }
+        };
+
+        // 第一层：Fast Pattern匹配（如果有候选规则限制）
+        if let Some(candidate_ids) = candidate_rule_ids {
+            if let Some(ref fast_db) = self.fast_pattern_db {
+                // 只测试候选规则中的fast pattern
+                if let Ok(scanner) = crate::hyperscan::HyperscanScanner::new(fast_db.clone(), None) {
+                    if let Ok(matches) = scanner.scan_stream(data) {
+                        for match_result in matches {
+                            if candidate_ids.contains(&match_result.rule_id) {
+                                matched_rules.insert(match_result.rule_id);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // 没有候选规则限制，使用full database
+            if let Some(ref full_db) = self.full_content_db {
+                if let Ok(scanner) = crate::hyperscan::HyperscanScanner::new(full_db.clone(), self.fast_pattern_db.clone()) {
+                    if let Ok(matches) = scanner.scan_stream(data) {
+                        for match_result in matches {
+                            matched_rules.insert(match_result.rule_id);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 第二层：完整模式验证（对于有fast pattern命中的规则）
+        if !matched_rules.is_empty() {
+            matched_rules.retain(|&rule_id| self.verify_rule_full_match(rule_id, data_str, data));
+        }
+
+        // 第三层：Regex Fallback匹配（对于没有在Hyperscan中匹配的规则）
+        let regex_matches = self.regex_fallback_match(data_str);
+        for rule_id in regex_matches {
+            matched_rules.insert(rule_id);
+        }
+
+        matched_rules.into_iter().collect()
+    }
+
+    /// 验证规则的所有条件是否完全匹配
+    #[allow(dead_code)]
+    fn verify_rule_full_match(&self, rule_id: u32, data_str: &str, _data: &[u8]) -> bool {
+        // 获取规则元数据
+        if let Some(metadata) = self.rule_metadata.get(&rule_id) {
+            // 如果有PCRE fallback patterns，需要验证它们
+            if metadata.has_pcre_fallback {
+                if let Some(pcre_patterns) = self.regex_fallback_rules.get(&rule_id) {
+                    for pcre_pattern in pcre_patterns {
+                        if let Some(target_content) = self.extract_http_content(data_str, pcre_pattern.http_location) {
+                            if let Some(ref regex) = pcre_pattern.compiled_regex {
+                                if regex.is_match(target_content) {
+                                    return true; // PCRE patterns匹配
+                                }
+                            }
+                        }
+                    }
+                    return false; // 没有PCRE pattern匹配
+                }
+            }
+        }
+
+        // 对于没有PCRE fallback的规则，假设已经通过Hyperscan验证
+        true
+    }
+
+    /// Regex fallback匹配
+    fn regex_fallback_match(&self, data_str: &str) -> Vec<u32> {
+        let mut matched_rules = Vec::new();
+
+        for (&rule_id, pcre_patterns) in &self.regex_fallback_rules {
+            for pcre_pattern in pcre_patterns {
+                if let Some(target_content) = self.extract_http_content(data_str, pcre_pattern.http_location) {
+                    if let Some(ref regex) = pcre_pattern.compiled_regex {
+                        if regex.is_match(target_content) {
+                            matched_rules.push(rule_id);
+                            break; // 一个规则匹配就够了
+                        }
+                    }
+                }
+            }
+        }
+
+        matched_rules
+    }
+
+    /// 从HTTP数据中提取指定内容
+    fn extract_http_content<'a>(&self, data: &'a str, location: HttpMatchLocation) -> Option<&'a str> {
+        match location {
+            HttpMatchLocation::Any => Some(data),
+            HttpMatchLocation::Method => {
+                data.split_whitespace().next()
+            }
+            HttpMatchLocation::Uri | HttpMatchLocation::UriRaw => {
+                if let Some(method) = data.split_whitespace().next() {
+                    let after_method = &data[method.len()..].trim_start();
+                    after_method.split_whitespace().next()
+                } else {
+                    None
+                }
+            }
+            HttpMatchLocation::RequestHeader => {
+                if let Some(header_end) = data.find("\r\n\r\n") {
+                    Some(&data[..header_end])
+                } else {
+                    None
+                }
+            }
+            HttpMatchLocation::Cookie => {
+                if let Some(cookie_line) = data.lines().find(|line| line.to_lowercase().starts_with("cookie:")) {
+                    Some(&cookie_line[7..].trim()) // 跳过"Cookie:"
+                } else {
+                    None
+                }
+            }
+            HttpMatchLocation::RequestBody => {
+                if let Some(header_end) = data.find("\r\n\r\n") {
+                    Some(&data[header_end + 4..])
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    /// 获取统计信息
+    pub fn get_stats(&self) -> (usize, usize, usize) {
+        let fast_patterns = self.fast_pattern_db.as_ref()
+            .map(|_| 0) // HyperscanDatabase 当前不支持模式计数，返回0
+            .unwrap_or(0);
+        let full_patterns = self.full_content_db.as_ref()
+            .map(|_| 0) // HyperscanDatabase 当前不支持模式计数，返回0
+            .unwrap_or(0);
+        let regex_rules = self.regex_fallback_rules.len();
+
+        (fast_patterns, full_patterns, regex_rules)
     }
 }
 

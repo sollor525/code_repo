@@ -60,7 +60,39 @@ within:20;                   # 匹配长度限制
 distance:10;                 # 距离前一个匹配的距离
 ```
 
-#### 3. HTTP位置修饰符 (完全支持)
+#### 3. PCRE选项 (高级功能) ⭐ NEW
+```snort
+# 基本PCRE模式
+pcre:"/admin\/login/i";           # 忽略大小写匹配
+
+# PCRE + HTTP位置匹配
+pcre:"/union\s+select/i"; http.request_body;  # 在请求体中匹配SQL注入
+
+# 高级PCRE语法
+pcre:"/(?i)(?:select|insert|update)\s+\w+\s+from/";  # 复杂的SQL注入模式
+
+# 多行模式
+pcre:"/error.*stack/m";         # 多行匹配错误和堆栈跟踪
+
+# 单行模式（点匹配换行符）
+pcre:"/content.*body/s";        # 点字符匹配换行符
+
+# 扩展模式（支持注释和空白）
+pcre:"
+    /(?i)                       # 忽略大小写
+    (?:attack|malware)          # 非捕获分组
+    \s+                         # 空白字符
+    pattern/x";
+```
+
+#### 4. PCRE标志支持 ⭐ NEW
+- **i**: 忽略大小写 (`/pattern/i`)
+- **m**: 多行模式 (`/pattern/m`)
+- **s**: 单行模式 (`/pattern/s`)
+- **x**: 扩展模式 (`/pattern/x`)
+- **组合**: 可以组合使用，如`/pattern/imsx`
+
+#### 5. HTTP位置修饰符 (完全支持)
 ```snort
 # HTTP请求匹配
 content:"GET"; http.method;           # HTTP方法匹配
@@ -135,6 +167,47 @@ alert http any any -> any any (msg:"SQL injection"; content:"union"; content:"se
 
 # 3. XSS攻击检测
 alert http any any -> any any (msg:"XSS attempt"; content:"<script"; http.request_body; nocase; sid:1003;)
+```
+
+### PCRE高级检测规则 ⭐ NEW
+```snort
+# 4. 复杂SQL注入检测（PCRE）
+alert http any any -> any any (
+    msg:"Complex SQL injection";
+    pcre:"/(?i)(?:select|insert|update|delete)\s+\w+\s+from\s+\w+/";
+    http.request_body;
+    sid:1004;
+)
+
+# 5. XSS攻击检测（PCRE）
+alert http any any -> any any (
+    msg:"XSS attack via script";
+    pcre:"/<script[^>]*>.*?<\/script>/si";
+    sid:1005;
+)
+
+# 6. 目录遍历攻击检测（PCRE）
+alert http any any -> any any (
+    msg:"Directory traversal";
+    pcre:"/\.\.[\\/]\.\.[\\/]/i";
+    http.uri;
+    sid:1006;
+)
+
+# 7. 命令注入检测（PCRE）
+alert http any any -> any any (
+    msg:"Command injection";
+    pcre:"/[;&|`](?:ls|cat|whoami|id|uname|pwd)/i";
+    sid:1007;
+)
+
+# 8. 扫描工具指纹检测（PCRE）
+alert http any any -> any any (
+    msg:"Scanner fingerprint";
+    pcre:"/(?:nikto|nmap|nessus|sqlmap|burp|openvas)/i";
+    http.request_header;
+    sid:1008;
+)
 ```
 
 ### 复杂多Pattern规则

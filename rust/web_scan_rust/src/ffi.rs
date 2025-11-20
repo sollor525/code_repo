@@ -578,28 +578,24 @@ fn set_last_error(message: &str) {
 }
 
 
-/// 检查是否启用了Hyperscan
+/// 检查是否启用了Hyperscan（已弃用）
+///
+/// **注意**: 此函数已弃用，因为Hyperscan现在始终启用。
+/// 为了向后兼容性，此函数始终返回1。
 ///
 /// # 返回值
-/// * `0` - 未启用Hyperscan
-/// * `1` - 已启用Hyperscan
+/// * `1` - Hyperscan始终启用
 /// * 负数 - 错误代码
+#[deprecated(note = "Hyperscan is now always enabled")]
 #[no_mangle]
 pub extern "C" fn web_scan_rust_is_hyperscan_enabled() -> c_int {
     // 获取全局引擎实例
-    let engine = match ENGINE.get() {
-        Some(e) => e,
+    match ENGINE.get() {
+        Some(_) => 1,  // Hyperscan始终启用
         None => {
             set_last_error("Engine not initialized");
-            return -1;
+            -1
         }
-    };
-
-    // 检查Hyperscan状态
-    if engine.read().is_hyperscan_enabled() {
-        1 // 已启用
-    } else {
-        0 // 未启用
     }
 }
 

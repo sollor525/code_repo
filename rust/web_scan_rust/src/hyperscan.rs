@@ -78,69 +78,58 @@ impl HyperscanCompiler {
     /// 注意：只有fast pattern在HTTP header中的规则才会被添加到fast pattern数据库。
     /// fast pattern不在header中的规则只添加到完整数据库，不使用fast pattern过滤。
     pub fn add_rule(&mut self, rule: &Rule) -> Result<()> {
-        // 对于多pattern规则，将所有pattern都添加到完整数据库中
-        // 只有fast pattern在header中的规则才会添加到fast pattern数据库
-        if rule.patterns.len() > 1 {
-            // 多pattern规则：添加所有pattern到完整数据库
-            for (idx, pattern_with_loc) in rule.patterns.iter().enumerate() {
-                log::debug!("Adding Hyperscan pattern {} for rule {}: '{}' (location: {:?})", 
-                    idx, rule.id, pattern_with_loc.pattern, pattern_with_loc.http_location);
-                self.patterns.push((pattern_with_loc.pattern.clone(), rule.id));
-            }
-            
-            // 只有fast pattern在header中的规则才添加到fast pattern数据库
-            if let Some(fast_idx) = rule.fast_pattern_index {
-                if let Some(fast_pattern) = rule.patterns.get(fast_idx) {
-                    // 检查fast pattern是否在header中
-                    let is_header_location = matches!(fast_pattern.http_location, 
-                        crate::rules::HttpMatchLocation::Method | 
-                        crate::rules::HttpMatchLocation::Uri | 
-                        crate::rules::HttpMatchLocation::UriRaw | 
-                        crate::rules::HttpMatchLocation::Cookie | 
-                        crate::rules::HttpMatchLocation::RequestHeader);
-                    
-                    if is_header_location {
-                        log::debug!("Adding fast pattern for rule {}: '{}' (header location: {:?})", 
-                            rule.id, fast_pattern.pattern, fast_pattern.http_location);
-                        self.fast_patterns.push((fast_pattern.pattern.clone(), rule.id));
-                    } else {
-                        log::debug!("Skipping fast pattern for rule {}: '{}' (non-header location: {:?}), rule will use full matching only", 
-                            rule.id, fast_pattern.pattern, fast_pattern.http_location);
-                    }
+        // 获取所有用于Hyperscan的模式（包括content和兼容的PCRE模式）
+        let hyperscan_patterns = rule.get_hyperscan_patterns();
+
+        // 添加所有Hyperscan兼容的模式到完整数据库
+        for (pattern_str, rule_id) in hyperscan_patterns {
+            log::debug!("Adding Hyperscan pattern for rule {}: '{}'", rule_id, pattern_str);
+            self.patterns.push((pattern_str, rule_id));
+        }
+
+        // 处理fast pattern逻辑（仅用于优化）
+        // 只有fast pattern在header中的规则才添加到fast pattern数据库
+        if let Some(fast_idx) = rule.fast_pattern_index {
+            if let Some(fast_pattern) = rule.patterns.get(fast_idx) {
+                // 检查fast pattern是否在header中
+                let is_header_location = matches!(fast_pattern.http_location,
+                    crate::rules::HttpMatchLocation::Method |
+                    crate::rules::HttpMatchLocation::Uri |
+                    crate::rules::HttpMatchLocation::UriRaw |
+                    crate::rules::HttpMatchLocation::Cookie |
+                    crate::rules::HttpMatchLocation::RequestHeader);
+
+                if is_header_location {
+                    log::debug!("Adding fast pattern for rule {}: '{}' (header location: {:?})",
+                        rule.id, fast_pattern.pattern, fast_pattern.http_location);
+                    self.fast_patterns.push((fast_pattern.pattern.clone(), rule.id));
+                } else {
+                    log::debug!("Skipping fast pattern for rule {}: '{}' (non-header location: {:?}), rule will use full matching only",
+                        rule.id, fast_pattern.pattern, fast_pattern.http_location);
                 }
             }
         } else {
-            // 单pattern规则：向后兼容
-            log::debug!("Adding Hyperscan pattern for rule {}: '{}'", rule.id, rule.pattern);
-            self.patterns.push((rule.pattern.clone(), rule.id));
-            
-            // 检查单pattern规则的http_location
-            let is_header_location = if let Some(first_pattern) = rule.patterns.first() {
-                matches!(first_pattern.http_location, 
-                    crate::rules::HttpMatchLocation::Method | 
-                    crate::rules::HttpMatchLocation::Uri | 
-                    crate::rules::HttpMatchLocation::UriRaw | 
-                    crate::rules::HttpMatchLocation::Cookie | 
-                    crate::rules::HttpMatchLocation::RequestHeader)
-            } else {
-                // 如果没有patterns（向后兼容），检查http_location字段
-                matches!(rule.http_location, 
-                    crate::rules::HttpMatchLocation::Method | 
-                    crate::rules::HttpMatchLocation::Uri | 
-                    crate::rules::HttpMatchLocation::UriRaw | 
-                    crate::rules::HttpMatchLocation::Cookie | 
-                    crate::rules::HttpMatchLocation::RequestHeader)
-            };
-            
-            if is_header_location {
-                // 单pattern规则，fast pattern就是它自己，且它在header中
-                log::debug!("Adding fast pattern for rule {}: '{}' (header location)", rule.id, rule.pattern);
-                self.fast_patterns.push((rule.pattern.clone(), rule.id));
-            } else {
-                log::debug!("Skipping fast pattern for rule {}: '{}' (non-header location), rule will use full matching only", 
-                    rule.id, rule.pattern);
+            // 对于没有明确fast pattern的规则，检查第一个pattern是否在header中
+            if let Some(first_pattern) = rule.patterns.first() {
+                let is_header_location = matches!(first_pattern.http_location,
+                    crate::rules::HttpMatchLocation::Method |
+                    crate::rules::HttpMatchLocation::Uri |
+                    crate::rules::HttpMatchLocation::UriRaw |
+                    crate::rules::HttpMatchLocation::Cookie |
+                    crate::rules::HttpMatchLocation::RequestHeader);
+
+                if is_header_location {
+                    // 使用第一个pattern作为fast pattern
+                    log::debug!("Adding first pattern as fast pattern for rule {}: '{}' (header location)",
+                        rule.id, first_pattern.pattern);
+                    self.fast_patterns.push((first_pattern.pattern.clone(), rule.id));
+                } else {
+                    log::debug!("No fast pattern for rule {}: first pattern '{}' not in header location",
+                        rule.id, first_pattern.pattern);
+                }
             }
         }
+
         Ok(())
     }
 
@@ -197,7 +186,7 @@ impl HyperscanCompiler {
                 let fast_db = fast_patterns.build::<Streaming>()
                     .map_err(|e| WebScanError::Hyperscan(format!("Failed to compile fast pattern database: {}", e)))?;
                 log::info!("Compiled Hyperscan fast pattern database with {} patterns", self.fast_patterns.len());
-                Some(HyperscanDatabase { inner: fast_db })
+                Some(HyperscanDatabase { inner: std::sync::Arc::new(fast_db) })
             } else {
                 None
             }
@@ -205,16 +194,17 @@ impl HyperscanCompiler {
             None
         };
 
-        Ok((HyperscanDatabase { inner: db }, fast_db))
+        Ok((HyperscanDatabase { inner: std::sync::Arc::new(db) }, fast_db))
     }
 }
 
 /// Hyperscan流式数据库
 ///
 /// 专门用于流式模式匹配，支持跨数据包边界匹配。
+#[derive(Clone)]
 pub struct HyperscanDatabase {
-    /// 内部流式数据库实例
-    inner: StreamingDatabase,
+    /// 内部流式数据库实例，使用Arc实现线程安全的共享
+    inner: std::sync::Arc<StreamingDatabase>,
 }
 
 impl std::fmt::Debug for HyperscanDatabase {
@@ -352,9 +342,9 @@ impl HyperscanScanner {
         let fast_session = {
             let mut fast_sessions = self.fast_sessions.write();
             fast_sessions.entry(session_id).or_insert_with(|| {
-                let stream = fast_db.read().inner.open_stream()
+                let stream = (*fast_db.read().inner).open_stream()
                     .expect("Failed to open fast pattern stream");
-                let scratch = fast_db.read().inner.alloc_scratch()
+                let scratch = (*fast_db.read().inner).alloc_scratch()
                     .expect("Failed to allocate fast pattern scratch");
                 Arc::new(HyperscanStreamSession {
                     inner: Mutex::new(HyperscanStreamSessionInner {
@@ -419,9 +409,9 @@ impl HyperscanScanner {
             // 获取或创建会话的stream，使用Arc包装以便在释放锁后继续使用
             sessions.entry(session_id).or_insert_with(|| {
                 // 创建新的流会话
-                let stream = db.inner.open_stream()
+                let stream = (*db.inner).open_stream()
                     .expect("Failed to open stream");
-                let scratch = db.inner.alloc_scratch()
+                let scratch = (*db.inner).alloc_scratch()
                     .expect("Failed to allocate scratch");
                 Arc::new(HyperscanStreamSession {
                     inner: Mutex::new(HyperscanStreamSessionInner {
@@ -551,9 +541,9 @@ impl HyperscanScanner {
                 let db = fast_db.read();
                 let mut sessions = self.fast_sessions.write();
                 sessions.entry(session_id).or_insert_with(|| {
-                    let stream = db.inner.open_stream()
+                    let stream = (*db.inner).open_stream()
                         .expect("Failed to open fast pattern stream");
-                    let scratch = db.inner.alloc_scratch()
+                    let scratch = (*db.inner).alloc_scratch()
                         .expect("Failed to allocate scratch");
                     Arc::new(HyperscanStreamSession {
                         inner: Mutex::new(HyperscanStreamSessionInner {
@@ -809,7 +799,7 @@ impl HyperscanScanner {
         let db = self.database.read();
 
         // 分配scratch空间
-        let scratch = db.inner.alloc_scratch()
+        let scratch = (*db.inner).alloc_scratch()
             .map_err(|e| WebScanError::Hyperscan(format!("Failed to allocate scratch: {}", e)))?;
 
         let mut results = Vec::new();
@@ -819,7 +809,7 @@ impl HyperscanScanner {
         let results_ref = RefCell::new(&mut results);
 
         // 执行一次性扫描，匹配时调用回调函数
-        db.inner.scan(&mut reader, &scratch, |id, from, to, flags| {
+        (*db.inner).scan(&mut reader, &scratch, |id, from, to, flags| {
             let mut results = results_ref.borrow_mut();
             results.push(MatchResult {
                 rule_id: id as u32,  // Hyperscan返回usize，需要转换为u32

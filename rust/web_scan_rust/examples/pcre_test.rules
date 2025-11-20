@@ -1,0 +1,20 @@
+# PCRE测试规则文件
+# 用于测试新的PCRE字段支持
+
+# 基本PCRE规则 - 简单模式
+alert http any any -> any any (msg:"Basic PCRE test"; pcre:"/test/i"; sid:1001;)
+
+# PCRE规则带HTTP位置限制
+alert http any any -> any any (msg:"PCRE in URI"; pcre:"/admin/"; http.uri; sid:1002;)
+
+# 复杂PCRE规则 - 可能需要fallback处理
+alert http any any -> any any (msg:"Complex PCRE"; pcre:"/(?<=user)admin/"; http.uri; sid:1003;)
+
+# 同时包含content和PCRE
+alert http any any -> any any (msg:"Content and PCRE"; content:"login"; pcre:"/login.*password/"; http.request_body; sid:1004;)
+
+# PCRE带标志
+alert http any any -> any any (msg:"PCRE with flags"; pcre:"/SQL.*Injection/i"; sid:1005;)
+
+# 传统content规则（向后兼容）
+alert http any any -> any any (msg:"Traditional content"; content:"/wp-admin/"; http.uri; sid:1006;)

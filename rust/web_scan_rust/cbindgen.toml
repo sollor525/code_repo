@@ -39,6 +39,16 @@ include = [
     "WebScanStats",     # Web扫描统计信息结构体
 ]
 
+[parse]
+# 解析配置，控制cbindgen如何解析Rust代码
+parse_deps = true     # 解析依赖项
+include = [
+    "web_scan_rust"     # 只包含当前crate
+]
+exclude = [
+    "pcre"              # 排除PCRE模块
+]
+
 [export.rename]
 # 重命名配置：将Rust类型名映射为C语言风格的类型名
 # 这有助于保持C语言代码的命名约定
