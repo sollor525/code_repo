@@ -625,7 +625,16 @@ impl Rule {
             }
 
             // 检查pattern是否在正确的位置找到
-            if !target_content.contains(&pattern_with_location.pattern) {
+            // 对于包含转义十六进制的pattern，需要进行字节级比较
+            let pattern_match = if pattern_with_location.pattern.contains("\\x") {
+                // 将转义的十六进制字符串转换为实际字节，然后进行字节匹配
+                self.pattern_matches_bytes(&pattern_with_location.pattern, target_content)
+            } else {
+                // 普通字符串匹配
+                target_content.contains(&pattern_with_location.pattern)
+            };
+
+            if !pattern_match {
                 log::debug!("Rule {}: pattern {} failed - '{}' not found in '{}'", self.id, pattern_idx, pattern_with_location.pattern, target_content);
                 return false;
             } else {
@@ -635,6 +644,59 @@ impl Rule {
 
         log::debug!("Rule {}: all patterns matched - fully matches", self.id);
         true
+    }
+
+    /// 检查转义十六进制pattern是否匹配目标内容的字节
+    ///
+    /// 这个方法将pattern中的转义十六进制序列（如\x28）转换为实际字节，
+    /// 然后在目标内容中查找这些字节序列。
+    ///
+    /// # 参数
+    /// * `pattern` - 可能包含转义十六进制序列的pattern字符串
+    /// * `target_content` - 目标内容字符串
+    ///
+    /// # 返回值
+    /// * `bool` - 如果pattern字节序列在目标内容中找到返回true
+    fn pattern_matches_bytes(&self, pattern: &str, target_content: &str) -> bool {
+        let mut pattern_bytes = Vec::new();
+        let mut i = 0;
+        let bytes = pattern.as_bytes();
+
+        while i < bytes.len() {
+            if bytes[i] == b'\\' && i + 1 < bytes.len() && bytes[i + 1] == b'x' {
+                // 找到转义十六进制序列 \xXX
+                if i + 3 < bytes.len() {
+                    let hex_str = std::str::from_utf8(&bytes[i + 2..i + 4]).unwrap_or("00");
+                    if let Ok(byte_val) = u8::from_str_radix(hex_str, 16) {
+                        pattern_bytes.push(byte_val);
+                    }
+                    i += 4;
+                } else {
+                    i += 1;
+                }
+            } else {
+                // 普通字符
+                pattern_bytes.push(bytes[i]);
+                i += 1;
+            }
+        }
+
+        // 在目标内容的字节中查找pattern字节序列
+        let target_bytes = target_content.as_bytes();
+
+        // 对于单字节的pattern，使用简单的查找
+        if pattern_bytes.len() == 1 {
+            return target_bytes.contains(&pattern_bytes[0]);
+        }
+
+        // 对于多字节pattern，使用滑动窗口查找
+        for window in target_bytes.windows(pattern_bytes.len()) {
+            if window == pattern_bytes {
+                return true;
+            }
+        }
+
+        false
     }
 
     /// 从HTTP数据中提取指定部分
@@ -750,7 +812,7 @@ impl Rule {
         for pcre_pattern in &self.pcre_patterns {
             match pcre_pattern.match_type {
                 PcreMatchType::RegexFallback => {
-                    if let Some(ref regex) = pcre_pattern.compiled_regex {
+                    if let Some(regex) = &pcre_pattern.compiled_regex {
                         if regex.is_match(content) {
                             log::debug!("PCRE fallback pattern '{}' matched for rule {}", pcre_pattern.raw_pattern, self.id);
                             return true;
@@ -794,7 +856,7 @@ impl Rule {
 
             match pcre_pattern.match_type {
                 PcreMatchType::RegexFallback => {
-                    if let Some(ref regex) = pcre_pattern.compiled_regex {
+                    if let Some(regex) = &pcre_pattern.compiled_regex {
                         if regex.is_match(target_content) {
                             log::debug!("PCRE fallback pattern '{}' matched in {:?} for rule {}",
                                       pcre_pattern.raw_pattern, pcre_pattern.http_location, self.id);
@@ -818,12 +880,57 @@ impl Rule {
     ///
     /// # 返回值
     /// * `Vec<(String, u32)>` - 模式字符串和规则ID的元组列表
+    /// 将content模式转义为Hyperscan字面量模式
+    ///
+    /// Hyperscan将所有输入视为正则表达式，所以content模式中的特殊字符需要转义
+    pub fn escape_for_hyperscan_literal(pattern: &str) -> String {
+        // Hyperscan支持字面量模式，但需要转义特殊字符
+        // 由于我们已经将十六进制内容转换为\xXX格式，这里主要是转义正则特殊字符
+
+        // 如果已经是转义格式（包含\x），直接返回
+        if pattern.contains("\\x") {
+            return pattern.to_string();
+        }
+
+        // 对于普通字符串，转义正则特殊字符
+        let mut escaped = String::new();
+        for ch in pattern.chars() {
+            match ch {
+                '\\' => escaped.push_str("\\\\"),
+                '.' => escaped.push_str("\\."),
+                '^' => escaped.push_str("\\^"),
+                '$' => escaped.push_str("\\$"),
+                '*' => escaped.push_str("\\*"),
+                '+' => escaped.push_str("\\+"),
+                '?' => escaped.push_str("\\?"),
+                '(' => escaped.push_str("\\("),
+                ')' => escaped.push_str("\\)"),
+                '[' => escaped.push_str("\\["),
+                ']' => escaped.push_str("\\]"),
+                '{' => escaped.push_str("\\{"),
+                '}' => escaped.push_str("\\}"),
+                '|' => escaped.push_str("\\|"),
+                _ => escaped.push(ch),
+            }
+        }
+        escaped
+    }
+
     pub fn get_hyperscan_patterns(&self) -> Vec<(String, u32)> {
         let mut patterns = Vec::new();
 
-        // 添加content patterns
+        // 添加content patterns（作为字面量字符串处理）
         for pattern_with_loc in &self.patterns {
-            patterns.push((pattern_with_loc.pattern.clone(), self.id));
+            // 将content模式转换为Hyperscan兼容的字面量模式
+            let original_pattern = &pattern_with_loc.pattern;
+            let literal_pattern = Self::escape_for_hyperscan_literal(original_pattern);
+
+            // 调试输出：检查转义是否生效
+            if original_pattern.starts_with('?') || original_pattern.starts_with('+') || original_pattern.starts_with('*') {
+                log::debug!("转义模式: '{}' -> '{}'", original_pattern, literal_pattern);
+            }
+
+            patterns.push((literal_pattern, self.id));
         }
 
         // 添加兼容Hyperscan的PCRE patterns
@@ -1183,6 +1290,28 @@ impl RuleManager {
                         }
                         // 处理Suricata规则中的十六进制编码（如 |28 29 20 7b|）
                         current_pattern = Self::_decode_suricata_content(value);
+
+                        // 检查解码后的结果，处理特殊标记
+                        if current_pattern.is_empty() {
+                            return Err(WebScanError::RuleParsing(
+                                format!("Empty content pattern at line {}", line_num)
+                            ));
+                        } else if current_pattern == "[HEX_CONTENT]" {
+                            // 对于纯十六进制内容（如单字节），提取原始字节值
+                            // 从原始content值中提取十六进制
+                            if value.len() >= 3 && value.starts_with('|') && value.ends_with('|') {
+                                let hex_part = &value[1..value.len()-1];
+                                if let Ok(byte_val) = u8::from_str_radix(hex_part, 16) {
+                                    // 创建匹配单个字节的模式
+                                    current_pattern = format!("\\x{:02X}", byte_val);
+                                } else {
+                                    // 如果解析失败，使用通配符
+                                    current_pattern = ".".to_string();
+                                }
+                            } else {
+                                current_pattern = ".".to_string();
+                            }
+                        }
                     }
                     "sid" => {
                         sid = value.parse().map_err(|_| {
@@ -1376,32 +1505,33 @@ impl RuleManager {
     }
 
     /// 解码Suricata规则中的content值
-    /// 
+    ///
     /// 处理Suricata规则中的特殊格式：
     /// - 十六进制编码：|28 29 20 7b| -> 转换为对应的字节
     /// - 混合格式：bash|20 2d|c -> bash -c（|20|是空格，|2d|是-）
-    /// 
+    ///
     /// # 参数
     /// * `content` - Suricata规则中的content值
-    /// 
+    ///
     /// # 返回值
-    /// * `String` - 解码后的字符串
+    /// * `String` - 解码后的字符串，对二进制内容使用十六进制转义
     fn _decode_suricata_content(content: &str) -> String {
         let mut result = String::new();
         let mut i = 0;
         let bytes = content.as_bytes();
-        
+        let mut has_hex_content = false;
+
         while i < bytes.len() {
             if bytes[i] == b'|' {
                 // 找到十六进制编码的开始
                 let hex_start = i + 1;
                 let mut hex_end = hex_start;
-                
+
                 // 查找结束的|
                 while hex_end < bytes.len() && bytes[hex_end] != b'|' {
                     hex_end += 1;
                 }
-                
+
                 if hex_end < bytes.len() {
                     // 提取十六进制部分
                     let hex_str = &content[hex_start..hex_end];
@@ -1409,10 +1539,10 @@ impl RuleManager {
                     let hex_bytes: Vec<&str> = hex_str.split_whitespace().collect();
                     for hex_byte in hex_bytes {
                         if let Ok(byte_val) = u8::from_str_radix(hex_byte, 16) {
-                            // 只添加可打印的ASCII字符，其他字符跳过（Hyperscan可能不支持）
-                            if byte_val >= 32 && byte_val <= 126 {
-                                result.push(byte_val as char);
-                            }
+                            has_hex_content = true;
+                            // 对于所有十六进制字节，都使用转义序列
+                            // 这样可以确保Hyperscan能够正确处理
+                            result.push_str(&format!("\\x{:02X}", byte_val));
                         }
                     }
                     i = hex_end + 1;
@@ -1426,8 +1556,14 @@ impl RuleManager {
                 i += 1;
             }
         }
-        
-        result
+
+        // 如果解码后结果为空，但原始内容包含十六进制，返回一个单字节模式
+        if result.is_empty() && has_hex_content {
+            // 对于这种情况，使用一个特殊的标记
+            "[HEX_CONTENT]".to_string()
+        } else {
+            result
+        }
     }
 
     /// 应用模式修饰符，转换为 Hyperscan 正则表达式
@@ -1911,7 +2047,7 @@ impl ThreeLayerMatcher {
                 if let Some(pcre_patterns) = self.regex_fallback_rules.get(&rule_id) {
                     for pcre_pattern in pcre_patterns {
                         if let Some(target_content) = self.extract_http_content(data_str, pcre_pattern.http_location) {
-                            if let Some(ref regex) = pcre_pattern.compiled_regex {
+                            if let Some(regex) = &pcre_pattern.compiled_regex {
                                 if regex.is_match(target_content) {
                                     return true; // PCRE patterns匹配
                                 }
@@ -1934,7 +2070,7 @@ impl ThreeLayerMatcher {
         for (&rule_id, pcre_patterns) in &self.regex_fallback_rules {
             for pcre_pattern in pcre_patterns {
                 if let Some(target_content) = self.extract_http_content(data_str, pcre_pattern.http_location) {
-                    if let Some(ref regex) = pcre_pattern.compiled_regex {
+                    if let Some(regex) = &pcre_pattern.compiled_regex {
                         if regex.is_match(target_content) {
                             matched_rules.push(rule_id);
                             break; // 一个规则匹配就够了

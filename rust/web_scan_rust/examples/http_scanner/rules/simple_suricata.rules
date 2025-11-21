@@ -1,0 +1,79 @@
+# Simplified Suricata Rules - Hyperscan Compatible
+# Extracted key patterns from ET Open Ruleset
+
+alert http any any -> any any (msg:"SQL Injection - Union Pattern"; content:"union"; nocase; classtype:web-application-attack; sid:2000001; rev:1;)
+alert http any any -> any any (msg:"SQL Injection - Select Pattern"; content:"select"; nocase; classtype:web-application-attack; sid:2000002; rev:1;)
+alert http any any -> any any (msg:"SQL Injection - Insert Pattern"; content:"insert"; nocase; classtype:web-application-attack; sid:2000003; rev:1;)
+alert http any any -> any any (msg:"SQL Injection - Update Pattern"; content:"update"; nocase; classtype:web-application-attack; sid:2000004; rev:1;)
+alert http any any -> any any (msg:"SQL Injection - Delete Pattern"; content:"delete"; nocase; classtype:web-application-attack; sid:2000005; rev:1;)
+alert http any any -> any any (msg:"SQL Injection - Drop Pattern"; content:"drop"; nocase; classtype:web-application-attack; sid:2000006; rev:1;)
+alert http any any -> any any (msg:"XSS - Script Tag"; content:"<script"; nocase; classtype:web-application-attack; sid:2000007; rev:1;)
+alert http any any -> any any (msg:"XSS - JavaScript Protocol"; content:"javascript:"; nocase; classtype:web-application-attack; sid:2000008; rev:1;)
+alert http any any -> any any (msg:"XSS - Iframe Tag"; content:"<iframe"; nocase; classtype:web-application-attack; sid:2000009; rev:1;)
+
+# Web Shell Detection
+alert http any any -> any any (msg:"Web Shell - PHP File"; content:".php"; nocase; classtype:web-application-attack; sid:2000010; rev:1;)
+alert http any any -> any any (msg:"Web Shell - Shell.php"; content:"shell.php"; nocase; classtype:web-application-attack; sid:2000011; rev:1;)
+alert http any any -> any any (msg:"Web Shell - C99 Shell"; content:"c99.php"; nocase; classtype:web-application-attack; sid:2000012; rev:1;)
+alert http any any -> any any (msg:"Web Shell - R57 Shell"; content:"r57.php"; nocase; classtype:web-application-attack; sid:2000013; rev:1;)
+alert http any any -> any any (msg:"Web Shell - Webadmin"; content:"webadmin.php"; nocase; classtype:web-application-attack; sid:2000014; rev:1;)
+alert http any any -> any any (msg:"Web Shell - Backdoor"; content:"backdoor"; nocase; classtype:web-application-attack; sid:2000015; rev:1;)
+alert http any any -> any any (msg:"Web Shell - WSO"; content:"wso"; nocase; classtype:web-application-attack; sid:2000016; rev:1;)
+
+# Admin and Management Panels
+alert http any any -> any any (msg:"Admin Panel Detection"; content:"admin"; nocase; classtype:web-application-attack; sid:2000020; rev:1;)
+alert http any any -> any any (msg:"WordPress Login"; content:"wp-login"; nocase; classtype:web-application-attack; sid:2000021; rev:1;)
+alert http any any -> any any (msg:"PHPMyAdmin Detection"; content:"phpmyadmin"; nocase; classtype:web-application-attack; sid:2000022; rev:1;)
+alert http any any -> any any (msg:"CPanel Detection"; content:"cpanel"; nocase; classtype:web-application-attack; sid:2000023; rev:1;)
+
+# File and Directory Traversal
+alert http any any -> any any (msg:"Directory Traversal"; content:"../../"; classtype:web-application-attack; sid:2000030; rev:1;)
+alert http any any -> any any (msg:"Config File Access"; content:"config"; nocase; classtype:web-application-attack; sid:2000031; rev:1;)
+alert http any any -> any any (msg:"Backup File Access"; content:".bak"; nocase; classtype:web-application-attack; sid:2000032; rev:1;)
+alert http any any -> any any (msg:"SQL File Access"; content:".sql"; nocase; classtype:web-application-attack; sid:2000033; rev:1;)
+alert http any any -> any any (msg:"Tar Archive Access"; content:".tar"; nocase; classtype:web-application-attack; sid:2000034; rev:1;)
+alert http any any -> any any (msg:"Zip Archive Access"; content:".zip"; nocase; classtype:web-application-attack; sid:2000035; rev:1;)
+alert http any any -> any any (msg:"Rar Archive Access"; content:".rar"; nocase; classtype:web-application-attack; sid:2000036; rev:1;)
+
+# Version Control and Development Files
+alert http any any -> any any (msg:"Git Directory Access"; content:".git"; classtype:web-application-attack; sid:2000040; rev:1;)
+alert http any any -> any any (msg:"SVN Directory Access"; content:".svn"; classtype:web-application-attack; sid:2000041; rev:1;)
+alert http any any -> any any (msg:"Dockerfile Access"; content:"Dockerfile"; nocase; classtype:web-application-attack; sid:2000042; rev:1;)
+alert http any any -> any any (msg:"Environment File Access"; content:".env"; nocase; classtype:web-application-attack; sid:2000043; rev:1;)
+alert http any any -> any any (msg:"Composer JSON Access"; content:"composer.json"; nocase; classtype:web-application-attack; sid:2000044; rev:1;)
+alert http any any -> any any (msg:"Package JSON Access"; content:"package.json"; nocase; classtype:web-application-attack; sid:2000045; rev:1;)
+
+# Specific Exploits and Vulnerabilities
+alert http any any -> any any (msg:"Log4j Exploit Pattern"; content:"${jndi:"; nocase; classtype:web-application-attack; sid:2000050; rev:1;)
+alert http any any -> any any (msg:"Spring Framework Exploit"; content:"spring."; nocase; classtype:web-application-attack; sid:2000051; rev:1;)
+alert http any any -> any any (msg:"General Exploit Pattern"; content:"exploit"; nocase; classtype:web-application-attack; sid:2000052; rev:1;)
+alert http any any -> any any (msg:"Vulnerability Scanner"; content:"vulnerability"; nocase; classtype:web-application-attack; sid:2000053; rev:1;)
+
+# System Information Disclosure
+alert http any any -> any any (msg:"PHP Info Disclosure"; content:"phpinfo"; nocase; classtype:web-application-attack; sid:2000060; rev:1;)
+alert http any any -> any any (msg:"System Information"; content:"system"; nocase; classtype:web-application-attack; sid:2000061; rev:1;)
+alert http any any -> any any (msg:"Server Information"; content:"server"; nocase; classtype:web-application-attack; sid:2000062; rev:1;)
+
+# Oracle WebLogic Specific Patterns
+alert http any any -> any any (msg:"WebLogic Console Access"; content:"console"; nocase; classtype:web-application-attack; sid:2000070; rev:1;)
+alert http any any -> any any (msg:"WebLogic Portal Access"; content:"console.portal"; nocase; classtype:web-application-attack; sid:2000071; rev:1;)
+
+# Apache Tomcat Specific Patterns
+alert http any any -> any any (msg:"Tomcat Manager Access"; content:"manager"; nocase; classtype:web-application-attack; sid:2000080; rev:1;)
+alert http any any -> any any (msg:"Tomcat Host Manager"; content:"host-manager"; nocase; classtype:web-application-attack; sid:2000081; rev:1;)
+
+# Common Attack Tools and Patterns
+alert http any any -> any any (msg:"Nmap Detection"; content:"nmap"; nocase; classtype:web-application-attack; sid:2000090; rev:1;)
+alert http any any -> any any (msg:"SQLMap Detection"; content:"sqlmap"; nocase; classtype:web-application-attack; sid:2000091; rev:1;)
+alert http any any -> any any (msg:"Nikto Detection"; content:"nikto"; nocase; classtype:web-application-attack; sid:2000092; rev:1;)
+alert http any any -> any any (msg:"DirBuster Detection"; content:"dirbuster"; nocase; classtype:web-application-attack; sid:2000093; rev:1;)
+
+# File Upload Detection
+alert http any any -> any any (msg:"File Upload Attempt"; content:"upload"; nocase; classtype:web-application-attack; sid:2000100; rev:1;)
+alert http any any -> any any (msg:"Executable Upload"; content:".exe"; nocase; classtype:web-application-attack; sid:2000101; rev:1;)
+alert http any any -> any any (msg:"Shell Script Upload"; content:".sh"; nocase; classtype:web-application-attack; sid:2000102; rev:1;)
+
+# Network and Protocol Attacks
+alert http any any -> any any (msg:"Command Injection"; content:"; cat"; classtype:web-application-attack; sid:2000110; rev:1;)
+alert http any any -> any any (msg:"Pipe Command Injection"; content:"| ls"; classtype:web-application-attack; sid:2000111; rev:1;)
+alert http any any -> any any (msg:"Background Command Injection"; content:"& ls"; classtype:web-application-attack; sid:2000112; rev:1;)

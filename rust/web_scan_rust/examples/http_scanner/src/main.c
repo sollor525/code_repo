@@ -29,28 +29,28 @@ static long long get_timestamp_ms() {
 }
 
 // 打印检测结果
-void print_result(const struct web_scan_result_t* result, const char* payload, int payload_len) {
+void print_result(const struct web_scan_result_t* result, const char* payload, int payload_len, int packet_number) {
     static long long start_time = 0;
-    static int packet_count = 0;
+    static int total_packets_processed = 0;
     static int matched_count = 0;
 
     if (start_time == 0) {
         start_time = get_timestamp_ms();
     }
 
-    packet_count++;
+    total_packets_processed++;
 
     if (result->is_matched) {
         matched_count++;
         long long current_time = get_timestamp_ms();
         double elapsed_time = (double)(current_time - start_time) / 1000.0;
 
-        printf("\n🚨 [攻击检测] 数据包 #%d\n", packet_count);
+        printf("\n🚨 [攻击检测] 数据包 #%d\n", packet_number);
         printf("规则ID: %u\n", result->rule_id);
         printf("动作类型: %s\n", result->action == Alert ? "ALERT" : "DROP");
         printf("置信度: %u%%\n", result->confidence);
         printf("运行时间: %.2f 秒\n", elapsed_time);
-        printf("检测率: %.2f%% (匹配/总包数)\n", (double)matched_count * 100.0 / packet_count);
+        printf("检测率: %.2f%% (匹配/总包数)\n", (double)matched_count * 100.0 / total_packets_processed);
         printf("=========================================\n");
 
         // 打印攻击载荷的前64字节
@@ -125,8 +125,10 @@ int load_rules(const char* rules_path) {
     }
 }
 
-// 处理HTTP数据包
+// 处理HTTP数据包（用于非pcap场景）
 int process_packet(const unsigned char* data, int len) {
+    static int non_pcap_packet_counter = 0;  // 用于非pcap场景的数据包计数
+    
     if (!data || len <= 0) {
         return -1;
     }
@@ -135,7 +137,8 @@ int process_packet(const unsigned char* data, int len) {
     int ret = web_scan_rust_process_payload(data, (uint32_t)len, &result);
 
     if (ret == 0) {
-        print_result(&result, (const char*)data, len);
+        non_pcap_packet_counter++;
+        print_result(&result, (const char*)data, len, non_pcap_packet_counter);
         return 0;
     } else {
         printf("❌ 数据包处理失败，错误代码: %d\n", ret);
@@ -144,17 +147,47 @@ int process_packet(const unsigned char* data, int len) {
 }
 
 #ifdef HAVE_PCAP
+// 计算TCP流的session_id（基于五元组）
+static uint64_t calculate_session_id(uint32_t src_ip, uint32_t dst_ip, uint16_t src_port, uint16_t dst_port) {
+    // 使用简单的哈希函数生成session_id
+    // 确保同一TCP流的所有数据包使用相同的session_id
+    uint64_t hash = 0;
+    hash = hash * 31 + src_ip;
+    hash = hash * 31 + dst_ip;
+    hash = hash * 31 + src_port;
+    hash = hash * 31 + dst_port;
+    return hash;
+}
+
 // libpcap数据包处理回调函数
 void packet_handler(u_char* user_data, const struct pcap_pkthdr* pkthdr, const u_char* packet) {
-    static uint64_t session_counter = 1;
-
     // 简化的以太网/IP/TCP解析
     if (pkthdr->len < 54) {  // 以太网头(14) + IP头(20) + TCP头(20)
         return;
     }
 
-    // 跳过以太网头部(14字节)
-    const u_char* ip_header = packet + 14;
+    // 解析以太网头部，处理VLAN标签
+    const u_char* ip_header;
+    int header_offset = 14;  // 基本以太网头长度
+
+    // 检查是否有VLAN标签 (802.1Q)
+    uint16_t eth_type = (packet[12] << 8) | packet[13];
+    if (eth_type == 0x8100) {
+        // 有VLAN标签，跳过4字节VLAN头
+        header_offset += 4;
+        if (pkthdr->len < header_offset + 20) {
+            return;
+        }
+        // 获取内层以太网类型
+        eth_type = (packet[header_offset - 2] << 8) | packet[header_offset - 1];
+    }
+
+    // 检查是否是IPv4
+    if (eth_type != 0x0800) {
+        return;
+    }
+
+    ip_header = packet + header_offset;
 
     // 检查IP协议版本
     if ((ip_header[0] & 0xF0) != 0x40) {  // 不是IPv4
@@ -163,7 +196,7 @@ void packet_handler(u_char* user_data, const struct pcap_pkthdr* pkthdr, const u
 
     // 获取IP头长度
     int ip_header_len = (ip_header[0] & 0x0F) * 4;
-    if (pkthdr->len < (size_t)(14 + ip_header_len + 20)) {  // 20是最小TCP头长度
+    if (pkthdr->len < (size_t)(header_offset + ip_header_len + 20)) {  // 20是最小TCP头长度
         return;
     }
 
@@ -173,11 +206,19 @@ void packet_handler(u_char* user_data, const struct pcap_pkthdr* pkthdr, const u
     }
 
     // 获取TCP头
-    const u_char* tcp_header = packet + 14 + ip_header_len;
+    const u_char* tcp_header = packet + header_offset + ip_header_len;
     int tcp_header_len = ((tcp_header[12] & 0xF0) >> 4) * 4;
 
-    // 获取目标端口
-    int dest_port = (tcp_header[2] << 8) | tcp_header[3];
+    // 获取源IP和目标IP
+    uint32_t src_ip = (ip_header[12] << 24) | (ip_header[13] << 16) | (ip_header[14] << 8) | ip_header[15];
+    uint32_t dst_ip = (ip_header[16] << 24) | (ip_header[17] << 16) | (ip_header[18] << 8) | ip_header[19];
+    
+    // 获取源端口和目标端口
+    uint16_t src_port = (tcp_header[0] << 8) | tcp_header[1];
+    uint16_t dest_port = (tcp_header[2] << 8) | tcp_header[3];
+    
+    // 计算TCP流的session_id（基于五元组）
+    uint64_t session_id = calculate_session_id(src_ip, dst_ip, src_port, dest_port);
 
     // 处理HTTP和DNS端口(80, 8080, 8000, 8003, 53等)
     if (dest_port != 80 && dest_port != 8080 && dest_port != 8000 && dest_port != 8003 && dest_port != 443 && dest_port != 53) {
@@ -185,7 +226,7 @@ void packet_handler(u_char* user_data, const struct pcap_pkthdr* pkthdr, const u
     }
 
     // 计算HTTP载荷起始位置
-    int payload_offset = 14 + ip_header_len + tcp_header_len;
+    int payload_offset = header_offset + ip_header_len + tcp_header_len;
     int payload_len = pkthdr->len - payload_offset;
 
     if (payload_len <= 0) {
@@ -209,19 +250,50 @@ void packet_handler(u_char* user_data, const struct pcap_pkthdr* pkthdr, const u
     }
 
     if (should_process) {
-        // 处理载荷
-        struct web_scan_result_t result = {0};
-        int ret = web_scan_rust_process_payload_with_session(
-            session_counter++,
-            payload,
-            payload_len,
-            1,  // is_final = 1
-            0,  // reset_on_request_end = 0
-            &result
-        );
+        // 检查TCP标志，判断是否是数据包的最后一个分段
+        uint8_t tcp_flags = tcp_header[13];
+        int is_final = (tcp_flags & 0x01) != 0;  // FIN标志
+        int is_psh = (tcp_flags & 0x08) != 0;    // PSH标志（通常表示数据包的最后一个分段）
+        
+        // 对于HTTP请求，如果包含完整的HTTP header（\r\n\r\n），认为是完整的请求
+        int has_complete_header = 0;
+        if (payload_len >= 4) {
+            const char* payload_str = (const char*)payload;
+            for (int i = 0; i < payload_len - 3; i++) {
+                if (payload_str[i] == '\r' && payload_str[i+1] == '\n' && 
+                    payload_str[i+2] == '\r' && payload_str[i+3] == '\n') {
+                    has_complete_header = 1;
+                    break;
+                }
+            }
+        }
+        
+        // 只处理包含完整HTTP header的数据包，或者PSH标志的数据包
+        // 这样可以避免对同一个HTTP请求的多个TCP分段进行重复匹配
+        if (has_complete_header || is_psh || is_final) {
+            // 更新HTTP数据包计数（只统计实际处理的HTTP数据包）
+            int current_packet_number = 0;
+            if (user_data) {
+                int* packet_count = (int*)user_data;
+                (*packet_count)++;
+                current_packet_number = *packet_count;  // 获取当前数据包编号
+            }
+            
+            // 处理载荷（使用TCP流的session_id，而不是每个数据包都使用新的session_id）
+            struct web_scan_result_t result = {0};
+            int ret = web_scan_rust_process_payload_with_session(
+                session_id,  // 使用TCP流的session_id，确保同一流的数据包可以重组
+                payload,
+                payload_len,
+                is_final || is_psh,  // 如果是最后一个分段，设置is_final=1
+                1,  // reset_on_request_end = 1 - 在请求结束时重置会话状态
+                &result
+            );
 
-        if (ret == 0) {
-            print_result(&result, (const char*)payload, payload_len);
+            if (ret == 0 && result.is_matched) {
+                // 只打印匹配的结果，传递实际的pcap数据包编号
+                print_result(&result, (const char*)payload, payload_len, current_packet_number);
+            }
         }
     }
 }
@@ -240,30 +312,14 @@ int process_pcap_file(const char* pcap_file) {
         return -1;
     }
 
-    // 设置HTTP流量过滤器
-    struct bpf_program fp;
-    char filter_exp[] = "(tcp port 80) or (tcp port 8080) or (tcp port 8000) or (tcp port 8003) or (tcp port 53)";
-
-    if (pcap_compile(handle, &fp, filter_exp, 0, PCAP_NETMASK_UNKNOWN) == -1) {
-        printf("❌ 无法解析过滤器 '%s': %s\n", filter_exp, pcap_geterr(handle));
-        pcap_close(handle);
-        return -1;
-    }
-
-    if (pcap_setfilter(handle, &fp) == -1) {
-        printf("❌ 无法设置过滤器 '%s': %s\n", filter_exp, pcap_geterr(handle));
-        pcap_freecode(&fp);
-        pcap_close(handle);
-        return -1;
-    }
-
+    // 不使用BPF过滤器（VLAN标签会干扰过滤器）
     printf("✅ 成功加载pcap文件，开始分析HTTP流量...\n");
-    printf("过滤器: %s\n", filter_exp);
+    printf("跳过BPF过滤器以支持VLAN标签\n");
     printf("=========================================\n");
 
     // 处理数据包 - 使用pcap_loop更可靠
     printf("开始处理数据包...\n");
-    int packet_count = 0;
+    int packet_count = 0;  // HTTP数据包计数（只统计实际处理的HTTP数据包）
 
     int result = pcap_loop(handle, -1, packet_handler, (u_char*)&packet_count);
 
@@ -277,7 +333,6 @@ int process_pcap_file(const char* pcap_file) {
 
     printf("\n✅ pcap文件处理完成，共处理 %d 个数据包\n", packet_count);
 
-    pcap_freecode(&fp);
     pcap_close(handle);
 
     return 0;

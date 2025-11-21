@@ -100,9 +100,11 @@ impl HyperscanCompiler {
                     crate::rules::HttpMatchLocation::RequestHeader);
 
                 if is_header_location {
-                    log::debug!("Adding fast pattern for rule {}: '{}' (header location: {:?})",
-                        rule.id, fast_pattern.pattern, fast_pattern.http_location);
-                    self.fast_patterns.push((fast_pattern.pattern.clone(), rule.id));
+                    // 转义fast pattern以确保Hyperscan兼容性
+                    let escaped_pattern = crate::rules::Rule::escape_for_hyperscan_literal(&fast_pattern.pattern);
+                    log::debug!("Adding fast pattern for rule {}: '{}' -> '{}' (header location: {:?})",
+                        rule.id, fast_pattern.pattern, escaped_pattern, fast_pattern.http_location);
+                    self.fast_patterns.push((escaped_pattern, rule.id));
                 } else {
                     log::debug!("Skipping fast pattern for rule {}: '{}' (non-header location: {:?}), rule will use full matching only",
                         rule.id, fast_pattern.pattern, fast_pattern.http_location);
@@ -119,10 +121,11 @@ impl HyperscanCompiler {
                     crate::rules::HttpMatchLocation::RequestHeader);
 
                 if is_header_location {
-                    // 使用第一个pattern作为fast pattern
-                    log::debug!("Adding first pattern as fast pattern for rule {}: '{}' (header location)",
-                        rule.id, first_pattern.pattern);
-                    self.fast_patterns.push((first_pattern.pattern.clone(), rule.id));
+                    // 使用第一个pattern作为fast pattern，并转义以确保Hyperscan兼容性
+                    let escaped_pattern = crate::rules::Rule::escape_for_hyperscan_literal(&first_pattern.pattern);
+                    log::debug!("Adding first pattern as fast pattern for rule {}: '{}' -> '{}' (header location)",
+                        rule.id, first_pattern.pattern, escaped_pattern);
+                    self.fast_patterns.push((escaped_pattern, rule.id));
                 } else {
                     log::debug!("No fast pattern for rule {}: first pattern '{}' not in header location",
                         rule.id, first_pattern.pattern);

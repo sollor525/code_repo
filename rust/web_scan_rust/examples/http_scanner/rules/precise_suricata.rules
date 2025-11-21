@@ -1,0 +1,39 @@
+# Precise Suricata Rules - Targeted for v_1_7_18.PCAP
+
+# Web Shell Detection Rules
+alert http any any -> any any (msg:"Web Shell - R57 PHP"; content:"r57.php"; nocase; classtype:web-application-attack; sid:1001; rev:1;)
+alert http any any -> any any (msg:"Web Shell - C99 Shell"; content:"c99.php"; nocase; classtype:web-application-attack; sid:1002; rev:1;)
+alert http any any -> any any (msg:"Web Shell - Generic Shell"; content:"shell.php"; nocase; classtype:web-application-attack; sid:1003; rev:1;)
+alert http any any -> any any (msg:"Web Shell - Zehir"; content:"zehir.php"; nocase; classtype:web-application-attack; sid:1004; rev:1;)
+alert http any any -> any any (msg:"Web Shell - NST"; content:"nst.php"; nocase; classtype:web-application-attack; sid:1005; rev:1;)
+alert http any any -> any any (msg:"Web Shell - PHP Backdoor"; content:"php-backdoor.php"; nocase; classtype:web-application-attack; sid:1006; rev:1;)
+alert http any any -> any any (msg:"Web Shell - CMD ASP"; content:"cmdasp.asp"; nocase; classtype:web-application-attack; sid:1007; rev:1;)
+alert http any any -> any any (msg:"Web Shell - ASPX Spy"; content:"aspxspy.aspx"; nocase; classtype:web-application-attack; sid:1008; rev:1;)
+
+# Vulnerability Exploitation Rules
+alert http any any -> any any (msg:"Log4j RCE Attempt"; content:"jndi:rmi"; nocase; classtype:web-application-attack; sid:2001; rev:1;)
+alert http any any -> any any (msg:"Nacos Vulnerability"; content:"/nacos/v1/cs/ops/data/removal"; classtype:web-application-attack; sid:2002; rev:1;)
+
+# Information Disclosure Rules
+alert http any any -> any any (msg:"PHP Info Disclosure"; content:"phpinfo.php"; nocase; classtype:web-application-attack; sid:3001; rev:1;)
+alert http any any -> any any (msg:"PHP Info v5"; content:"phpinfo.php5"; nocase; classtype:web-application-attack; sid:3002; rev:1;)
+
+# Sensitive File Access Rules
+alert http any any -> any any (msg:"Backup File Access - RAR"; content:".rar"; nocase; classtype:web-application-attack; sid:4001; rev:1;)
+alert http any any -> any any (msg:"Database Backup Access"; content:".sql"; nocase; classtype:web-application-attack; sid:4002; rev:1;)
+alert http any any -> any any (msg:"Database Compressed Backup"; content:".sql.gz"; nocase; classtype:web-application-attack; sid:4003; rev:1;)
+
+# Administrative Panel Access Rules
+alert http any any -> any any (msg:"MyAdmin Panel Access"; content:"myadmin"; nocase; classtype:web-application-attack; sid:5001; rev:1;)
+alert http any any -> any any (msg:"CGI Script Access"; content:".cgi"; nocase; classtype:web-application-attack; sid:5002; rev:1;)
+
+# Configuration and Development Files
+alert http any any -> any any (msg:"Git Configuration Access"; content:".git"; classtype:web-application-attack; sid:6001; rev:1;)
+alert http any any -> any any (msg:"SVN Metadata Access"; content:".svn"; classtype:web-application-attack; sid:6002; rev:1;)
+alert http any any -> any any (msg:"Dockerfile Access"; content:"Dockerfile"; nocase; classtype:web-application-attack; sid:6003; rev:1;)
+alert http any any -> any any (msg:"Package Configuration"; content:"package.json"; nocase; classtype:web-application-attack; sid:6004; rev:1;)
+alert http any any -> any any (msg:"Composer Configuration"; content:"composer.json"; nocase; classtype:web-application-attack; sid:6005; rev:1;)
+
+# Directory and File Traversal (more specific patterns)
+alert http any any -> any any (msg:"Directory Traversal Attack"; content:"../../../"; classtype:web-application-attack; sid:7001; rev:1;)
+alert http any any -> any any (msg:"Windows Path Traversal"; content:"..\\..\\\\"; classtype:web-application-attack; sid:7002; rev:1;)

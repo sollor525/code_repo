@@ -1,0 +1,92 @@
+[
+    {
+      "id": 1001,
+      "action": "alert",
+      "message": "Web Shell检测 - r57",
+      "pattern": "r57.php"
+    },
+    {
+      "id": 1002,
+      "action": "alert",
+      "message": "Web Shell检测 - c99shell",
+      "pattern": "c99shell.php"
+    },
+    {
+      "id": 1003,
+      "action": "alert",
+      "message": "Web Shell检测 - shell.php",
+      "pattern": "shell.php"
+    },
+    {
+      "id": 1004,
+      "action": "alert",
+      "message": "Web Shell检测 - zehir.php",
+      "pattern": "zehir.php"
+    },
+    {
+      "id": 1005,
+      "action": "alert",
+      "message": "Web Shell检测 - nst.php",
+      "pattern": "nst.php"
+    },
+    {
+      "id": 1006,
+      "action": "alert",
+      "message": "PHP后门检测 - backdoor",
+      "pattern": "php-backdoor.php"
+    },
+    {
+      "id": 1007,
+      "action": "alert",
+      "message": "ASP后门检测 - cmdasp",
+      "pattern": "cmdasp.asp"
+    },
+    {
+      "id": 1008,
+      "action": "alert",
+      "message": "ASPX后门检测 - aspxspy",
+      "pattern": "aspxspy.aspx"
+    },
+    {
+      "id": 1009,
+      "action": "alert",
+      "message": "Log4j漏洞利用检测 - JNDI",
+      "pattern": "jndi:rmi"
+    },
+    {
+      "id": 1010,
+      "action": "alert",
+      "message": "Nacos漏洞利用检测",
+      "pattern": "nacos"
+    },
+    {
+      "id": 1011,
+      "action": "alert",
+      "message": "PHP信息泄露检测 - phpinfo",
+      "pattern": "phpinfo.php"
+    },
+    {
+      "id": 1012,
+      "action": "alert",
+      "message": "管理员面板检测 - myadmin",
+      "pattern": "myadmin"
+    },
+    {
+      "id": 1013,
+      "action": "alert",
+      "message": "CGI脚本检测",
+      "pattern": "index.cgi"
+    },
+    {
+      "id": 1014,
+      "action": "alert",
+      "message": "备份文件检测 - rar",
+      "pattern": ".rar"
+    },
+    {
+      "id": 1015,
+      "action": "alert",
+      "message": "备份文件检测 - sql.gz",
+      "pattern": ".sql.gz"
+    }
+  ]

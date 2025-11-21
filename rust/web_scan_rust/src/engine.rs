@@ -134,8 +134,12 @@ impl WebScanEngine {
         // 编译规则为Hyperscan数据库（Hyperscan始终启用）
         let rule_manager = self.rule_manager.read();
         let rules: Vec<_> = rule_manager.get_all_rules().values().cloned().collect();
+        let active_count = rules.len() as u32;
         drop(rule_manager); // 显式释放锁
         self._compile_hyperscan_database(&rules)?;
+        
+        // 更新规则统计信息
+        self.stats.set_rule_counts(count, active_count);
         
         // 记录加载成功的规则数量
         log::info!("Loaded {} rules from {}", count, rules_path);
@@ -333,20 +337,20 @@ impl WebScanEngine {
         if let Some(ref scanner) = &self.hyperscan_scanner {
             let matches = scanner.scan_stream(data)?;
 
-            // 对于单pattern规则，直接返回第一个匹配
-            // 对于多pattern规则，需要验证完整匹配
+            // 对所有规则都进行完整匹配验证，包括单pattern规则
+            // 这确保HTTP位置验证得到正确执行
             let rule_manager = self.rule_manager.read();
 
             for hyp_match in matches.iter() {
                 if let Some(rule) = rule_manager.get_rule(hyp_match.rule_id) {
-                    // 只对多pattern规则进行完整匹配验证
-                    if rule.patterns.len() > 1 {
-                        let data_str = std::str::from_utf8(data).unwrap_or("");
-                        if crate::rules::Rule::does_rule_fully_match(rule, data_str) {
-                            return Ok(Some(hyp_match.rule_id));
-                        }
-                    } else {
-                        // 单pattern规则，直接相信Hyperscan的结果
+                    log::debug!("Processing Hyperscan match: rule {} at {}..{}", rule.id, hyp_match.from, hyp_match.to);
+
+                    // 直接进行HTTP位置验证，不需要重复pattern匹配
+                    // Hyperscan已经找到了pattern，我们只需验证位置是否正确
+                    let data_str = std::str::from_utf8(data).unwrap_or("");
+                    let is_valid_match = self.verify_http_location_match(rule, data_str, &hyp_match);
+                    log::debug!("Rule {} HTTP location validation: {}", rule.id, is_valid_match);
+                    if is_valid_match {
                         return Ok(Some(hyp_match.rule_id));
                     }
                 }
@@ -368,20 +372,19 @@ impl WebScanEngine {
     fn _hyperscan_match_with_session(&self, session_id: u64, data: &[u8], is_final: bool, reset_on_request_end: bool) -> Result<Option<u32>> {
         if let Some(ref scanner) = &self.hyperscan_scanner {
             let matches = scanner.scan_stream_with_session(session_id, data, is_final, reset_on_request_end)?;
-            // 对于单pattern规则，直接返回第一个匹配
-            // 对于多pattern规则，需要验证完整匹配
+            // 对所有规则都进行完整匹配验证，包括单pattern规则
+            // 这确保HTTP位置验证得到正确执行
             let rule_manager = self.rule_manager.read();
 
             for hyp_match in matches.iter() {
                 if let Some(rule) = rule_manager.get_rule(hyp_match.rule_id) {
-                    // 只对多pattern规则进行完整匹配验证
-                    if rule.patterns.len() > 1 {
-                        let data_str = std::str::from_utf8(data).unwrap_or("");
-                        if crate::rules::Rule::does_rule_fully_match(rule, data_str) {
-                            return Ok(Some(hyp_match.rule_id));
-                        }
-                    } else {
-                        // 单pattern规则，直接相信Hyperscan的结果
+                    log::debug!("Session Processing Hyperscan match: rule {} at {}..{}", rule.id, hyp_match.from, hyp_match.to);
+
+                    // 直接进行HTTP位置验证，不需要重复pattern匹配
+                    let data_str = std::str::from_utf8(data).unwrap_or("");
+                    let is_valid_match = self.verify_http_location_match(rule, data_str, &hyp_match);
+                    log::debug!("Session Rule {} HTTP location validation: {}", rule.id, is_valid_match);
+                    if is_valid_match {
                         return Ok(Some(hyp_match.rule_id));
                     }
                 }
@@ -425,17 +428,15 @@ impl WebScanEngine {
 
                     for hyp_match in matches.iter() {
                         if let Some(rule) = rule_manager.get_rule(hyp_match.rule_id) {
-                            // 只对多pattern规则进行完整匹配验证
-                            if rule.patterns.len() > 1 {
-                                let data_str = std::str::from_utf8(data).unwrap_or("");
-                                if crate::rules::Rule::does_rule_fully_match(rule, data_str) {
-                                    matched_rule = Some((hyp_match.rule_id, rule.action));
-                                    break; // 返回第一个完整匹配的规则
-                                }
-                            } else {
-                                // 单pattern规则，直接相信Hyperscan的结果
+                            log::debug!("Processing Hyperscan match: rule {} at {}..{}", rule.id, hyp_match.from, hyp_match.to);
+
+                            // 直接进行HTTP位置验证，不需要重复pattern匹配
+                            let data_str = std::str::from_utf8(data).unwrap_or("");
+                            let is_valid_match = self.verify_http_location_match(rule, data_str, &hyp_match);
+                            log::debug!("Rule {} HTTP location validation: {}", rule.id, is_valid_match);
+                            if is_valid_match {
                                 matched_rule = Some((hyp_match.rule_id, rule.action));
-                                break;
+                                break; // 返回第一个位置匹配的规则
                             }
                         }
                     }
@@ -900,8 +901,12 @@ impl WebScanEngine {
         // 重新编译Hyperscan数据库（Hyperscan始终启用）
         let rule_manager = self.rule_manager.read();
         let rules: Vec<_> = rule_manager.get_all_rules().values().cloned().collect();
+        let active_count = rules.len() as u32;
         drop(rule_manager); // 显式释放锁
         self._compile_hyperscan_database(&rules)?;
+        
+        // 更新规则统计信息
+        self.stats.set_rule_counts(count, active_count);
         
         // 记录重新加载的信息
         log::info!("Reloaded {} rules from {}", count, rules_path);
@@ -914,6 +919,70 @@ impl WebScanEngine {
     /// 为了向后兼容性，提供此方法，但始终返回true
     #[deprecated(note = "Hyperscan is now always enabled")]
     pub fn is_hyperscan_enabled(&self) -> bool {
+        true
+    }
+
+    /// 验证Hyperscan匹配结果的HTTP位置是否正确
+    ///
+    /// 这个函数确保规则中的HTTP位置要求得到满足，例如：
+    /// - http.cookie规则只匹配Cookie头部中的内容
+    /// - http.uri规则只匹配URI中的内容
+    /// - http.method规则只匹配HTTP方法中的内容
+    ///
+    /// # 参数
+    /// * `rule` - 要验证的规则
+    /// * `data` - 完整的HTTP数据
+    /// * `hyp_match` - Hyperscan的匹配结果
+    ///
+    /// # 返回值
+    /// * `bool` - 如果HTTP位置验证通过返回true，否则返回false
+    fn verify_http_location_match(&self, rule: &crate::rules::Rule, data: &str, hyp_match: &crate::hyperscan::MatchResult) -> bool {
+        // 如果规则没有特定的HTTP位置要求（http_location为Any），则通过验证
+        if rule.patterns.iter().all(|p| p.http_location == crate::rules::HttpMatchLocation::Any) {
+            return true;
+        }
+
+        // 对于有特定HTTP位置要求的规则，验证匹配位置
+        for pattern in &rule.patterns {
+            if pattern.http_location == crate::rules::HttpMatchLocation::Any {
+                continue; // 跳过没有位置要求的pattern
+            }
+
+            // 提取对应的HTTP部分
+            let target_content = rule.extract_http_part(data, pattern.http_location);
+
+            // 如果目标HTTP部分为空，匹配无效
+            if target_content.is_empty() {
+                log::debug!("Rule {} pattern {} HTTP location {:?} is empty - match invalid",
+                           rule.id, pattern.pattern, pattern.http_location);
+                return false;
+            }
+
+            // 检查Hyperscan匹配的位置是否在目标HTTP部分内
+            let target_bytes = target_content.as_bytes();
+            let data_bytes = data.as_bytes();
+
+            // 找到目标HTTP部分在完整数据中的位置
+            let target_start = target_content.as_ptr() as usize - data.as_ptr() as usize;
+            let target_end = target_start + target_bytes.len();
+
+            // 检查Hyperscan匹配是否与目标HTTP部分有重叠
+            let match_start = hyp_match.from as usize;
+            let match_end = hyp_match.to as usize;
+
+            // 如果匹配位置与目标HTTP部分没有重叠，则匹配无效
+            if match_end <= target_start || match_start >= target_end {
+                log::debug!("Rule {} pattern {} HTTP location mismatch: match {}..{} vs target {}..{}",
+                           rule.id, pattern.pattern, match_start, match_end, target_start, target_end);
+                log::debug!("  Pattern: '{}', Target content: '{}'", pattern.pattern, target_content);
+                log::debug!("  Full data preview: '{}'", &data[..std::cmp::min(data.len(), 100)]);
+                return false;
+            }
+
+            log::debug!("Rule {} pattern {} HTTP location validated: match {}..{} overlaps with target {}..{}",
+                       rule.id, pattern.pattern, match_start, match_end, target_start, target_end);
+        }
+
         true
     }
 }

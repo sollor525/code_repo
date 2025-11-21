@@ -1,0 +1,122 @@
+[
+    {
+      "id": 1001,
+      "action": "alert",
+      "message": "Web Shell检测 - r57.php",
+      "pattern": "r57.php"
+    },
+    {
+      "id": 1002,
+      "action": "alert",
+      "message": "Web Shell检测 - c99shell",
+      "pattern": "c99shell"
+    },
+    {
+      "id": 1003,
+      "action": "alert",
+      "message": "Web Shell检测 - c99.php",
+      "pattern": "c99.php"
+    },
+    {
+      "id": 1004,
+      "action": "alert",
+      "message": "Web Shell检测 - shell.php",
+      "pattern": "shell.php"
+    },
+    {
+      "id": 1005,
+      "action": "alert",
+      "message": "Web Shell检测 - zehir.php",
+      "pattern": "zehir.php"
+    },
+    {
+      "id": 1006,
+      "action": "alert",
+      "message": "Log4j漏洞利用检测 - JNDI注入",
+      "pattern": "${jndi:"
+    },
+    {
+      "id": 1007,
+      "action": "alert",
+      "message": "Nacos漏洞利用检测",
+      "pattern": "nacos"
+    },
+    {
+      "id": 1008,
+      "action": "alert",
+      "message": "PHP后门程序检测",
+      "pattern": "backdoor.php"
+    },
+    {
+      "id": 1009,
+      "action": "alert",
+      "message": "ASP后门程序检测",
+      "pattern": "cmdasp.asp"
+    },
+    {
+      "id": 1010,
+      "action": "alert",
+      "message": "ASPX后门程序检测",
+      "pattern": "aspxspy.aspx"
+    },
+    {
+      "id": 1011,
+      "action": "alert",
+      "message": "PHP信息泄露检测",
+      "pattern": "phpinfo.php"
+    },
+    {
+      "id": 1012,
+      "action": "alert",
+      "message": "管理员面板检测",
+      "pattern": "myadmin"
+    },
+    {
+      "id": 1013,
+      "action": "alert",
+      "message": "CGI脚本检测",
+      "pattern": ".cgi"
+    },
+    {
+      "id": 1014,
+      "action": "alert",
+      "message": "Python文件检测",
+      "pattern": ".py"
+    },
+    {
+      "id": 1015,
+      "action": "alert",
+      "message": "备份文件检测",
+      "pattern": ".rar"
+    },
+    {
+      "id": 1016,
+      "action": "alert",
+      "message": "SQL文件检测",
+      "pattern": ".sql"
+    },
+    {
+      "id": 1017,
+      "action": "alert",
+      "message": "配置文件检测",
+      "pattern": "config"
+    },
+    {
+      "id": 1018,
+      "action": "alert",
+      "message": "Docker文件检测",
+      "pattern": "Dockerfile"
+    },
+    {
+      "id": 1019,
+      "action": "alert",
+      "message": "Git文件检测",
+      "pattern": ".git"
+    },
+    {
+      "id": 1020,
+      "action": "alert",
+      "message": "SVN文件检测",
+      "pattern": ".svn"
+    }
+  ]

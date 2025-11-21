@@ -1,0 +1,182 @@
+[
+    {
+      "id": 1001,
+      "action": "alert",
+      "message": "Web Shell检测 - r57.php",
+      "pattern": "r57.php"
+    },
+    {
+      "id": 1002,
+      "action": "alert",
+      "message": "Web Shell检测 - c99shell.php",
+      "pattern": "c99shell.php"
+    },
+    {
+      "id": 1003,
+      "action": "alert",
+      "message": "Web Shell检测 - r57eng.php",
+      "pattern": "r57eng.php"
+    },
+    {
+      "id": 1004,
+      "action": "alert",
+      "message": "Web Shell检测 - c99.php",
+      "pattern": "c99.php"
+    },
+    {
+      "id": 1005,
+      "action": "alert",
+      "message": "Web Shell检测 - shell.php",
+      "pattern": "shell.php"
+    },
+    {
+      "id": 1006,
+      "action": "alert",
+      "message": "Web Shell检测 - zehir.php",
+      "pattern": "zehir.php"
+    },
+    {
+      "id": 1007,
+      "action": "alert",
+      "message": "Web Shell检测 - dra.php",
+      "pattern": "dra.php"
+    },
+    {
+      "id": 1008,
+      "action": "alert",
+      "message": "Web Shell检测 - rst.php",
+      "pattern": "rst.php"
+    },
+    {
+      "id": 1009,
+      "action": "alert",
+      "message": "Web Shell检测 - nst.php",
+      "pattern": "nst.php"
+    },
+    {
+      "id": 1010,
+      "action": "alert",
+      "message": "Web Shell检测 - r.php",
+      "pattern": "r.php"
+    },
+    {
+      "id": 1011,
+      "action": "alert",
+      "message": "PHP后门程序检测",
+      "pattern": "php-backdoor.php"
+    },
+    {
+      "id": 1012,
+      "action": "alert",
+      "message": "ASP后门程序检测",
+      "pattern": "cmdasp.asp"
+    },
+    {
+      "id": 1013,
+      "action": "alert",
+      "message": "ASPX后门程序检测",
+      "pattern": "aspxspy.aspx"
+    },
+    {
+      "id": 1014,
+      "action": "alert",
+      "message": "Java后门程序检测",
+      "pattern": "c-h.v2.php"
+    },
+    {
+      "id": 1015,
+      "action": "alert",
+      "message": "Log4j漏洞利用检测 - JNDI注入",
+      "pattern": "${jndi:"
+    },
+    {
+      "id": 1016,
+      "action": "alert",
+      "message": "Nacos漏洞利用检测",
+      "pattern": "/nacos/v1/cs/ops/data/removal"
+    },
+    {
+      "id": 1017,
+      "action": "alert",
+      "message": "PHP信息泄露检测",
+      "pattern": "phpinfo.php"
+    },
+    {
+      "id": 1018,
+      "action": "alert",
+      "message": "PHP信息泄露检测5版本",
+      "pattern": "phpinfo.php5"
+    },
+    {
+      "id": 1019,
+      "action": "alert",
+      "message": "PHP后门检测",
+      "pattern": "pi.php"
+    },
+    {
+      "id": 1020,
+      "action": "alert",
+      "message": "PHP后门检测",
+      "pattern": "pi.php5"
+    },
+    {
+      "id": 1021,
+      "action": "alert",
+      "message": "PHP测试文件检测",
+      "pattern": "test.php"
+    },
+    {
+      "id": 1022,
+      "action": "alert",
+      "message": "PHP临时文件检测",
+      "pattern": "temp.php"
+    },
+    {
+      "id": 1023,
+      "action": "alert",
+      "message": "PHP后门检测",
+      "pattern": "php.php"
+    },
+    {
+      "id": 1024,
+      "action": "alert",
+      "message": "PHP后门检测",
+      "pattern": "i.php"
+    },
+    {
+      "id": 1025,
+      "action": "alert",
+      "message": "SQL注入检测 - 单引号",
+      "pattern": "'"
+    },
+    {
+      "id": 1026,
+      "action": "alert",
+      "message": "管理员面板检测",
+      "pattern": "myadmin"
+    },
+    {
+      "id": 1027,
+      "action": "alert",
+      "message": "CGI脚本检测",
+      "pattern": ".cgi"
+    },
+    {
+      "id": 1028,
+      "action": "alert",
+      "message": "Python服务端检测",
+      "pattern": ".py"
+    },
+    {
+      "id": 1029,
+      "action": "alert",
+      "message": "备份文件检测 - rar",
+      "pattern": ".rar"
+    },
+    {
+      "id": 1030,
+      "action": "alert",
+      "message": "SQL备份文件检测",
+      "pattern": ".sql"
+    }
+  ]
