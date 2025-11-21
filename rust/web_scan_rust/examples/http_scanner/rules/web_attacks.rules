@@ -1,0 +1,153 @@
+# Web攻击检测规则集
+# 适用于HTTP扫描检测引擎
+
+# === 管理员访问检测 ===
+
+# 管理员面板访问
+alert http any any -> any any (
+    msg:"管理员面板访问检测";
+    content:"/admin";
+    http.uri;
+    sid:1001;
+    rev:1;
+    metadata:category=access_control,severity=medium;
+)
+
+# 管理员登录页面
+alert http any any -> any any (
+    msg:"管理员登录页面访问";
+    content:"login";
+    http.uri;
+    content:"admin";
+    http.uri;
+    distance:20;
+    sid:1002;
+    rev:1;
+    metadata:category=access_control,severity=medium;
+)
+
+# === SQL注入攻击检测 ===
+
+# 基础SQL注入
+alert http any any -> any any (
+    msg:"SQL注入攻击 - Union Select";
+    content:"union";
+    http.request_body;
+    content:"select";
+    http.request_body;
+    distance:10;
+    sid:2001;
+    rev:1;
+    metadata:category=sql_injection,severity=high;
+)
+
+# SQL注入变种
+alert http any any -> any any (
+    msg:"SQL注入攻击 - Insert操作";
+    content:"insert";
+    http.request_body;
+    content:"into";
+    http.request_body;
+    distance:8;
+    sid:2002;
+    rev:1;
+    metadata:category=sql_injection,severity=high;
+)
+
+# === XSS攻击检测 ===
+
+# 基础XSS攻击
+alert http any any -> any any (
+    msg:"XSS攻击 - Script标签";
+    content:"<script";
+    http.request_body;
+    nocase;
+    sid:3001;
+    rev:1;
+    metadata:category=xss,severity=medium;
+)
+
+# JavaScript注入
+alert http any any -> any any (
+    msg:"XSS攻击 - JavaScript注入";
+    content:"javascript:";
+    http.request_body;
+    nocase;
+    sid:3002;
+    rev:1;
+    metadata:category=xss,severity=medium;
+)
+
+# === 目录遍历攻击检测 ===
+
+# 基础目录遍历
+alert http any any -> any any (
+    msg:"目录遍历攻击";
+    content:"../";
+    http.uri;
+    sid:4001;
+    rev:1;
+    metadata:category=directory_traversal,severity=medium;
+)
+
+# 系统文件访问
+alert http any any -> any any (
+    msg:"系统文件访问尝试";
+    content:"/etc/passwd";
+    http.uri;
+    sid:4002;
+    rev:1;
+    metadata:category=directory_traversal,severity=high;
+)
+
+# === 命令注入检测 ===
+
+# 命令注入尝试
+alert http any any -> any any (
+    msg:"命令注入攻击";
+    content:";";
+    http.request_body;
+    content:"cat";
+    http.request_body;
+    distance:5;
+    sid:5001;
+    rev:1;
+    metadata:category=command_injection,severity=critical;
+)
+
+# 管道命令注入
+alert http any any -> any any (
+    msg:"管道命令注入";
+    content:"|";
+    http.request_body;
+    content:"ls";
+    http.request_body;
+    distance:3;
+    sid:5002;
+    rev:1;
+    metadata:category=command_injection,severity=critical;
+)
+
+# === 文件上传检测 ===
+
+# PHP文件上传
+alert http any any -> any any (
+    msg:"可疑PHP文件上传";
+    content:".php";
+    http.request_body;
+    content:"upload";
+    http.uri;
+    sid:6001;
+    rev:1;
+    metadata:category=file_upload,severity=high;
+)
+
+# 可执行文件上传
+alert http any any -> any any (
+    msg:"可执行文件上传尝试";
+    content:".exe";
+    http.request_body;
+    sid:6002;
+    rev:1;
+    metadata:category=file_upload,severity=high;
+)

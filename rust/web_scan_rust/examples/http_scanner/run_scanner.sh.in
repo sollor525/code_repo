@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# HTTP扫描器启动脚本
+# 自动设置库路径并运行扫描器
+
+# 获取脚本所在目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 设置库路径
+export LD_LIBRARY_PATH="@CMAKE_SOURCE_DIR@/../../target/release:@HYPERSCAN_LIBRARY_DIRS@:$LD_LIBRARY_PATH"
+
+# 设置PKG_CONFIG_PATH
+export PKG_CONFIG_PATH="@HYPERSCAN_LIBRARY_DIRS@/pkgconfig:$PKG_CONFIG_PATH"
+
+# 检查so文件是否存在
+SO_FILE="@CMAKE_SOURCE_DIR@/../../target/release/libweb_scan_rust.so"
+if [ ! -f "$SO_FILE" ]; then
+    echo "❌ 错误: 找不到共享库文件: $SO_FILE"
+    echo "请先在项目根目录运行: cargo build --release"
+    exit 1
+fi
+
+# 检查规则文件
+RULES_DIR="$SCRIPT_DIR/rules"
+if [ ! -d "$RULES_DIR" ] || [ -z "$(ls -A $RULES_DIR)" ]; then
+    echo "⚠️  警告: 规则目录为空或不存在: $RULES_DIR"
+    echo "请添加规则文件到该目录"
+fi
+
+# 运行扫描器
+echo "🚀 启动HTTP扫描器..."
+echo "库路径: $LD_LIBRARY_PATH"
+echo "规则目录: $RULES_DIR"
+echo "可执行文件: $SCRIPT_DIR/http_scanner"
+echo "================================================================"
+exec "$SCRIPT_DIR/http_scanner" "$@"

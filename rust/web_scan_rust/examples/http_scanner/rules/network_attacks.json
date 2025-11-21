@@ -1,0 +1,50 @@
+[
+    {
+      "id": 8001,
+      "action": "alert",
+      "message": "网络攻击 - SIG查询检测",
+      "pattern": "SIG?"
+    },
+    {
+      "id": 8002,
+      "action": "alert",
+      "message": "网络攻击 - DNS异常查询",
+      "pattern": "ibrokethe.net"
+    },
+    {
+      "id": 8003,
+      "action": "alert",
+      "message": "网络攻击 - 恶意域名",
+      "pattern": "ibroke"
+    },
+    {
+      "id": 8004,
+      "action": "alert",
+      "message": "网络攻击 - 漏洞利用",
+      "pattern": "exploit"
+    },
+    {
+      "id": 8005,
+      "action": "alert",
+      "message": "网络攻击 - 网络攻击特征",
+      "pattern": "attack"
+    },
+    {
+      "id": 8006,
+      "action": "alert",
+      "message": "网络攻击 - 恶意载荷",
+      "pattern": "malicious"
+    },
+    {
+      "id": 8007,
+      "action": "alert",
+      "message": "网络攻击 - 域名查询",
+      "pattern": "domain"
+    },
+    {
+      "id": 8008,
+      "action": "alert",
+      "message": "网络攻击 - 网络流量异常",
+      "pattern": "network"
+    }
+]

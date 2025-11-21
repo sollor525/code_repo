@@ -1,0 +1,80 @@
+[
+    {
+      "id": 1001,
+      "action": "alert",
+      "message": "Web Shell检测 - r57.php",
+      "pattern": "r57.php"
+    },
+    {
+      "id": 1002,
+      "action": "alert",
+      "message": "Web Shell检测 - c99shell.php",
+      "pattern": "c99shell.php"
+    },
+    {
+      "id": 1003,
+      "action": "alert",
+      "message": "Web Shell检测 - c99.php",
+      "pattern": "c99.php"
+    },
+    {
+      "id": 1004,
+      "action": "alert",
+      "message": "Web Shell检测 - shell.php",
+      "pattern": "shell.php"
+    },
+    {
+      "id": 1005,
+      "action": "alert",
+      "message": "Web Shell检测 - webadmin.php",
+      "pattern": "webadmin.php"
+    },
+    {
+      "id": 1006,
+      "action": "alert",
+      "message": "Log4j漏洞利用检测 - JNDI",
+      "pattern": "${jndi:"
+    },
+    {
+      "id": 1007,
+      "action": "alert",
+      "message": "Nacos漏洞利用检测",
+      "pattern": "/nacos/v1/cs/ops/data/removal"
+    },
+    {
+      "id": 1008,
+      "action": "alert",
+      "message": "PHP后门检测",
+      "pattern": "php-backdoor.php"
+    },
+    {
+      "id": 1009,
+      "action": "alert",
+      "message": "ASP后门检测",
+      "pattern": "cmdasp.asp"
+    },
+    {
+      "id": 1010,
+      "action": "alert",
+      "message": "ASPX后门检测",
+      "pattern": "aspxspy.aspx"
+    },
+    {
+      "id": 1011,
+      "action": "alert",
+      "message": "SQL注入检测",
+      "pattern": "'"
+    },
+    {
+      "id": 1012,
+      "action": "alert",
+      "message": "目录遍历攻击检测",
+      "pattern": "../"
+    },
+    {
+      "id": 1013,
+      "action": "alert",
+      "message": "文件包含漏洞检测",
+      "pattern": "phpinfo.php"
+    }
+  ]

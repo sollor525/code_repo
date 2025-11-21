@@ -1,0 +1,154 @@
+# PCRE高级检测规则集
+# 使用PCRE模式进行复杂攻击检测
+
+# === PCRE SQL注入检测 ===
+
+# 复杂SQL注入模式
+alert http any any -> any any (
+    msg:"PCRE检测 - 复杂SQL注入";
+    pcre:"/(?i)(?:select|insert|update|delete)\s+.*\s+from\s+\w+/i";
+    http.request_body;
+    sid:7001;
+    rev:1;
+    metadata:category=sql_injection,severity=high;
+)
+
+# SQL注入注释模式
+alert http any any -> any any (
+    msg:"PCRE检测 - SQL注释注入";
+    pcre:"/union.*select.*--/i";
+    http.request_body;
+    sid:7002;
+    rev:1;
+    metadata:category=sql_injection,severity=high;
+)
+
+# SQL注入Unicode编码
+alert http any any -> any any (
+    msg:"PCRE检测 - Unicode SQL注入";
+    pcre:"/\u00[0-9a-fA-F]{2}\u00[0-9a-fA-F]{2}\u00[0-9a-fA-F]{2}/";
+    http.request_body;
+    sid:7003;
+    rev:1;
+    metadata:category=sql_injection,severity=medium;
+)
+
+# === PCRE XSS检测 ===
+
+# 完整XSS脚本标签
+alert http any any -> any any (
+    msg:"PCRE检测 - 完整XSS脚本";
+    pcre:"/<script[^>]*>.*?<\/script>/si";
+    http.request_body;
+    sid:8001;
+    rev:1;
+    metadata:category=xss,severity=high;
+)
+
+# 事件处理器XSS
+alert http any any -> any any (
+    msg:"PCRE检测 - 事件处理器XSS";
+    pcre:"/on\w+\s*=\s*["'][^"']*javascript/i";
+    http.request_body;
+    sid:8002;
+    rev:1;
+    metadata:category=xss,severity=medium;
+)
+
+# iframe标签XSS
+alert http any any -> any any (
+    msg:"PCRE检测 - iframe XSS";
+    pcre:"/<iframe[^>]*src\s*=\s*["'][^"']*javascript/i";
+    http.request_body;
+    sid:8003;
+    rev:1;
+    metadata:category=xss,severity=high;
+)
+
+# === PCRE 路径遍历检测 ===
+
+# 多级目录遍历
+alert http any any -> any any (
+    msg:"PCRE检测 - 多级目录遍历";
+    pcre:"/\.\.[\/\\]\.\.[\/\\]\.\.[\/\\]/i";
+    http.uri;
+    sid:9001;
+    rev:1;
+    metadata:category=directory_traversal,severity=high;
+)
+
+# 编码的目录遍历
+alert http any any -> any any (
+    msg:"PCRE检测 - URL编码目录遍历";
+    pcre:"/%2e%2e[\/\\]/i";
+    http.uri;
+    sid:9002;
+    rev:1;
+    metadata:category=directory_traversal,severity=medium;
+)
+
+# === PCRE 命令注入检测 ===
+
+# 复杂命令注入模式
+alert http any any -> any any (
+    msg:"PCRE检测 - 复杂命令注入";
+    pcre:"/[;&|`]\s*(?:ls|cat|whoami|id|uname|pwd|ifconfig|netstat)/i";
+    http.request_body;
+    sid:10001;
+    rev:1;
+    metadata:category=command_injection,severity=critical;
+)
+
+# 后台命令执行
+alert http any any -> any any (
+    msg:"PCRE检测 - 后台命令执行";
+    pcre:"/&\s*(?:wget|curl|nc|perl|python|ruby)/i";
+    http.request_body;
+    sid:10002;
+    rev:1;
+    metadata:category=command_injection,severity=critical;
+)
+
+# === PCRE 扫描工具检测 ===
+
+# 扫描工具User-Agent
+alert http any any -> any any (
+    msg:"PCRE检测 - 扫描工具指纹";
+    pcre:"/(?:nikto|nmap|nessus|sqlmap|burp|openvas|acunetix|appscan)/i";
+    http.request_header;
+    sid:11001;
+    rev:1;
+    metadata:category=scanner,severity=low;
+)
+
+# 自动化工具特征
+alert http any any -> any any (
+    msg:"PCRE检测 - 自动化攻击工具";
+    pcre:"/(?:python-requests|java|curl|wget)\s+(?:\/[\d\.]+)?/i";
+    http.request_header;
+    sid:11002;
+    rev:1;
+    metadata:category=scanner,severity=low;
+)
+
+# === PCRE Webshell检测 ===
+
+# PHP Webshell
+alert http any any -> any any (
+    msg:"PCRE检测 - PHP Webshell";
+    pcre:"/<\?php\s*(?:eval|assert|system|shell_exec|passthru|exec)\s*\(/i";
+    http.request_body;
+    sid:12001;
+    rev:1;
+    metadata:category=webshell,severity=critical;
+)
+
+# 一句话木马
+alert http any any -> any any (
+    msg:"PCRE检测 - 一句话木马";
+    pcre:"/(?:eval\(\$_POST|assert\(\$_POST|system\(\$_POST)/i";
+    http.request_body;
+    sid:12002;
+    rev:1;
+    metadata:category=webshell,severity=critical;
+)

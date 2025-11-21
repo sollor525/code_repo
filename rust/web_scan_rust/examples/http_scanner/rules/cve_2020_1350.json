@@ -1,0 +1,74 @@
+[
+    {
+      "id": 9001,
+      "action": "alert",
+      "message": "CVE-2020-1350 - SIGRed远程代码执行漏洞检测",
+      "pattern": "SIGRed"
+    },
+    {
+      "id": 9002,
+      "action": "alert",
+      "message": "CVE-2020-1350 - DNS查询异常",
+      "pattern": "DNS"
+    },
+    {
+      "id": 9003,
+      "action": "alert",
+      "message": "CVE-2020-1350 - Windows DNS服务漏洞",
+      "pattern": "Windows"
+    },
+    {
+      "id": 9004,
+      "action": "alert",
+      "message": "CVE-2020-1350 - 恶意DNS查询",
+      "pattern": " exploit"
+    },
+    {
+      "id": 9005,
+      "action": "alert",
+      "message": "CVE-2020-1350 - 压缩数据包检测",
+      "pattern": "compression"
+    },
+    {
+      "id": 9006,
+      "action": "alert",
+      "message": "CVE-2020-1350 - DNS服务请求",
+      "pattern": "server"
+    },
+    {
+      "id": 9007,
+      "action": "alert",
+      "message": "CVE-2020-1350 - 漏洞利用特征",
+      "pattern": "payload"
+    },
+    {
+      "id": 9008,
+      "action": "alert",
+      "message": "CVE-2020-1350 - 远程代码执行",
+      "pattern": "RCE"
+    },
+    {
+      "id": 9009,
+      "action": "alert",
+      "message": "CVE-2020-1350 - DNS协议异常",
+      "pattern": "protocol"
+    },
+    {
+      "id": 9010,
+      "action": "alert",
+      "message": "CVE-2020-1350 - 攻击载荷特征",
+      "pattern": "attack"
+    },
+    {
+      "id": 9011,
+      "action": "alert",
+      "message": "CVE-2020-1350 - DNS服务器响应",
+      "pattern": "response"
+    },
+    {
+      "id": 9012,
+      "action": "alert",
+      "message": "CVE-2020-1350 - 网络流量异常",
+      "pattern": "network"
+    }
+]
