@@ -1373,6 +1373,9 @@ impl RuleManager {
                     "http.request_header" => {
                         current_http_location = HttpMatchLocation::RequestHeader;
                     }
+                    "http.header" => {
+                        current_http_location = HttpMatchLocation::RequestHeader;
+                    }
                     "nocase" => {
                         current_nocase = true;
                     }

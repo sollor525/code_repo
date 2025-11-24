@@ -350,7 +350,8 @@ impl WebScanEngine {
                     let data_str = std::str::from_utf8(data).unwrap_or("");
                     let is_valid_match = self.verify_http_location_match(rule, data_str, &hyp_match);
                     log::debug!("Rule {} HTTP location validation: {}", rule.id, is_valid_match);
-                    if is_valid_match {
+
+                                if is_valid_match {
                         return Ok(Some(hyp_match.rule_id));
                     }
                 }
@@ -384,7 +385,8 @@ impl WebScanEngine {
                     let data_str = std::str::from_utf8(data).unwrap_or("");
                     let is_valid_match = self.verify_http_location_match(rule, data_str, &hyp_match);
                     log::debug!("Session Rule {} HTTP location validation: {}", rule.id, is_valid_match);
-                    if is_valid_match {
+
+                        if is_valid_match {
                         return Ok(Some(hyp_match.rule_id));
                     }
                 }
@@ -434,7 +436,8 @@ impl WebScanEngine {
                             let data_str = std::str::from_utf8(data).unwrap_or("");
                             let is_valid_match = self.verify_http_location_match(rule, data_str, &hyp_match);
                             log::debug!("Rule {} HTTP location validation: {}", rule.id, is_valid_match);
-                            if is_valid_match {
+
+                                                  if is_valid_match {
                                 matched_rule = Some((hyp_match.rule_id, rule.action));
                                 break; // 返回第一个位置匹配的规则
                             }
@@ -942,7 +945,7 @@ impl WebScanEngine {
             return true;
         }
 
-        // 对于有特定HTTP位置要求的规则，验证匹配位置
+        // 对于有特定HTTP位置要求的规则，验证每个pattern都在正确的HTTP部分中找到
         for pattern in &rule.patterns {
             if pattern.http_location == crate::rules::HttpMatchLocation::Any {
                 continue; // 跳过没有位置要求的pattern
@@ -958,32 +961,70 @@ impl WebScanEngine {
                 return false;
             }
 
-            // 检查Hyperscan匹配的位置是否在目标HTTP部分内
-            let target_bytes = target_content.as_bytes();
-            let data_bytes = data.as_bytes();
+            // 关键修复：验证pattern是否在正确的HTTP部分中找到
+            // 不管Hyperscan在什么位置匹配，我们都检查pattern是否在目标HTTP部分中存在
+            let pattern_found_in_target = if pattern.pattern.contains("\\x") {
+                // 处理转义十六进制pattern
+                self.pattern_matches_bytes(&pattern.pattern, target_content)
+            } else {
+                // 普通字符串匹配
+                target_content.contains(&pattern.pattern)
+            };
 
-            // 找到目标HTTP部分在完整数据中的位置
-            let target_start = target_content.as_ptr() as usize - data.as_ptr() as usize;
-            let target_end = target_start + target_bytes.len();
-
-            // 检查Hyperscan匹配是否与目标HTTP部分有重叠
-            let match_start = hyp_match.from as usize;
-            let match_end = hyp_match.to as usize;
-
-            // 如果匹配位置与目标HTTP部分没有重叠，则匹配无效
-            if match_end <= target_start || match_start >= target_end {
-                log::debug!("Rule {} pattern {} HTTP location mismatch: match {}..{} vs target {}..{}",
-                           rule.id, pattern.pattern, match_start, match_end, target_start, target_end);
-                log::debug!("  Pattern: '{}', Target content: '{}'", pattern.pattern, target_content);
-                log::debug!("  Full data preview: '{}'", &data[..std::cmp::min(data.len(), 100)]);
+            if !pattern_found_in_target {
+                log::debug!("Rule {} HTTP location validation failed for pattern '{}' - not in target location",
+                           rule.id, pattern.pattern);
+                log::debug!("  Target content: '{}'", target_content);
                 return false;
             }
 
-            log::debug!("Rule {} pattern {} HTTP location validated: match {}..{} overlaps with target {}..{}",
-                       rule.id, pattern.pattern, match_start, match_end, target_start, target_end);
+            log::debug!("Rule {} HTTP location validated for pattern '{}'",
+                       rule.id, pattern.pattern);
         }
 
         true
+    }
+
+    /// 检查转义十六进制pattern是否匹配目标内容的字节
+    fn pattern_matches_bytes(&self, pattern: &str, target_content: &str) -> bool {
+        let mut pattern_bytes = Vec::new();
+        let mut i = 0;
+
+        while i < pattern.len() {
+            if i + 1 < pattern.len() && pattern.chars().nth(i) == Some('\\') && pattern.chars().nth(i + 1) == Some('x') {
+                // 解析十六进制转义序列 \xXX
+                if i + 3 < pattern.len() {
+                    let hex_str = &pattern[i + 2..i + 4];
+                    if let Ok(byte_val) = u8::from_str_radix(hex_str, 16) {
+                        pattern_bytes.push(byte_val);
+                        i += 4;
+                        continue;
+                    }
+                }
+                // 如果解析失败，当作普通字符处理
+                pattern_bytes.push(b'\\');
+                i += 1;
+            } else {
+                // 普通字符
+                pattern_bytes.push(pattern.as_bytes()[i]);
+                i += 1;
+            }
+        }
+
+        // 在目标内容的字节中查找pattern字节序列
+        if pattern_bytes.is_empty() {
+            return false;
+        }
+
+        let target_bytes = target_content.as_bytes();
+        for i in 0..=target_bytes.len().saturating_sub(pattern_bytes.len()) {
+            if i + pattern_bytes.len() <= target_bytes.len() &&
+               target_bytes[i..i + pattern_bytes.len()] == pattern_bytes[..] {
+                return true;
+            }
+        }
+
+        false
     }
 }
 
