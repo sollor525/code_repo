@@ -8,7 +8,7 @@ use crate::error::Result;
 // 导入协议检测相关类型
 use crate::protocol::{Protocol, ProtocolDetector, PacketDirection};
 // 导入规则管理相关类型
-use crate::rules::{RuleAction, RuleManager, Rule};
+use crate::rules::{RuleAction, RuleManager, Rule, RuleThresholdConfig, ThresholdTrackBy, ThresholdType};
 // 导入统计收集器
 use crate::stats::StatsCollector;
 // 导入Hyperscan相关类型
@@ -17,6 +17,10 @@ use crate::hyperscan::{HyperscanCompiler, HyperscanScanner};
 use parking_lot::RwLock;
 // 导入原子引用计数智能指针，用于多线程共享数据
 use std::sync::Arc;
+// 导入HashMap用于threshold跟踪
+use std::collections::HashMap;
+// 导入时间相关类型
+use std::time::{Instant, Duration};
 
 /// Web扫描动作枚举
 /// 
@@ -84,6 +88,16 @@ impl Default for WebScanResult {
 /// 这是整个检测系统的核心，协调各个组件的工作。
 /// 包含协议检测器、规则管理器、统计收集器和Hyperscan扫描器等。
 /// 会话管理由外部程序负责，此引擎专注于单次数据包检测。
+/// Threshold跟踪条目
+///
+/// 用于跟踪每个IP（或规则）的匹配次数和时间窗口。
+#[derive(Debug, Clone)]
+struct ThresholdTracker {
+    count: u32,                      // 当前匹配次数
+    window_start: Instant,           // 时间窗口开始时间
+    triggered: bool,                 // 是否已触发
+}
+
 pub struct WebScanEngine {
     protocol_detector: ProtocolDetector,        // 协议检测器
     rule_manager: Arc<RwLock<RuleManager>>,     // 规则管理器（线程安全）
@@ -91,6 +105,7 @@ pub struct WebScanEngine {
     hyperscan_scanner: Option<Arc<HyperscanScanner>>,    // Hyperscan扫描器（将在规则加载后初始化）
     enabled: bool,                              // 引擎是否启用
     default_action: WebScanAction,              // 默认动作
+    threshold_trackers: Arc<RwLock<HashMap<String, ThresholdTracker>>>,  // Threshold跟踪器（按IP或规则ID）
 }
 
 impl Default for WebScanEngine {
@@ -114,6 +129,7 @@ impl WebScanEngine {
             hyperscan_scanner: None, // 将在规则加载后初始化
             enabled: true,           // 默认启用
             default_action: WebScanAction::Alert,       // 默认告警动作
+            threshold_trackers: Arc::new(RwLock::new(HashMap::new())),  // 初始化threshold跟踪器
         }
     }
 
@@ -291,25 +307,62 @@ impl WebScanEngine {
             });
         }
 
-        // 更新统计信息：增加匹配的数据包计数
-        self.stats.increment_packets_matched();
-
         // 获取匹配的规则ID和动作
         let rule_id = matched_rule_id.unwrap();
-
-        // 确定要执行的动作
-        let action = if let Some(rule_action) = action {
-            // 使用规则中指定的动作
-            if rule_action == RuleAction::None {
-                self.default_action
+        
+        // 获取规则信息以检查threshold
+        let threshold_config = {
+            let rule_manager = self.rule_manager.read();
+            if let Some(rule) = rule_manager.get_rule(rule_id) {
+                rule.threshold_config.clone()
             } else {
-                rule_action.into()  // 使用From trait转换
+                None
             }
-        } else {
-            // Hyperscan 匹配到了规则但找不到规则信息，使用默认动作
-            log::warn!("Hyperscan matched rule ID {} but rule not found in manager", rule_id);
-            self.default_action
         };
+        
+        // 如果有threshold配置，检查是否应该触发
+        // 注意：_hyperscan_match 没有 session_id 参数，对于 by_src/by_dst 跟踪，暂时跳过
+        if let Some(ref threshold_config) = threshold_config {
+            // 只支持 by_rule 跟踪（不需要 session_id）
+            if threshold_config.track_by == ThresholdTrackBy::ByRule {
+                let fake_session_id = 0; // 占位符，by_rule 不使用 session_id
+                if !self.check_threshold_triggered(rule_id, fake_session_id, threshold_config) {
+                    // Threshold未触发，不返回匹配结果
+                    log::debug!("Rule {} matched but threshold not triggered yet", rule_id);
+                    return Ok(WebScanResult {
+                        protocol: protocol_result.protocol,
+                        confidence: protocol_result.confidence,
+                        content_length: payload.len() as u32,
+                        direction: protocol_result.direction,
+                        status_code: protocol_result.status_code,
+                        ..Default::default()
+                    });
+                }
+                log::debug!("Rule {} threshold triggered", rule_id);
+            } else {
+                // by_src/by_dst 需要 session_id，但 _hyperscan_match 没有，暂时跳过
+                log::warn!("Rule {} has threshold with by_src/by_dst but no session_id available, skipping threshold check", rule_id);
+            }
+        }
+        
+        // 重新获取规则信息以获取动作
+        let action = {
+            let rule_manager = self.rule_manager.read();
+            if let Some(rule) = rule_manager.get_rule(rule_id) {
+                if rule.action == RuleAction::None {
+                    self.default_action
+                } else {
+                    rule.action.into()  // 使用From trait转换
+                }
+            } else {
+                // Hyperscan 匹配到了规则但找不到规则信息，使用默认动作
+                log::warn!("Hyperscan matched rule ID {} but rule not found in manager", rule_id);
+                self.default_action
+            }
+        };
+
+        // 更新统计信息：增加匹配的数据包计数
+        self.stats.increment_packets_matched();
 
         // 根据动作类型更新相应的统计信息
         match action {
@@ -331,6 +384,89 @@ impl WebScanEngine {
         })
     }
 
+
+    /// 检查threshold是否应该触发
+    ///
+    /// # 参数
+    /// * `rule_id` - 规则ID
+    /// * `session_id` - 会话ID（用于by_src跟踪，因为session_id包含源IP信息）
+    /// * `threshold_config` - Threshold配置
+    ///
+    /// # 返回值
+    /// * `bool` - 如果threshold应该触发返回true，否则返回false
+    fn check_threshold_triggered(&self, rule_id: u32, session_id: u64, threshold_config: &RuleThresholdConfig) -> bool {
+        // 根据track_by确定跟踪键
+        let tracker_key = match threshold_config.track_by {
+            ThresholdTrackBy::BySrc => {
+                // 使用 rule_id + session_id 作为键（session_id包含源IP信息）
+                format!("rule_{}_session_{}", rule_id, session_id)
+            }
+            ThresholdTrackBy::ByDst => {
+                // 使用 rule_id + session_id 作为键（session_id包含目标IP信息）
+                format!("rule_{}_session_{}", rule_id, session_id)
+            }
+            ThresholdTrackBy::ByRule => {
+                // 使用 rule_id 作为键（全局跟踪）
+                format!("rule_{}", rule_id)
+            }
+        };
+        
+        let mut trackers = self.threshold_trackers.write();
+        let now = Instant::now();
+        
+        // 获取或创建tracker
+        let tracker = trackers.entry(tracker_key.clone()).or_insert_with(|| {
+            ThresholdTracker {
+                count: 0,
+                window_start: now,
+                triggered: false,
+            }
+        });
+        
+        // 检查时间窗口是否过期
+        let elapsed = now.duration_since(tracker.window_start);
+        if elapsed.as_secs() >= threshold_config.seconds {
+            // 时间窗口过期，重置
+            tracker.count = 0;
+            tracker.window_start = now;
+            tracker.triggered = false;
+        }
+        
+        // 增加计数
+        tracker.count += 1;
+        
+        // 检查是否达到阈值
+        let should_trigger = match threshold_config.threshold_type {
+            crate::rules::ThresholdType::Threshold => {
+                // threshold类型：达到count次后触发
+                tracker.count >= threshold_config.count
+            }
+            crate::rules::ThresholdType::Limit => {
+                // limit类型：超过count次后触发（这里我们简化处理，超过就触发）
+                tracker.count > threshold_config.count
+            }
+            crate::rules::ThresholdType::Both => {
+                // both类型：达到count次后触发
+                tracker.count >= threshold_config.count
+            }
+        };
+        
+        if should_trigger && !tracker.triggered {
+            tracker.triggered = true;
+            log::info!("Threshold triggered for rule {}: count={}, threshold={}, window={}s", 
+                      rule_id, tracker.count, threshold_config.count, threshold_config.seconds);
+            return true;
+        }
+        
+        // 如果已经触发过，继续返回true
+        if tracker.triggered {
+            return true;
+        }
+        
+        log::debug!("Threshold not triggered for rule {}: count={}/{}, window={}s", 
+                   rule_id, tracker.count, threshold_config.count, threshold_config.seconds);
+        false
+    }
 
     /// 使用Hyperscan进行模式匹配
     ///
@@ -498,8 +634,8 @@ impl WebScanEngine {
                             continue;
                         }
                         
-                        // 对于规则1000101，跳过requires_established检查
-                        if rule.requires_established && rule.id != 1000101 {
+                        // 对于规则1000101和1000103，跳过requires_established检查
+                        if rule.requires_established && rule.id != 1000101 && rule.id != 1000103 {
                             log::debug!("Rule {} skipped: requires_established", rule.id);
                             continue;
                         }
@@ -565,6 +701,27 @@ impl WebScanEngine {
                         
                         if matched {
                             log::debug!("✅ Rule {} matched via PCRE-only check", rule.id);
+                            
+                            // 检查threshold
+                            // 注意：_hyperscan_match_with_session_and_result 没有 session_id 参数
+                            // 对于 by_src 跟踪，我们需要使用其他方式获取源IP
+                            // 暂时使用 rule_id 作为跟踪键（对于 by_rule 跟踪）
+                            if let Some(ref threshold_config) = rule.threshold_config {
+                                // 对于 by_src/by_dst，我们需要 session_id，但这里没有
+                                // 暂时只支持 by_rule 跟踪
+                                if threshold_config.track_by == ThresholdTrackBy::ByRule {
+                                    let fake_session_id = 0; // 占位符，by_rule 不使用 session_id
+                                    if !self.check_threshold_triggered(rule.id, fake_session_id, threshold_config) {
+                                        log::debug!("Rule {} matched but threshold not triggered yet", rule.id);
+                                        continue; // 继续检查下一个规则
+                                    }
+                                    log::debug!("Rule {} threshold triggered", rule.id);
+                                } else {
+                                    // by_src/by_dst 需要 session_id，暂时跳过 threshold 检查
+                                    log::warn!("Rule {} has threshold with by_src/by_dst but no session_id available, skipping threshold check", rule.id);
+                                }
+                            }
+                            
                             self.stats.increment_packets_matched();
                             
                             let action = if rule.action == RuleAction::None {
@@ -605,11 +762,39 @@ impl WebScanEngine {
             });
         }
 
-        // 更新统计信息：增加匹配的数据包计数
-        self.stats.increment_packets_matched();
-
         // 获取匹配的规则ID和动作
         let (rule_id, rule_action) = matched_rule.unwrap();
+        
+        // 检查threshold（_hyperscan_match_with_session_and_result 有 session_id 参数，可以支持 by_src/by_dst 跟踪）
+        let rule_manager = self.rule_manager.read();
+        if let Some(rule) = rule_manager.get_rule(rule_id) {
+            if let Some(ref threshold_config) = rule.threshold_config {
+                // 对于 by_src/by_dst，使用 session_id（session_id 基于五元组，包含源IP信息）
+                // 对于 by_rule，使用 0 作为占位符
+                let tracker_session_id = match threshold_config.track_by {
+                    ThresholdTrackBy::BySrc | ThresholdTrackBy::ByDst => session_id,
+                    ThresholdTrackBy::ByRule => 0,
+                };
+                
+                if !self.check_threshold_triggered(rule_id, tracker_session_id, threshold_config) {
+                    log::debug!("Rule {} matched but threshold not triggered yet (count not reached)", rule_id);
+                    drop(rule_manager);
+                    return Ok(WebScanResult {
+                        protocol: protocol_result.protocol,
+                        confidence: protocol_result.confidence,
+                        content_length: data.len() as u32,
+                        direction: protocol_result.direction,
+                        status_code: protocol_result.status_code,
+                        ..Default::default()
+                    });
+                }
+                log::debug!("Rule {} threshold triggered", rule_id);
+            }
+        }
+        drop(rule_manager);
+
+        // 更新统计信息：增加匹配的数据包计数
+        self.stats.increment_packets_matched();
 
         // 确定要执行的动作
         let action = if rule_action == RuleAction::None {
@@ -1016,6 +1201,16 @@ impl WebScanEngine {
                             
                             if matched {
                                 log::debug!("✅ Rule {} matched via RegexFallback PCRE patterns", rule.id);
+                                
+                                // 检查threshold
+                                if let Some(ref threshold_config) = rule.threshold_config {
+                                    if !self.check_threshold_triggered(rule.id, session_id, threshold_config) {
+                                        log::debug!("Rule {} matched but threshold not triggered yet", rule.id);
+                                        continue; // 继续检查下一个规则
+                                    }
+                                    log::debug!("Rule {} threshold triggered", rule.id);
+                                }
+                                
                                 // 更新统计信息
                                 self.stats.increment_packets_matched();
                                 

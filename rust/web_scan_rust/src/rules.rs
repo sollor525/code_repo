@@ -507,6 +507,34 @@ pub struct Rule {
     pub flow_direction: RuleFlowDirection,          // 流向要求（新增：支持双向检测）
     pub status_codes: Vec<u16>,                     // 状态码列表（新增：仅对响应包有效）
     pub requires_established: bool,                 // 是否要求已建立连接（新增：flow established状态）
+    pub threshold_config: Option<RuleThresholdConfig>, // Threshold配置（新增：支持threshold选项）
+}
+
+/// Threshold配置结构体
+///
+/// 用于配置规则的threshold选项，支持按源IP或目标IP跟踪匹配次数。
+#[derive(Debug, Clone)]
+pub struct RuleThresholdConfig {
+    pub threshold_type: ThresholdType,              // Threshold类型
+    pub track_by: ThresholdTrackBy,                 // 跟踪方式（按源IP或目标IP）
+    pub count: u32,                                 // 触发阈值所需的匹配次数
+    pub seconds: u64,                               // 时间窗口（秒）
+}
+
+/// Threshold类型枚举
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ThresholdType {
+    Threshold,      // 标准threshold：达到count次后触发
+    Limit,          // limit：在时间窗口内最多允许count次
+    Both,           // both：同时使用threshold和limit
+}
+
+/// Threshold跟踪方式枚举
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ThresholdTrackBy {
+    BySrc,          // 按源IP跟踪
+    ByDst,          // 按目标IP跟踪
+    ByRule,         // 按规则跟踪（全局）
 }
 
 impl Rule {
@@ -569,6 +597,7 @@ impl Rule {
             flow_direction: RuleFlowDirection::Any,  // 默认匹配任意方向
             status_codes: Vec::new(),  // 默认不限制状态码
             requires_established: false,  // 默认不要求established连接
+            threshold_config: None,  // 默认无threshold配置
         })
     }
 
@@ -1472,6 +1501,9 @@ impl RuleManager {
         let mut status_codes: Vec<u16> = Vec::new();          // 状态码列表
         let mut requires_established = false;                 // 是否要求established连接
         
+        // 新增：threshold配置变量
+        let mut threshold_config: Option<RuleThresholdConfig> = None;
+        
         // 辅助函数：保存当前pattern并开始新的
         // 注意：不能使用闭包，因为会捕获可变引用，导致借用冲突
         // 改为在需要的地方直接内联代码
@@ -1718,6 +1750,63 @@ impl RuleManager {
                     "within" => {
                         current_within = value.parse().ok();
                     }
+                    "threshold" => {
+                        // 解析threshold选项，格式：threshold:type threshold, track by_src, count 20, seconds 60
+                        // 或者：threshold:type threshold, track by_dst, count 10, seconds 30
+                        let mut threshold_type = ThresholdType::Threshold;
+                        let mut track_by = ThresholdTrackBy::BySrc;
+                        let mut count = 0u32;
+                        let mut seconds = 0u64;
+                        
+                        // 解析各个部分
+                        for part in value.split(',') {
+                            let part = part.trim();
+                            if part.starts_with("type") {
+                                if let Some(type_val) = part.split_whitespace().nth(1) {
+                                    threshold_type = match type_val {
+                                        "threshold" => ThresholdType::Threshold,
+                                        "limit" => ThresholdType::Limit,
+                                        "both" => ThresholdType::Both,
+                                        _ => ThresholdType::Threshold,
+                                    };
+                                }
+                            } else if part.starts_with("track") {
+                                if let Some(track_val) = part.split_whitespace().nth(1) {
+                                    track_by = match track_val {
+                                        "by_src" => ThresholdTrackBy::BySrc,
+                                        "by_dst" => ThresholdTrackBy::ByDst,
+                                        "by_rule" => ThresholdTrackBy::ByRule,
+                                        _ => ThresholdTrackBy::BySrc,
+                                    };
+                                }
+                            } else if part.starts_with("count") {
+                                if let Some(count_val) = part.split_whitespace().nth(1) {
+                                    if let Ok(c) = count_val.parse::<u32>() {
+                                        count = c;
+                                    }
+                                }
+                            } else if part.starts_with("seconds") {
+                                if let Some(sec_val) = part.split_whitespace().nth(1) {
+                                    if let Ok(s) = sec_val.parse::<u64>() {
+                                        seconds = s;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if count > 0 && seconds > 0 {
+                            threshold_config = Some(RuleThresholdConfig {
+                                threshold_type,
+                                track_by,
+                                count,
+                                seconds,
+                            });
+                            log::debug!("Parsed threshold config: type={:?}, track={:?}, count={}, seconds={}", 
+                                       threshold_type, track_by, count, seconds);
+                        } else {
+                            log::warn!("Invalid threshold config: count={}, seconds={}", count, seconds);
+                        }
+                    }
                     _ => {} // 忽略其他选项（如flow, fast_pattern, nocase等）
                 }
             } else {
@@ -1840,6 +1929,7 @@ impl RuleManager {
         rule.flow_direction = flow_direction;
         rule.status_codes = status_codes.clone();
         rule.requires_established = requires_established;
+        rule.threshold_config = threshold_config;
 
         // 向后兼容：设置第一个pattern的http_location和metadata
         if let Some(first_pattern) = rule.patterns.first() {

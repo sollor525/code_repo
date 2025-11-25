@@ -285,10 +285,11 @@ alert http any any -> $HTTP_SERVERS $HTTP_PORTS (
     sid:1000101; rev:1;
 )
 
-# 检测在短时间内产生大量404响应的IP
 alert http any any -> $HTTP_SERVERS $HTTP_PORTS (
     msg:"ET SCAN Potential Web Directory Brute Force - High 404 Count";
-    flow:established,to_server;
+    flow:established,from_server;  # 关键：检查服务器响应
+    http.response;
+    http.stat_code; content:"404"; 
     threshold:type threshold, track by_src, count 20, seconds 60;
     classtype:web-application-scan;
     sid:1000102; rev:1;
