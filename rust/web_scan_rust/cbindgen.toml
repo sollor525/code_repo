@@ -33,9 +33,7 @@ line_length = 100
 # 导出配置：指定哪些Rust类型应该导出到C头文件中
 # 只有在这个列表中的类型才会出现在生成的.h文件中
 include = [
-    "WebScanResult",    # Web扫描检测结果结构体
     "WebScanAction",    # Web扫描动作枚举
-    "WebScanConfig",    # Web扫描配置结构体
     "WebScanStats",     # Web扫描统计信息结构体
 ]
 
@@ -46,7 +44,8 @@ include = [
     "web_scan_rust"     # 只包含当前crate
 ]
 exclude = [
-    "pcre"              # 排除PCRE模块
+    "pcre",             # 排除PCRE模块
+    "hyperscan"         # 排除Hyperscan模块（cbindgen无法解析）
 ]
 
 [export.rename]

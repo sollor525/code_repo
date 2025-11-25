@@ -250,6 +250,65 @@ struct HyperscanStreamSessionInner {
     stream_buffer: Vec<u8>,
     /// HTTP header是否已完整解析
     http_header_complete: bool,
+    /// ===== 新增：会话状态跟踪 =====
+    /// 会话开始时间戳（毫秒）
+    session_start_time: Option<std::time::Instant>,
+    /// 最后一次活动时间戳（毫秒）
+    last_activity_time: std::time::Instant,
+    /// 该会话已匹配的次数
+    match_count: u32,
+    /// 该会话的威胁级别（基于规则权重计算）
+    threat_level: u8,  // 0-255级别
+    /// 是否已触发阈值告警
+    threshold_triggered: bool,
+    /// 会话方向（请求/响应）
+    session_direction: crate::protocol::PacketDirection,
+}
+
+/// 会话阈值配置
+///
+/// 定义用于会话级别威胁检测的阈值参数。
+#[derive(Debug, Clone)]
+pub struct SessionThresholdConfig {
+    /// 触发告警的最小匹配次数
+    pub match_threshold: u32,
+    /// 触发告警的时间窗口（秒）
+    pub time_window_seconds: u64,
+    /// 威胁级别计算权重
+    pub high_risk_weight: u8,    // 高风险规则权重
+    pub medium_risk_weight: u8,  // 中风险规则权重
+    pub low_risk_weight: u8,     // 低风险规则权重
+}
+
+impl Default for SessionThresholdConfig {
+    fn default() -> Self {
+        Self {
+            match_threshold: 5,        // 5次匹配触发告警
+            time_window_seconds: 60,   // 60秒时间窗口
+            high_risk_weight: 10,      // 高风险权重10
+            medium_risk_weight: 5,     // 中风险权重5
+            low_risk_weight: 1,       // 低风险权重1
+        }
+    }
+}
+
+/// 会话统计信息
+///
+/// 用于记录和报告会话级别的检测统计。
+#[derive(Debug, Clone)]
+pub struct SessionStats {
+    /// 会话ID
+    pub session_id: u64,
+    /// 会话持续时间（毫秒）
+    pub session_duration_ms: u64,
+    /// 总匹配次数
+    pub total_matches: u32,
+    /// 触发阈值告警的次数
+    pub threshold_triggers: u32,
+    /// 当前威胁级别
+    pub current_threat_level: u8,
+    /// 会话方向
+    pub direction: crate::protocol::PacketDirection,
 }
 
 /// Hyperscan扫描器
@@ -264,6 +323,11 @@ pub struct HyperscanScanner {
     sessions: Arc<RwLock<HashMap<u64, Arc<HyperscanStreamSession>>>>,
     /// Fast pattern会话到流的映射
     fast_sessions: Arc<RwLock<HashMap<u64, Arc<HyperscanStreamSession>>>>,
+    /// ===== 新增：会话阈值配置和统计 =====
+    /// 阈值配置
+    threshold_config: SessionThresholdConfig,
+    /// 会话统计信息（用于报告）
+    session_stats: Arc<RwLock<HashMap<u64, SessionStats>>>,
 }
 
 impl HyperscanScanner {
@@ -281,7 +345,142 @@ impl HyperscanScanner {
             fast_database: fast_database.map(|db| Arc::new(RwLock::new(db))),
             sessions: Arc::new(RwLock::new(HashMap::new())),
             fast_sessions: Arc::new(RwLock::new(HashMap::new())),
+            threshold_config: SessionThresholdConfig::default(),
+            session_stats: Arc::new(RwLock::new(HashMap::new())),
         })
+    }
+
+    /// 设置会话阈值配置
+    ///
+    /// # 参数
+    /// * `config` - 阈值配置
+    pub fn set_threshold_config(&mut self, config: SessionThresholdConfig) {
+        self.threshold_config = config.clone();
+        log::info!("Session threshold config updated: match_threshold={}, time_window={}s",
+                 config.match_threshold, config.time_window_seconds);
+    }
+
+    /// 获取会话统计信息
+    ///
+    /// # 返回值
+    /// * `HashMap<u64, SessionStats>` - 会话统计信息映射
+    pub fn get_session_stats(&self) -> HashMap<u64, SessionStats> {
+        self.session_stats.read().clone()
+    }
+
+    /// 清理过期的会话
+    ///
+    /// 根据配置的时间窗口清理超过时间限制的会话。
+    ///
+    /// # 参数
+    /// * `max_session_age_seconds` - 会话最大存活时间（秒）
+    pub fn cleanup_expired_sessions(&self, max_session_age_seconds: u64) {
+        let mut sessions = self.sessions.write();
+        let mut fast_sessions = self.fast_sessions.write();
+        let mut session_stats = self.session_stats.write();
+
+        let current_time = std::time::Instant::now();
+        let max_age = std::time::Duration::from_secs(max_session_age_seconds);
+
+        // 收集过期的会话ID
+        let mut expired_sessions = Vec::new();
+
+        for (session_id, session_arc) in sessions.iter() {
+            if let Some(session_inner) = session_arc.inner.lock().ok() {
+                if let Some(start_time) = session_inner.session_start_time {
+                    if current_time.duration_since(start_time) > max_age {
+                        expired_sessions.push(*session_id);
+                    }
+                }
+            }
+        }
+
+        // 清理过期会话
+        for session_id in &expired_sessions {
+            sessions.remove(session_id);
+            fast_sessions.remove(session_id);
+            session_stats.remove(session_id);
+        }
+
+        if !expired_sessions.is_empty() {
+            log::debug!("Cleaned up {} expired sessions", expired_sessions.len());
+        }
+
+        drop(sessions);
+        drop(fast_sessions);
+        drop(session_stats);
+    }
+
+    /// 计算会话威胁级别
+    ///
+    /// 基于匹配的规则权重计算威胁级别。
+    ///
+    /// # 参数
+    /// * `rule_ids` - 匹配的规则ID集合
+    /// * `rule_metadata` - 规则元数据映射
+    ///
+    /// # 返回值
+    /// * `u8` - 威胁级别（0-255）
+    fn calculate_threat_level(&self, rule_ids: &std::collections::HashSet<u32>, rule_metadata: &std::collections::HashMap<u32, crate::rules::RuleMetadata>) -> u8 {
+        let mut threat_score = 0u32;
+
+        for rule_id in rule_ids {
+            if let Some(metadata) = rule_metadata.get(rule_id) {
+                let weight = if metadata.has_fast_pattern {
+                    self.threshold_config.high_risk_weight as u32
+                } else if metadata.has_pcre_fallback {
+                    self.threshold_config.medium_risk_weight as u32
+                } else {
+                    self.threshold_config.low_risk_weight as u32
+                };
+                threat_score += weight;
+            }
+        }
+
+        // 将威胁分数限制在0-255范围内
+        (threat_score.min(255) as u8)
+    }
+
+    /// 检查会话阈值
+    ///
+    /// 检查会话是否超过匹配阈值或时间窗口阈值。
+    ///
+    /// # 参数
+    /// * `session_id` - 会话ID
+    /// * `session_inner` - 会话内部状态
+    ///
+    /// # 返回值
+    /// * `bool` - 是否触发阈值告警
+    fn check_session_threshold(&self, session_id: u64, session_inner: &mut HyperscanStreamSessionInner) -> bool {
+        let current_time = std::time::Instant::now();
+
+        // 更新最后活动时间
+        session_inner.last_activity_time = current_time;
+
+        // 检查匹配次数阈值
+        if session_inner.match_count >= self.threshold_config.match_threshold {
+            if !session_inner.threshold_triggered {
+                session_inner.threshold_triggered = true;
+                log::info!("Session {} threshold triggered: {} matches (threshold: {})",
+                         session_id, session_inner.match_count, self.threshold_config.match_threshold);
+                return true;
+            }
+        }
+
+        // 检查时间窗口阈值
+        if let Some(start_time) = session_inner.session_start_time {
+            let elapsed = current_time.duration_since(start_time);
+            if elapsed.as_secs() >= self.threshold_config.time_window_seconds {
+                if session_inner.match_count > 0 && !session_inner.threshold_triggered {
+                    session_inner.threshold_triggered = true;
+                    log::info!("Session {} time window threshold triggered: {}s elapsed, {} matches",
+                             session_id, elapsed.as_secs(), session_inner.match_count);
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     /// 执行流式模式扫描（无会话，每次创建新流）
@@ -361,6 +560,12 @@ impl HyperscanScanner {
                         matched_patterns_by_rule: std::collections::HashMap::new(),
                         stream_buffer: Vec::new(),
                         http_header_complete: false,
+                        session_start_time: Some(std::time::Instant::now()),
+                        last_activity_time: std::time::Instant::now(),
+                        match_count: 0,
+                        threat_level: 0,
+                        threshold_triggered: false,
+                        session_direction: crate::protocol::PacketDirection::Unknown,
                     }),
                 })
             }).clone()
@@ -428,6 +633,13 @@ impl HyperscanScanner {
                         matched_patterns_by_rule: std::collections::HashMap::new(),
                         stream_buffer: Vec::new(),
                         http_header_complete: false,
+                        // 新增字段：会话状态跟踪
+                        session_start_time: Some(std::time::Instant::now()),
+                        last_activity_time: std::time::Instant::now(),
+                        match_count: 0,
+                        threat_level: 0,
+                        threshold_triggered: false,
+                        session_direction: crate::protocol::PacketDirection::Unknown,
                     }),
                 })
             }).clone()  // 克隆Arc，这样可以在释放sessions锁后继续使用
@@ -560,6 +772,13 @@ impl HyperscanScanner {
                             matched_patterns_by_rule: std::collections::HashMap::new(),
                             stream_buffer: Vec::new(),
                             http_header_complete: false,
+                            // 新增字段：会话状态跟踪
+                            session_start_time: Some(std::time::Instant::now()),
+                            last_activity_time: std::time::Instant::now(),
+                            match_count: 0,
+                            threat_level: 0,
+                            threshold_triggered: false,
+                            session_direction: crate::protocol::PacketDirection::Unknown,
                         }),
                     })
                 }).clone()

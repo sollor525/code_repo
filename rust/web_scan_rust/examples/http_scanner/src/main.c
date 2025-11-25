@@ -5,12 +5,15 @@
 #include <signal.h>
 #include <time.h>
 #include <sys/time.h>
+#include <stdint.h>
+#include <limits.h>
+#include <inttypes.h>
 
 #ifdef HAVE_PCAP
 #include <pcap.h>
 #endif
 
-#include "web_scan_rust.h"
+#include "simple_web_scan_rust.h"
 
 // 全局变量
 static volatile int g_running = 1;
@@ -29,10 +32,15 @@ static long long get_timestamp_ms() {
 }
 
 // 打印检测结果
-void print_result(const struct web_scan_result_t* result, const char* payload, int payload_len, int packet_number) {
+void print_result(const web_scan_result_t* result, const char* payload, int payload_len, int packet_number) {
     static long long start_time = 0;
     static int total_packets_processed = 0;
     static int matched_count = 0;
+
+    // 安全检查：确保参数有效
+    if (!result || !payload || payload_len <= 0) {
+        return;
+    }
 
     if (start_time == 0) {
         start_time = get_timestamp_ms();
@@ -47,7 +55,7 @@ void print_result(const struct web_scan_result_t* result, const char* payload, i
 
         printf("\n🚨 [攻击检测] 数据包 #%d\n", packet_number);
         printf("规则ID: %u\n", result->rule_id);
-        printf("动作类型: %s\n", result->action == Alert ? "ALERT" : "DROP");
+        printf("动作类型: %s\n", result->action == web_scan_action_t_Alert ? "ALERT" : "DROP");
         printf("置信度: %u%%\n", result->confidence);
         printf("运行时间: %.2f 秒\n", elapsed_time);
         printf("检测率: %.2f%% (匹配/总包数)\n", (double)matched_count * 100.0 / total_packets_processed);
@@ -55,18 +63,25 @@ void print_result(const struct web_scan_result_t* result, const char* payload, i
 
         // 打印攻击载荷的前64字节
         printf("攻击载荷 (前64字节): ");
+        // 安全检查：限制打印长度，防止越界访问
         int print_len = payload_len < 64 ? payload_len : 64;
-        for (int i = 0; i < print_len; i++) {
-            if (payload[i] >= 32 && payload[i] <= 126) {
-                printf("%c", payload[i]);
-            } else if (payload[i] == '\r') {
-                printf("\\r");
-            } else if (payload[i] == '\n') {
-                printf("\\n");
-            } else if (payload[i] == '\t') {
-                printf("\\t");
-            } else {
-                printf("\\x%02x", (unsigned char)payload[i]);
+        if (print_len > 0 && print_len <= payload_len) {
+            for (int i = 0; i < print_len; i++) {
+                // 额外安全检查：确保索引在有效范围内
+                if (i < payload_len && payload + i != NULL) {
+                    unsigned char c = (unsigned char)payload[i];
+                    if (c >= 32 && c <= 126) {
+                        printf("%c", c);
+                    } else if (c == '\r') {
+                        printf("\\r");
+                    } else if (c == '\n') {
+                        printf("\\n");
+                    } else if (c == '\t') {
+                        printf("\\t");
+                    } else {
+                        printf("\\x%02x", c);
+                    }
+                }
             }
         }
         printf("\n\n");
@@ -75,21 +90,51 @@ void print_result(const struct web_scan_result_t* result, const char* payload, i
 
 // 显示统计信息
 void show_statistics() {
-    struct web_scan_stats_t stats;
+    web_scan_stats_t stats;
+    char buf[256];
+    // 初始化结构体，防止未初始化的数据
+    memset(&stats, 0, sizeof(stats));
+    
     if (web_scan_rust_get_stats(&stats) == 0) {
         printf("\n📊 统计信息:\n");
         printf("========================================\n");
-        printf("处理数据包总数: %lu\n", stats.packets_processed);
-        printf("匹配数据包数: %lu\n", stats.packets_matched);
-        printf("匹配率: %.2f%%\n", stats.packets_processed > 0 ?
-               (double)stats.packets_matched * 100.0 / stats.packets_processed : 0.0);
-        printf("总处理时间: %.3f ms\n", (double)stats.total_processing_time / 1000.0);
-        printf("平均处理时间: %.6f ms/包\n", stats.packets_processed > 0 ?
-               (double)stats.avg_processing_time / 1000.0 : 0.0);
-        printf("最大处理时间: %.3f ms\n", (double)stats.max_processing_time / 1000.0);
-        printf("最小处理时间: %.3f ms\n", (double)stats.min_processing_time / 1000.0);
-        printf("已加载规则数: %u\n", stats.rules_loaded);
-        printf("活跃规则数: %u\n", stats.rules_active);
+        
+        // 使用snprintf安全格式化
+        snprintf(buf, sizeof(buf), "处理数据包总数: %" PRIu64 "\n", stats.packets_processed);
+        printf("%s", buf);
+        
+        snprintf(buf, sizeof(buf), "匹配数据包数: %" PRIu64 "\n", stats.packets_matched);
+        printf("%s", buf);
+        
+        if (stats.packets_processed > 0) {
+            snprintf(buf, sizeof(buf), "匹配率: %.2f%%\n", (double)stats.packets_matched * 100.0 / (double)stats.packets_processed);
+            printf("%s", buf);
+        } else {
+            printf("匹配率: 0.00%%\n");
+        }
+        
+        snprintf(buf, sizeof(buf), "总处理时间: %.3f ms\n", (double)stats.total_processing_time / 1000.0);
+        printf("%s", buf);
+        
+        if (stats.packets_processed > 0) {
+            snprintf(buf, sizeof(buf), "平均处理时间: %.6f ms/包\n", (double)stats.avg_processing_time / 1000.0);
+            printf("%s", buf);
+        } else {
+            printf("平均处理时间: 0.000000 ms/包\n");
+        }
+        
+        snprintf(buf, sizeof(buf), "最大处理时间: %.3f ms\n", (double)stats.max_processing_time / 1000.0);
+        printf("%s", buf);
+        
+        snprintf(buf, sizeof(buf), "最小处理时间: %.3f ms\n", (double)stats.min_processing_time / 1000.0);
+        printf("%s", buf);
+        
+        snprintf(buf, sizeof(buf), "已加载规则数: %u\n", stats.rules_loaded);
+        printf("%s", buf);
+        
+        snprintf(buf, sizeof(buf), "活跃规则数: %u\n", stats.rules_active);
+        printf("%s", buf);
+        
         printf("=========================================\n");
     } else {
         printf("无法获取统计信息\n");
@@ -133,7 +178,8 @@ int process_packet(const unsigned char* data, int len) {
         return -1;
     }
 
-    struct web_scan_result_t result = {0};
+    web_scan_result_t result;
+    memset(&result, 0, sizeof(result));
     int ret = web_scan_rust_process_payload(data, (uint32_t)len, &result);
 
     if (ret == 0) {
@@ -162,7 +208,8 @@ static uint64_t calculate_session_id(uint32_t src_ip, uint32_t dst_ip, uint16_t 
 // libpcap数据包处理回调函数
 void packet_handler(u_char* user_data, const struct pcap_pkthdr* pkthdr, const u_char* packet) {
     // 简化的以太网/IP/TCP解析
-    if (pkthdr->len < 54) {  // 以太网头(14) + IP头(20) + TCP头(20)
+    // 安全检查：确保数据包长度足够且指针有效
+    if (!packet || !pkthdr || pkthdr->len < 54 || pkthdr->caplen < 54) {
         return;
     }
 
@@ -170,15 +217,25 @@ void packet_handler(u_char* user_data, const struct pcap_pkthdr* pkthdr, const u
     const u_char* ip_header;
     int header_offset = 14;  // 基本以太网头长度
 
+    // 安全检查：确保有足够的数据读取以太网类型字段（至少14字节）
+    if (pkthdr->caplen < 14) {
+        return;
+    }
+
     // 检查是否有VLAN标签 (802.1Q)
     uint16_t eth_type = (packet[12] << 8) | packet[13];
     if (eth_type == 0x8100) {
-        // 有VLAN标签，跳过4字节VLAN头
-        header_offset += 4;
-        if (pkthdr->len < header_offset + 20) {
+        // 安全检查：确保有足够的数据读取VLAN标签和内层以太网类型（18字节：14以太网头+4VLAN）
+        if (pkthdr->caplen < 18) {
             return;
         }
-        // 获取内层以太网类型
+        // 有VLAN标签，跳过4字节VLAN头
+        header_offset += 4;
+        // 安全检查：确保有足够的数据读取内层以太网类型和IP头
+        if (pkthdr->caplen < (size_t)(header_offset + 20)) {
+            return;
+        }
+        // 获取内层以太网类型（在VLAN标签后的2字节）
         eth_type = (packet[header_offset - 2] << 8) | packet[header_offset - 1];
     }
 
@@ -189,6 +246,11 @@ void packet_handler(u_char* user_data, const struct pcap_pkthdr* pkthdr, const u
 
     ip_header = packet + header_offset;
 
+    // 安全检查：确保有足够的数据读取IP头（至少20字节）
+    if (pkthdr->caplen < (size_t)(header_offset + 20)) {
+        return;
+    }
+
     // 检查IP协议版本
     if ((ip_header[0] & 0xF0) != 0x40) {  // 不是IPv4
         return;
@@ -196,7 +258,13 @@ void packet_handler(u_char* user_data, const struct pcap_pkthdr* pkthdr, const u
 
     // 获取IP头长度
     int ip_header_len = (ip_header[0] & 0x0F) * 4;
-    if (pkthdr->len < (size_t)(header_offset + ip_header_len + 20)) {  // 20是最小TCP头长度
+    // 安全检查：确保IP头长度合理
+    if (ip_header_len < 20 || ip_header_len > 60) {
+        return;
+    }
+    
+    // 安全检查：确保有足够的数据读取完整IP头和最小TCP头
+    if (pkthdr->caplen < (size_t)(header_offset + ip_header_len + 20)) {  // 20是最小TCP头长度
         return;
     }
 
@@ -207,7 +275,22 @@ void packet_handler(u_char* user_data, const struct pcap_pkthdr* pkthdr, const u
 
     // 获取TCP头
     const u_char* tcp_header = packet + header_offset + ip_header_len;
+    
+    // 安全检查：确保有足够的数据读取TCP头（至少20字节，包括offset字段）
+    if (pkthdr->caplen < (size_t)(header_offset + ip_header_len + 20)) {
+        return;
+    }
+    
     int tcp_header_len = ((tcp_header[12] & 0xF0) >> 4) * 4;
+
+    // 安全检查：确保TCP头长度合理
+    if (tcp_header_len < 20 || tcp_header_len > 60) {
+        return;
+    }
+    // 安全检查：确保有足够的数据读取完整TCP头
+    if (pkthdr->caplen < (size_t)(header_offset + ip_header_len + tcp_header_len)) {
+        return;
+    }
 
     // 获取源IP和目标IP
     uint32_t src_ip = (ip_header[12] << 24) | (ip_header[13] << 16) | (ip_header[14] << 8) | ip_header[15];
@@ -226,30 +309,65 @@ void packet_handler(u_char* user_data, const struct pcap_pkthdr* pkthdr, const u
     }
 
     // 计算HTTP载荷起始位置
-    int payload_offset = header_offset + ip_header_len + tcp_header_len;
-    int payload_len = pkthdr->len - payload_offset;
-
+    // 安全检查：防止整数溢出
+    size_t total_header_size = (size_t)header_offset + (size_t)ip_header_len + (size_t)tcp_header_len;
+    if (total_header_size > pkthdr->caplen || total_header_size > SIZE_MAX / 2) {
+        return;
+    }
+    
+    int payload_offset = (int)total_header_size;
+    
+    // 安全检查：确保载荷偏移在捕获范围内
+    if (payload_offset < 0 || (size_t)payload_offset > pkthdr->caplen) {
+        return;
+    }
+    
+    // 使用实际捕获长度计算载荷长度，防止越界访问
+    size_t remaining_caplen = pkthdr->caplen - (size_t)payload_offset;
+    
+    // 安全检查：限制payload_len的最大值（u32的最大值）
+    if (remaining_caplen > UINT32_MAX) {
+        remaining_caplen = UINT32_MAX;
+    }
+    
+    int payload_len = (int)remaining_caplen;
+    
+    // 安全检查：确保payload_len是正数
     if (payload_len <= 0) {
         return;
     }
 
     // 获取HTTP载荷
     const u_char* payload = packet + payload_offset;
+    
+    // 最终安全检查：确保payload指针和长度都在有效范围内
+    // 使用size_t算术避免溢出
+    size_t payload_offset_size = (size_t)payload_offset;
+    size_t payload_len_size = (size_t)payload_len;
+    if (payload < packet || payload_offset_size + payload_len_size > pkthdr->caplen) {
+        return;
+    }
 
     // 检查是否是HTTP请求或DNS流量
     bool should_process = false;
 
-    if (payload_len >= 4 &&
-        (strncmp((const char*)payload, "GET ", 4) == 0 ||
-         strncmp((const char*)payload, "POST ", 5) == 0 ||
-         strncmp((const char*)payload, "PUT ", 4) == 0 ||
-         strncmp((const char*)payload, "DELETE ", 7) == 0)) {
-        should_process = true;  // HTTP请求
-    } else if (dest_port == 53 && payload_len > 0) {
+    if (payload_len >= 4) {
+        if (strncmp((const char*)payload, "GET ", 4) == 0 ||
+            (payload_len >= 5 && strncmp((const char*)payload, "POST ", 5) == 0) ||
+            strncmp((const char*)payload, "PUT ", 4) == 0 ||
+            (payload_len >= 7 && strncmp((const char*)payload, "DELETE ", 7) == 0)) {
+            should_process = true;  // HTTP请求
+        }
+    }
+    if (!should_process && dest_port == 53 && payload_len > 0) {
         should_process = true;  // DNS流量
     }
 
     if (should_process) {
+        // 安全检查：确保有足够的数据读取TCP标志字段（至少14字节）
+        if (pkthdr->caplen < (size_t)(header_offset + ip_header_len + 14)) {
+            return;
+        }
         // 检查TCP标志，判断是否是数据包的最后一个分段
         uint8_t tcp_flags = tcp_header[13];
         int is_final = (tcp_flags & 0x01) != 0;  // FIN标志
@@ -259,32 +377,83 @@ void packet_handler(u_char* user_data, const struct pcap_pkthdr* pkthdr, const u
         int has_complete_header = 0;
         if (payload_len >= 4) {
             const char* payload_str = (const char*)payload;
-            for (int i = 0; i < payload_len - 3; i++) {
-                if (payload_str[i] == '\r' && payload_str[i+1] == '\n' && 
-                    payload_str[i+2] == '\r' && payload_str[i+3] == '\n') {
-                    has_complete_header = 1;
-                    break;
+            // 安全检查：确保循环不会越界
+            int max_search = payload_len - 3;
+            if (max_search > 0) {
+                for (int i = 0; i < max_search; i++) {
+                    // 额外安全检查：确保访问的索引在范围内
+                    if (i + 3 < payload_len) {
+                        if (payload_str[i] == '\r' && payload_str[i+1] == '\n' && 
+                            payload_str[i+2] == '\r' && payload_str[i+3] == '\n') {
+                            has_complete_header = 1;
+                            break;
+                        }
+                    }
                 }
             }
         }
         
+        // 安全检查：限制载荷长度，防止缓冲区溢出
+        if (payload_len > 65536) {
+            payload_len = 65536;
+        }
+
         // 只处理包含完整HTTP header的数据包，或者PSH标志的数据包
         // 这样可以避免对同一个HTTP请求的多个TCP分段进行重复匹配
         if (has_complete_header || is_psh || is_final) {
+            // 调试输出：打印数据包大小
+            if (payload_len > 8192) {
+                printf("Warning: Large payload detected: %d bytes\n", payload_len);
+            }
+            // 安全检查：限制循环范围，防止缓冲区溢出
             // 更新HTTP数据包计数（只统计实际处理的HTTP数据包）
             int current_packet_number = 0;
             if (user_data) {
                 int* packet_count = (int*)user_data;
-                (*packet_count)++;
-                current_packet_number = *packet_count;  // 获取当前数据包编号
+                if (packet_count) {  // 检查指针有效性
+                    (*packet_count)++;
+                    current_packet_number = *packet_count;  // 获取当前数据包编号
+                }
             }
             
             // 处理载荷（使用TCP流的session_id，而不是每个数据包都使用新的session_id）
-            struct web_scan_result_t result = {0};
+            web_scan_result_t result;
+            memset(&result, 0, sizeof(result));
+
+            // 安全检查：限制载荷长度，防止缓冲区溢出
+            if (payload_len > 65536) {  // 设置合理的最大载荷长度限制
+                payload_len = 65536;
+            }
+
+            // 最终安全检查：确保payload指针和长度都有效
+            if (!payload || payload_len <= 0 || payload_len > 65536) {
+                return;
+            }
+            
+            // 确保payload_len在u32范围内（已经在前面检查过，这里显式转换）
+            uint32_t payload_len_u32 = (uint32_t)payload_len;
+            
+            // 验证payload指针在有效范围内 - 使用更安全的检查方式
+            // 先检查指针顺序，避免指针算术下溢
+            if (payload < packet) {
+                return;
+            }
+            size_t payload_offset_from_start = (size_t)(payload - packet);
+            if (payload_offset_from_start > pkthdr->caplen || 
+                payload_offset_from_start + payload_len_u32 > pkthdr->caplen ||
+                payload_offset_from_start + payload_len_u32 < payload_offset_from_start) {  // 检查加法溢出
+                return;
+            }
+            
+            // 最终验证：确保payload指针和长度都在有效范围内
+            if (!payload || payload_len_u32 == 0 || payload_len_u32 > pkthdr->caplen) {
+                return;
+            }
+            
             int ret = web_scan_rust_process_payload_with_session(
                 session_id,  // 使用TCP流的session_id，确保同一流的数据包可以重组
                 payload,
-                payload_len,
+                payload_len_u32,  // 使用显式转换的u32类型
                 is_final || is_psh,  // 如果是最后一个分段，设置is_final=1
                 1,  // reset_on_request_end = 1 - 在请求结束时重置会话状态
                 &result

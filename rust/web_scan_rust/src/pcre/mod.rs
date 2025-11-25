@@ -97,11 +97,24 @@ impl PcreProcessor {
                     http_location,
                 ));
             }
-            Err(_) => {
+                Err(_) => {
                 // 转换失败，使用regex fallback
                 let rust_regex_pattern = self.convert_pcre_to_regex(&pattern, &flags)?;
+                
+                // 解析flags并应用到RegexBuilder
+                let mut builder = regex::RegexBuilder::new(&rust_regex_pattern);
+                let flags_lower = flags.to_lowercase();
+                if flags_lower.contains('i') {
+                    builder.case_insensitive(true);
+                }
+                if flags_lower.contains('s') {
+                    builder.dot_matches_new_line(true);
+                }
+                if flags_lower.contains('m') {
+                    builder.multi_line(true);
+                }
 
-                match Regex::new(&rust_regex_pattern) {
+                match builder.build() {
                     Ok(compiled_regex) => {
                         return Ok(PcrePattern::new_with_details(
                             pcre_str.to_string(),

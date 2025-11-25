@@ -273,3 +273,36 @@ alert http any any -> $HOME_NET any (msg:"ET HUNTING Microsoft Sharepoint Server
 #alert http any any -> any any (msg:"ET WEB_DETECTION Log4j Exploit"; content:"${jndi:"; nocase; classtype:web-application-attack; sid:3000030; rev:1;)
 #alert http any any -> any any (msg:"ET WEB_DETECTION Admin Panel"; content:"admin"; nocase; http.uri; classtype:web-application-attack; sid:3000011; rev:1;)
 #alert http any any -> any any (msg:"ET WEB_DETECTION Backup File"; content:".rar"; nocase; http.uri; classtype:web-application-attack; sid:3000025; rev:1;)
+#
+
+#备份文件访问
+alert http any any -> $HTTP_SERVERS $HTTP_PORTS (
+    msg:"ET WEB_ATTACKS Backup File Access Attempt";
+    flow:established,to_server;
+    http.uri;
+    pcre:"/\.(bak|old|save|backup|tar\.gz|zip|sql)(\?|$)/Ui";
+    classtype:web-application-attack;
+    sid:1000101; rev:1;
+)
+
+# 检测在短时间内产生大量404响应的IP
+alert http any any -> $HTTP_SERVERS $HTTP_PORTS (
+    msg:"ET SCAN Potential Web Directory Brute Force - High 404 Count";
+    flow:established,to_server;
+    threshold:type threshold, track by_src, count 20, seconds 60;
+    classtype:web-application-scan;
+    sid:1000102; rev:1;
+)
+
+# 检测对常见管理路径的集中访问
+alert http any any -> $HTTP_SERVERS $HTTP_PORTS (
+    msg:"ET SCAN Admin Path Enumeration";
+    flow:established,to_server;
+    http.uri;
+    pcre:"//(admin|phpmyadmin|wp-admin|administrator)/";
+    threshold:type threshold, track by_src, count 10, seconds 30;
+    classtype:web-application-scan;
+    sid:1000103; rev:1;
+)
+
+

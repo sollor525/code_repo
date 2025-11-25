@@ -65,6 +65,9 @@ pub struct PatternWithLocation {
     pub within: Option<u32>,
     pub hyperscan_flags: u32,         // 新增：Hyperscan编译标志
     pub requires_fallback: bool,      // 新增：是否需要regex fallback
+    pub header_lowercase: bool,       // 新增：是否对HTTP头部进行小写转换
+    pub base64_decode: Option<(u32, bool)>, // 新增：base64解码 (offset, relative)
+    pub base64_data: bool,            // 新增：是否在base64解码数据中匹配
 }
 
 /// 三层匹配器
@@ -475,10 +478,20 @@ impl Default for RuleAction {
     }
 }
 
+/// 数据包流向枚举
+///
+/// 定义规则应该在哪个方向的数据包上进行匹配。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuleFlowDirection {
+    Any = 0,       // 任意方向（默认）
+    ToServer = 1,  // 客户端到服务器的请求包
+    ToClient = 2,  // 服务器到客户端的响应包
+}
+
 /// 检测规则结构体
 ///
 /// 表示一个完整的Web扫描检测规则，包含匹配模式、动作和元数据。
-/// 支持content模式和PCRE模式。
+/// 支持content模式和PCRE模式，支持双向检测。
 #[derive(Debug, Clone)]
 pub struct Rule {
     pub id: u32,                                    // 规则唯一标识符
@@ -491,6 +504,9 @@ pub struct Rule {
     pub patterns: Vec<PatternWithLocation>,         // 多个模式及其位置（支持多content规则）
     pub fast_pattern_index: Option<usize>,          // Fast pattern索引（用于优化：先匹配fast pattern，命中后再匹配其他pattern）
     pub pcre_patterns: Vec<PcrePattern>,            // PCRE模式列表
+    pub flow_direction: RuleFlowDirection,          // 流向要求（新增：支持双向检测）
+    pub status_codes: Vec<u16>,                     // 状态码列表（新增：仅对响应包有效）
+    pub requires_established: bool,                 // 是否要求已建立连接（新增：flow established状态）
 }
 
 impl Rule {
@@ -544,9 +560,15 @@ impl Rule {
                 within: None,
                 hyperscan_flags: modifiers_to_hyperscan_flags(false, false, false),  // 计算flags
                 requires_fallback: false,     // 默认不需要fallback
+                header_lowercase: false,      // 默认不进行小写转换
+                base64_decode: None,          // 默认不进行base64解码
+                base64_data: false,           // 默认不是base64数据匹配
             }],
             fast_pattern_index: Some(0),  // 单pattern规则，fast pattern就是它自己
             pcre_patterns: Vec::new(),  // 初始化为空的PCRE模式列表
+            flow_direction: RuleFlowDirection::Any,  // 默认匹配任意方向
+            status_codes: Vec::new(),  // 默认不限制状态码
+            requires_established: false,  // 默认不要求established连接
         })
     }
 
@@ -604,6 +626,7 @@ impl Rule {
     ///
     /// 这个方法验证规则的所有pattern是否都在正确的HTTP位置找到。
     /// 对于多content规则，需要所有条件都满足才返回true。
+    /// 支持内容处理器，包括小写转换和base64解码。
     ///
     /// # 参数
     /// * `data` - 完整的HTTP数据
@@ -624,26 +647,64 @@ impl Rule {
                 return false;
             }
 
+            // 应用内容处理器
+            let processed_content = match self.apply_content_processors(&pattern_with_location, &target_content) {
+                Ok(content) => content,
+                Err(e) => {
+                    log::debug!("Rule {}: pattern {} content processing failed: {}", self.id, pattern_idx, e);
+                    return false;
+                }
+            };
+
             // 检查pattern是否在正确的位置找到
             // 对于包含转义十六进制的pattern，需要进行字节级比较
             let pattern_match = if pattern_with_location.pattern.contains("\\x") {
                 // 将转义的十六进制字符串转换为实际字节，然后进行字节匹配
-                self.pattern_matches_bytes(&pattern_with_location.pattern, target_content)
+                self.pattern_matches_bytes(&pattern_with_location.pattern, &processed_content)
             } else {
                 // 普通字符串匹配
-                target_content.contains(&pattern_with_location.pattern)
+                processed_content.contains(&pattern_with_location.pattern)
             };
 
             if !pattern_match {
-                log::debug!("Rule {}: pattern {} failed - '{}' not found in '{}'", self.id, pattern_idx, pattern_with_location.pattern, target_content);
+                log::debug!("Rule {}: pattern {} failed - '{}' not found in processed content", self.id, pattern_idx, pattern_with_location.pattern);
                 return false;
             } else {
-                log::debug!("Rule {}: pattern {} passed - '{}' found in '{}'", self.id, pattern_idx, pattern_with_location.pattern, target_content);
+                log::debug!("Rule {}: pattern {} passed - '{}' found in processed content", self.id, pattern_idx, pattern_with_location.pattern);
             }
         }
 
         log::debug!("Rule {}: all patterns matched - fully matches", self.id);
         true
+    }
+
+    /// 应用内容处理器到目标内容
+    ///
+    /// # 参数
+    /// * `pattern` - 包含内容处理配置的pattern
+    /// * `content` - 要处理的内容
+    ///
+    /// # 返回值
+    /// * `Result<String>` - 处理后的内容或错误
+    fn apply_content_processors(&self, pattern: &PatternWithLocation, content: &str) -> crate::error::Result<String> {
+        use crate::content_processor::{ChainProcessor, ContentProcessor};
+
+        // 创建内容处理器链
+        let processor = ChainProcessor::from_pattern_config(
+            pattern.header_lowercase,
+            pattern.base64_decode,
+            pattern.base64_data,
+        );
+
+        // 如果没有处理器，直接返回原内容
+        if processor.processors.len() == 0 {
+            return Ok(content.to_string());
+        }
+
+        // 应用处理器
+        processor.process(content).map_err(|e| {
+            WebScanError::ContentProcessing(format!("Content processing failed: {}", e))
+        })
     }
 
     /// 检查转义十六进制pattern是否匹配目标内容的字节
@@ -957,6 +1018,71 @@ impl Rule {
     pub fn needs_fallback_processing(&self) -> bool {
         self.pcre_patterns.iter().any(|p| p.match_type == PcreMatchType::RegexFallback)
     }
+
+    /// 检查规则是否匹配指定的数据包流向
+    ///
+    /// # 参数
+    /// * `packet_direction` - 数据包流向（请求/响应）
+    ///
+    /// # 返回值
+    /// * `bool` - 如果流向匹配返回true
+    pub fn matches_flow_direction(&self, packet_direction: crate::protocol::PacketDirection) -> bool {
+        use crate::protocol::PacketDirection;
+
+        match self.flow_direction {
+            RuleFlowDirection::Any => true,
+            RuleFlowDirection::ToServer => packet_direction == PacketDirection::ToServer,
+            RuleFlowDirection::ToClient => packet_direction == PacketDirection::ToClient,
+        }
+    }
+
+    /// 检查规则是否匹配指定的HTTP状态码
+    ///
+    /// # 参数
+    /// * `status_code` - HTTP状态码（可选）
+    ///
+    /// # 返回值
+    /// * `bool` - 如果状态码匹配或规则不限制状态码返回true
+    pub fn matches_status_code(&self, status_code: Option<u16>) -> bool {
+        // 如果规则不限制状态码，则匹配
+        if self.status_codes.is_empty() {
+            return true;
+        }
+
+        // 如果没有提供状态码，则不匹配
+        if let Some(code) = status_code {
+            self.status_codes.contains(&code)
+        } else {
+            false
+        }
+    }
+
+    /// 检查规则是否满足连接状态要求
+    ///
+    /// # 参数
+    /// * `is_established` - 连接是否已建立
+    ///
+    /// # 返回值
+    /// * `bool` - 如果满足要求返回true
+    pub fn matches_established_state(&self, is_established: bool) -> bool {
+        !self.requires_established || is_established
+    }
+
+    /// 综合检查规则是否匹配数据包的流向和状态信息
+    ///
+    /// # 参数
+    /// * `packet_direction` - 数据包流向
+    /// * `status_code` - HTTP状态码（可选）
+    /// * `is_established` - 连接是否已建立
+    ///
+    /// # 返回值
+    /// * `bool` - 如果所有条件都满足返回true
+    pub fn matches_packet_metadata(&self, packet_direction: crate::protocol::PacketDirection,
+                                 status_code: Option<u16>, is_established: bool) -> bool {
+        self.matches_flow_direction(packet_direction) &&
+        self.matches_status_code(status_code) &&
+        self.matches_established_state(is_established)
+    }
 }
 
 /// 规则管理器结构体
@@ -1123,7 +1249,7 @@ impl RuleManager {
 
     /// 解析Hyperscan格式的规则
     ///
-    /// 支持Suricata/Snort风格的规则格式。
+    /// 支持Suricata/Snort风格的规则格式，包括多行规则。
     ///
     /// # 参数
     /// * `content` - Hyperscan格式的规则内容
@@ -1132,18 +1258,115 @@ impl RuleManager {
     /// * `Result<u32>` - 成功返回解析的规则数量，失败返回错误
     fn parse_hyperscan_rules(&mut self, content: &str) -> Result<u32> {
         let mut loaded_count = 0;
+        let lines: Vec<&str> = content.lines().collect();
+        let mut i = 0;
         
-        // 按行分割规则内容
-        for (line_num, line) in content.lines().enumerate() {
+        while i < lines.len() {
+            let line = lines[i].trim();
+            
             // 跳过空行和注释行
-            let trimmed_line = line.trim();
-            if trimmed_line.is_empty() || trimmed_line.starts_with('#') {
+            if line.is_empty() || line.starts_with('#') {
+                i += 1;
                 continue;
             }
             
-            // 解析Suricata/Snort格式规则
-            // 格式: action protocol source_ip source_port -> dest_ip dest_port (options)
-            match self._parse_suricata_rule(trimmed_line, line_num + 1) {
+            // 检查是否是规则开始（action protocol ...）
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() < 2 {
+                i += 1;
+                continue;
+            }
+            
+            // 只处理HTTP规则
+            let action_str = parts[0];
+            let protocol = parts[1];
+            
+            if !matches!(action_str, "alert" | "drop" | "reset" | "pass") || protocol != "http" {
+                // 不是HTTP规则，跳过
+                i += 1;
+                continue;
+            }
+            
+            // 尝试合并多行规则
+            let mut rule_text = line.to_string();
+            let start_line_num = i + 1;
+            let mut paren_depth = 0;
+            let mut in_string = false;
+            let mut escape_next = false;
+            
+            // 计算当前行的括号深度
+            for ch in line.chars() {
+                if escape_next {
+                    escape_next = false;
+                    continue;
+                }
+                match ch {
+                    '\\' => escape_next = true,
+                    '"' => in_string = !in_string,
+                    '(' if !in_string => paren_depth += 1,
+                    ')' if !in_string => {
+                        paren_depth -= 1;
+                        if paren_depth < 0 {
+                            break; // 多余的右括号，可能是错误
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            
+            // 如果括号未匹配，继续读取后续行
+            i += 1;
+            while paren_depth > 0 && i < lines.len() {
+                let next_line = lines[i].trim();
+                
+                // 跳过空行和注释行（但在规则中间不应该有注释）
+                if next_line.is_empty() {
+                    rule_text.push(' '); // 保留空格
+                    i += 1;
+                    continue;
+                }
+                
+                if next_line.starts_with('#') {
+                    // 规则中间的注释，跳过
+                    i += 1;
+                    continue;
+                }
+                
+                // 追加到规则文本
+                rule_text.push(' ');
+                rule_text.push_str(next_line);
+                
+                // 更新括号深度
+                for ch in next_line.chars() {
+                    if escape_next {
+                        escape_next = false;
+                        continue;
+                    }
+                    match ch {
+                        '\\' => escape_next = true,
+                        '"' => in_string = !in_string,
+                        '(' if !in_string => paren_depth += 1,
+                        ')' if !in_string => {
+                            paren_depth -= 1;
+                            if paren_depth == 0 {
+                                break; // 找到匹配的右括号
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                
+                i += 1;
+            }
+            
+            // 如果括号仍未匹配，记录警告但继续
+            if paren_depth != 0 {
+                log::warn!("Unmatched parentheses in rule starting at line {}", start_line_num);
+                continue;
+            }
+            
+            // 解析合并后的规则
+            match self.parse_suricata_rule(&rule_text, start_line_num) {
                 Ok(rule) => {
                     // 如果添加规则失败（比如ID冲突），记录警告但继续处理其他规则
                     match self.add_rule(rule) {
@@ -1152,13 +1375,13 @@ impl RuleManager {
                         }
                         Err(e) => {
                             // 记录添加失败，但不中断整个加载过程
-                            log::warn!("Failed to add rule at line {}: {}", line_num + 1, e);
+                            log::warn!("Failed to add rule at line {}: {}", start_line_num, e);
                         }
                     }
                 }
                 Err(e) => {
                     // 记录解析失败，但不中断整个加载过程
-                    log::warn!("Failed to parse rule at line {}: {}", line_num + 1, e);
+                    log::warn!("Failed to parse rule at line {}: {}", start_line_num, e);
                 }
             }
         }
@@ -1174,7 +1397,7 @@ impl RuleManager {
     ///
     /// # 返回值
     /// * `Result<Rule>` - 解析后的规则
-    fn _parse_suricata_rule(&mut self, rule_line: &str, line_num: usize) -> Result<Rule> {
+    pub fn parse_suricata_rule(&mut self, rule_line: &str, line_num: usize) -> Result<Rule> {
         // 简单的规则解析，支持基本的Suricata格式
         // 示例: alert http any any -> any any (msg:"Admin access"; content:"/admin/"; sid:1001;)
         
@@ -1199,6 +1422,7 @@ impl RuleManager {
         
         // 检查是否为HTTP规则
         // 如果不是HTTP规则（如TCP），跳过该规则（不报错，因为规则文件中可能包含多种协议）
+        log::debug!("Processing rule: {}", rule_line);
         if parts[1] != "http" {
             return Err(WebScanError::RuleParsing(
                 format!("Skipping non-HTTP rule (protocol: {}) at line {}", parts[1], line_num)
@@ -1237,6 +1461,16 @@ impl RuleManager {
         let mut current_depth: Option<u32> = None;
         let mut current_offset: Option<u32> = None;
         let mut current_within: Option<u32> = None;
+        let mut current_header_lowercase = false;
+        let mut current_base64_decode: Option<(u32, bool)> = None;
+        let mut current_base64_data = false;
+        let mut current_is_fast_pattern = false;        // 新增：跟踪当前pattern是否为fast pattern
+        let mut fast_pattern_index: Option<usize> = None; // 新增：记录fast pattern的索引
+
+        // 新增：双向检测相关变量
+        let mut flow_direction = RuleFlowDirection::Any;      // 流向要求
+        let mut status_codes: Vec<u16> = Vec::new();          // 状态码列表
+        let mut requires_established = false;                 // 是否要求established连接
         
         // 辅助函数：保存当前pattern并开始新的
         // 注意：不能使用闭包，因为会捕获可变引用，导致借用冲突
@@ -1254,6 +1488,17 @@ impl RuleManager {
                 
                 match key {
                     "msg" => message = value.to_string(),
+                    "flow" => {
+                        // 解析flow选项，格式：flow:established,to_server 或 flow:to_client
+                        for flow_part in value.split(',') {
+                            match flow_part.trim() {
+                                "established" => requires_established = true,
+                                "to_server" => flow_direction = RuleFlowDirection::ToServer,
+                                "to_client" => flow_direction = RuleFlowDirection::ToClient,
+                                _ => {} // 忽略其他flow选项
+                            }
+                        }
+                    }
                     "content" => {
                         // 如果已经有pattern，先保存前一个
                         if !current_pattern.is_empty() {
@@ -1263,10 +1508,24 @@ impl RuleManager {
                                 current_endswith,
                             );
 
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
                             patterns.push(PatternWithLocation {
                                 pattern: current_pattern.clone(),
                                 http_location: current_http_location,
-                                is_fast_pattern: false,       // 默认不是fast pattern
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
                                 nocase: current_nocase,       // 使用解析的nocase状态
                                 startswith: current_startswith,
                                 endswith: current_endswith,
@@ -1276,8 +1535,11 @@ impl RuleManager {
                                 within: current_within,
                                 hyperscan_flags,             // 使用计算的flags
                                 requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
                             });
-                            // 重置当前pattern状态（但保留http_location，因为它可能应用到下一个content）
+                            // 重置当前pattern状态（但保留http_location和其他修饰符，因为下一个content可能继承它们）
                             current_pattern.clear();
                             current_nocase = false;        // 重置nocase状态
                             current_startswith = false;
@@ -1286,7 +1548,12 @@ impl RuleManager {
                             current_depth = None;
                             current_offset = None;
                             current_within = None;
-                            // 注意：不重置current_http_location，因为下一个content可能继承它
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                            // 注意：不重置以下状态，因为下一个content可能继承它们：
+                            // current_http_location - HTTP位置
+                            // current_header_lowercase - 小写转换
+                            // current_base64_decode - base64解码
+                            // current_base64_data - base64数据匹配
                         }
                         // 处理Suricata规则中的十六进制编码（如 |28 29 20 7b|）
                         current_pattern = Self::_decode_suricata_content(value);
@@ -1320,6 +1587,31 @@ impl RuleManager {
                             )
                         })?;
                     }
+                    "status_code" | "http.stat_code" | "http.response_code" => {
+                        // 解析状态码，支持单个状态码或范围
+                        for code_part in value.split(',') {
+                            let code_part = code_part.trim();
+                            if code_part.contains('-') {
+                                // 处理状态码范围，如 400-499
+                                let range_parts: Vec<&str> = code_part.split('-').collect();
+                                if range_parts.len() == 2 {
+                                    if let (Ok(start), Ok(end)) = (
+                                        range_parts[0].parse::<u16>(),
+                                        range_parts[1].parse::<u16>()
+                                    ) {
+                                        for code in start..=end {
+                                            status_codes.push(code);
+                                        }
+                                    }
+                                }
+                            } else {
+                                // 处理单个状态码
+                                if let Ok(code) = code_part.parse::<u16>() {
+                                    status_codes.push(code);
+                                }
+                            }
+                        }
+                    }
                     "pcre" => {
                         // PCRE选项：使用新的PCRE处理器处理
                         match self.pcre_processor.process_pcre_pattern(
@@ -1333,11 +1625,13 @@ impl RuleManager {
                             current_within,
                         ) {
                             Ok(pcre_pattern) => {
-                                // 如果没有content pattern，对于Hyperscan兼容的PCRE，使用处理后的模式作为主要content
+                                // 对于Hyperscan兼容的PCRE，不需要创建content pattern
+                                // PCRE模式会直接在get_hyperscan_patterns中处理
                                 if current_pattern.is_empty() {
                                     match pcre_pattern.match_type {
                                         PcreMatchType::Hyperscan | PcreMatchType::ConvertedHyperscan => {
-                                            current_pattern = pcre_pattern.processed_pattern.clone();
+                                            // 不创建content pattern，让PCRE模式直接处理
+                                            // current_pattern保持为空
                                         }
                                         PcreMatchType::RegexFallback => {
                                             // 对于需要fallback的PCRE，创建一个占位符content以便Hyperscan编译
@@ -1375,6 +1669,33 @@ impl RuleManager {
                     }
                     "http.header" => {
                         current_http_location = HttpMatchLocation::RequestHeader;
+                        log::debug!("Setting http_location to RequestHeader due to http.header");
+                    }
+                    "header_lowercase" => {
+                        current_header_lowercase = true;
+                    }
+                    "fast_pattern" => {
+                        current_is_fast_pattern = true;
+                        log::debug!("Setting fast_pattern flag for current pattern");
+                    }
+                    "base64_decode" => {
+                        // 解析 base64_decode:offset X,relative
+                        if let Some(offset_pos) = value.find("offset") {
+                            let remaining = &value[offset_pos + 6..].trim();
+                            if let Some(comma_pos) = remaining.find(',') {
+                                let offset_str = remaining[..comma_pos].trim();
+                                let relative_part = remaining[comma_pos + 1..].trim();
+                                if let Ok(offset_val) = offset_str.parse::<u32>() {
+                                    let is_relative = relative_part == "relative";
+                                    current_base64_decode = Some((offset_val, is_relative));
+                                }
+                            }
+                        } else {
+                            log::warn!("Invalid base64_decode format: {}", value);
+                        }
+                    }
+                    "base64_data" => {
+                        current_base64_data = true;
                     }
                     "nocase" => {
                         current_nocase = true;
@@ -1423,10 +1744,25 @@ impl RuleManager {
                 current_endswith,
             );
 
+            // 添加调试日志
+            log::debug!("Creating final PatternWithLocation:");
+            log::debug!("  pattern: '{}'", current_pattern);
+            log::debug!("  http_location: {:?}", current_http_location);
+            log::debug!("  is_fast_pattern: {}", current_is_fast_pattern);
+            log::debug!("  header_lowercase: {}", current_header_lowercase);
+            log::debug!("  base64_decode: {:?}", current_base64_decode);
+            log::debug!("  base64_data: {}", current_base64_data);
+
+            // 如果是fast pattern，记录其索引
+            if current_is_fast_pattern {
+                fast_pattern_index = Some(patterns.len());
+                log::debug!("  -> Recording final fast pattern at index: {}", patterns.len());
+            }
+
             patterns.push(PatternWithLocation {
                 pattern: current_pattern.clone(),
                 http_location: current_http_location,
-                is_fast_pattern: false,       // 默认不是fast pattern
+                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
                 nocase: current_nocase,       // 使用解析的nocase状态
                 startswith: current_startswith,
                 endswith: current_endswith,
@@ -1436,6 +1772,9 @@ impl RuleManager {
                 within: current_within,
                 hyperscan_flags,             // 使用计算的flags
                 requires_fallback: false,     // 默认不需要fallback
+                header_lowercase: current_header_lowercase,
+                base64_decode: current_base64_decode,
+                base64_data: current_base64_data,
             });
         }
         
@@ -1445,9 +1784,10 @@ impl RuleManager {
             ));
         }
         
-        if patterns.is_empty() {
+        // 如果没有 content patterns 但有 pcre patterns，这是允许的（纯 PCRE 规则）
+        if patterns.is_empty() && pcre_patterns.is_empty() {
             return Err(WebScanError::RuleParsing(
-                format!("Missing content pattern at line {}", line_num)
+                format!("Missing content pattern and PCRE pattern at line {}", line_num)
             ));
         }
         
@@ -1493,6 +1833,14 @@ impl RuleManager {
             rule.add_pcre_pattern(pcre_pattern);
         }
 
+        // 设置fast_pattern_index
+        rule.fast_pattern_index = fast_pattern_index;
+
+        // 设置双向检测字段
+        rule.flow_direction = flow_direction;
+        rule.status_codes = status_codes.clone();
+        rule.requires_established = requires_established;
+
         // 向后兼容：设置第一个pattern的http_location和metadata
         if let Some(first_pattern) = rule.patterns.first() {
             rule.http_location = first_pattern.http_location;
@@ -1503,6 +1851,12 @@ impl RuleManager {
                 rule.metadata.insert("endswith".to_string(), "true".to_string());
             }
         }
+
+        // 调试信息：记录双向检测配置
+        log::debug!("Rule {} flow configuration:", sid);
+        log::debug!("  -> flow_direction: {:?}", flow_direction);
+        log::debug!("  -> status_codes: {:?}", status_codes);
+        log::debug!("  -> requires_established: {}", requires_established);
 
         Ok(rule)
     }

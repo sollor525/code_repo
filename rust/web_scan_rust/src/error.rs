@@ -58,6 +58,10 @@ pub enum WebScanError {
     #[error("Engine not initialized")]
     NotInitialized,
 
+    /// 内容处理错误
+    #[error("Content processing error: {0}")]
+    ContentProcessing(String),
+
     /// 内存分配失败错误
     #[error("Memory allocation failed")]
     MemoryAllocation,
@@ -84,6 +88,7 @@ impl WebScanError {
             WebScanError::InvalidInput(_) => -8,
             WebScanError::NotInitialized => -9,
             WebScanError::MemoryAllocation => -10,
+            WebScanError::ContentProcessing(_) => -11,
         }
     }
 }

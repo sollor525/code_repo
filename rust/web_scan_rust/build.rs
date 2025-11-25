@@ -39,13 +39,21 @@ fn main() {
 
     // 使用cbindgen生成C语言头文件
     // cbindgen是一个工具，可以将Rust代码转换为C语言头文件
-    cbindgen::Builder::new()                    // 创建新的cbindgen构建器
+    // 如果生成失败，只输出警告，不中断编译
+    match cbindgen::Builder::new()                    // 创建新的cbindgen构建器
         .with_crate(crate_dir)                  // 指定要处理的crate目录
         .with_language(cbindgen::Language::C)   // 生成C语言头文件
         .with_config(cbindgen::Config::from_file("cbindgen.toml").unwrap()) // 使用配置文件
-        .generate()                              // 生成绑定
-        .expect("Unable to generate bindings")  // 如果失败，输出错误信息
-        .write_to_file(&output_file);           // 将结果写入文件
+        .generate() {                              // 生成绑定
+        Ok(bindings) => {
+            bindings.write_to_file(&output_file);           // 将结果写入文件
+        }
+        Err(e) => {
+            // 如果生成失败，输出警告但不中断编译
+            eprintln!("Warning: Failed to generate C bindings: {}", e);
+            eprintln!("Continuing build without C header file generation...");
+        }
+    }
 
     // 告诉cargo何时需要重新运行构建脚本
     // 这些println!语句是cargo的特殊指令格式
