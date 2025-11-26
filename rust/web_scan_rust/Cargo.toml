@@ -88,3 +88,31 @@ harness = false                            # 禁用默认的基准测试框架�
 lto = true                                # 启用链接时优化，提高性能但增加编译时间
 codegen-units = 1                         # 限制代码生成单元数量，提高优化效果
 panic = "abort"                           # panic时直接终止程序，减小二进制文件大小
+overflow-checks = true                    # 启用运行时溢出检查，提高安全性
+debug-assertions = true                   # 在release模式下也启用调试断言
+strip = "symbols"                          # 移除调试符号，减少二进制大小
+
+[profile.dev]
+# 开发版本的编译配置
+overflow-checks = true                    # 启用运行时溢出检查
+debug-assertions = true                   # 启用调试断言
+
+[profile.bench]
+# 基准测试的编译配置
+inherits = "release"                      # 继承release配置
+debug = true                               # 保留调试信息以便进行性能分析
+
+# 安全相关编译配置
+[workspace.lints.rust]
+# Rust安全相关lints
+unsafe_op_in_unsafe_fn = "warn"          # 在unsafe函数中使用unsafe操作时发出警告
+unused_unsafe = "warn"                    # 未使用的unsafe块发出警告
+variant_size_differences = "warn"         # 枚举变体大小差异警告
+missing_copy_implementations = "warn"      # 缺少Copy实现警告
+missing_debug_implementations = "warn"     # 缺少Debug实现警告
+
+[workspace.lints.clippy]
+# Clippy安全相关lints
+all = "warn"                               # 启用所有clippy建议
+pedantic = "warn"                          # 启用更严格的检查
+nursery = "warn"                           # 启用实验性的检查

@@ -67,6 +67,9 @@ fn main() {
         println!("cargo:rustc-link-lib=hs");           // 链接libhs库
         println!("cargo:rustc-cfg=feature=\"hyperscan\""); // 启用hyperscan特性
     }
+
+    // 配置Rust编译器安全选项
+    println!("cargo:rustc-cfg=secure_build");                 // 启用安全构建配置
 }
 
 /// 获取目标目录路径

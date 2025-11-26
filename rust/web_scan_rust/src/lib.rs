@@ -57,6 +57,9 @@ pub use stats::{StatsCollector, WebScanStats};
 pub use error::{WebScanError, Result};
 pub use hyperscan::{HyperscanCompiler, HyperscanScanner, HyperscanDatabase, MatchResult};
 
+// 导出FFI接口供测试使用
+pub use ffi::*;
+
 // 条件编译：只在测试时编译以下代码
 #[cfg(test)]
 mod tests {

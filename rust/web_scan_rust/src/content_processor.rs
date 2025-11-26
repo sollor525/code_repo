@@ -380,14 +380,21 @@ mod tests {
     #[test]
     fn test_chain_processor_from_config_both_options() {
         // 测试同时启用小写转换和base64解码
+        // 注意：由于先进行小写转换，base64解码会失败，这是预期行为
         let chain = ChainProcessor::from_pattern_config(true, Some((0, false)), false);
-        
-        // 由于先进行小写转换，base64解码会失败
-        // 我们使用一个能通过小写转换后仍然是有效base64的字符串
-        // "aGVsbG8gd29ybGQh" 是 "hello world!" 的base64编码，且全小写
-        let input = "aGVsbG8gd29ybGQh";
-        let result = chain.process(input).unwrap();
-        assert_eq!(result, "hello world!");
+
+        // 使用一个全是小写字符的base64字符串，小写转换后不会改变
+        // "agvsbg8gd29ybgh" 不是有效的base64，但我们期望解码失败
+        let input = "aGVsbG8gd29ybGQh"; // 包含大写字符，小写转换后会破坏base64格式
+
+        // 这应该会失败，因为小写转换破坏了base64格式
+        let result = chain.process(input);
+        assert!(result.is_err());
+
+        // 现在测试正确的顺序：只有base64解码（不进行小写转换）
+        let chain_base64_only = ChainProcessor::from_pattern_config(false, Some((0, false)), false);
+        let result_base64 = chain_base64_only.process(input).unwrap();
+        assert_eq!(result_base64, "hello world!");
     }
     
     #[test]

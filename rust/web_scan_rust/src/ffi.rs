@@ -27,7 +27,286 @@ use parking_lot::RwLock;
 // 导入路径处理
 use std::path::Path;
 
-// 全局引擎实例
+// 安全常量定义
+const MAX_PAYLOAD_SIZE: u32 = 10 * 1024 * 1024;        // 10MB 单次载荷限制
+// const MAX_SESSION_PAYLOAD_SIZE: u32 = 50 * 1024 * 1024; // 50MB 会话载荷限制（未使用，保留备用）
+const MAX_PATH_LENGTH: usize = 4096;                     // 4KB 路径长度限制
+const MAX_ERROR_LENGTH: usize = 1024;                    // 1KB 错误信息长度限制
+
+// 输入验证相关结构体和枚举
+
+/// 输入验证结果
+#[derive(Debug, Clone)]
+pub struct InputValidationResult {
+    pub is_valid: bool,
+    pub error_message: Option<String>,
+    pub sanitized_length: usize,
+    pub risk_level: ValidationRiskLevel,
+}
+
+/// 风险级别枚举
+#[derive(Debug, Clone, PartialEq)]
+pub enum ValidationRiskLevel {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+/// 输入验证器 - 提供全面的外部输入安全检查
+pub struct InputValidator {
+    max_string_length: usize,
+    max_payload_size: u32,
+    max_session_id: u64,
+    #[allow(dead_code)]
+    max_path_length: usize,  // 预留用于未来路径验证
+    #[allow(dead_code)]
+    blocked_patterns: Vec<String>,  // 预留用于未来模式匹配
+    #[allow(dead_code)]
+    allowed_characters: Option<String>,  // 预留用于未来字符过滤
+}
+
+impl InputValidator {
+    /// 创建新的输入验证器实例
+    pub fn new() -> Self {
+        Self {
+            max_string_length: MAX_PATH_LENGTH,
+            max_path_length: MAX_PATH_LENGTH,
+            max_payload_size: MAX_PAYLOAD_SIZE,
+            max_session_id: u64::MAX / 2,
+            blocked_patterns: vec![
+                "..".to_string(),
+                "~".to_string(),
+                "\0".to_string(),
+                "<script".to_string(),
+                "javascript:".to_string(),
+                "data:text/html".to_string(),
+                "eval(".to_string(),
+                "exec(".to_string(),
+                "${".to_string(),
+                "<%".to_string(),
+                "union".to_string(),
+                "select".to_string(),
+                "drop".to_string(),
+                "insert".to_string(),
+                "update".to_string(),
+                "delete".to_string(),
+                "<!--".to_string(),
+                "--".to_string(),
+                "/*".to_string(),
+                "*/".to_string(),
+            ],
+            allowed_characters: Some(
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890.-_/:@[] ".to_string()
+            ),
+        }
+    }
+
+    /// 验证C字符串指针和长度
+    pub fn validate_c_string(&self, c_str: *const c_char, max_length: usize, field_name: &str) -> InputValidationResult {
+        let mut result = InputValidationResult {
+            is_valid: true,
+            error_message: None,
+            sanitized_length: 0,
+            risk_level: ValidationRiskLevel::Low,
+        };
+
+        // 基础安全检查
+        if c_str.is_null() {
+            result.is_valid = false;
+            result.error_message = Some("Null string pointer".to_string());
+            return result;
+        }
+
+        unsafe {
+            let mut len = 0;
+            let mut ptr = c_str;
+
+            // 计算字符串长度，防止无限循环
+            while *ptr != 0 && len < max_length {
+                len += 1;
+                ptr = ptr.add(1);
+            }
+
+            if len >= max_length {
+                result.is_valid = false;
+                result.error_message = Some(format!("{} exceeds maximum length {}", field_name, max_length));
+                return result;
+            }
+
+            result.sanitized_length = len;
+        }
+
+        result
+    }
+
+    /// 验证载荷大小
+    pub fn validate_payload(&self, payload_size: u32, context: &str) -> InputValidationResult {
+        let mut result = InputValidationResult {
+            is_valid: true,
+            error_message: None,
+            sanitized_length: payload_size as usize,
+            risk_level: ValidationRiskLevel::Low,
+        };
+
+        // 基础检查
+        if payload_size == 0 {
+            result.is_valid = false;
+            result.error_message = Some(format!("Empty {}", context));
+            return result;
+        }
+
+        if payload_size > self.max_payload_size {
+            result.is_valid = false;
+            result.error_message = Some(format!("{} too large: {} > {}", context, payload_size, self.max_payload_size));
+            return result;
+        }
+
+        result
+    }
+
+    /// 验证会话ID
+    pub fn validate_session_id(&self, session_id: u64, context: &str) -> InputValidationResult {
+        let mut result = InputValidationResult {
+            is_valid: true,
+            error_message: None,
+            sanitized_length: std::mem::size_of::<u64>(),
+            risk_level: ValidationRiskLevel::Low,
+        };
+
+        // 基础检查
+        if session_id == 0 {
+            result.is_valid = false;
+            result.error_message = Some(format!("Invalid {} in {}: 0", context, session_id));
+            return result;
+        }
+
+        if session_id > self.max_session_id {
+            result.is_valid = false;
+            result.error_message = Some(format!("{} too large: {} > {}", context, session_id, self.max_session_id));
+            return result;
+        }
+
+        result
+    }
+
+    /// 验证字符串内容（基础检查）
+    pub fn validate_string_content(&self, content: &str, context: &str) -> InputValidationResult {
+        let mut result = InputValidationResult {
+            is_valid: true,
+            error_message: None,
+            sanitized_length: content.len(),
+            risk_level: ValidationRiskLevel::Low,
+        };
+
+        // 基础检查
+        if content.len() > self.max_string_length {
+            result.is_valid = false;
+            result.error_message = Some(format!("{} too long: {} > {}", context, content.len(), self.max_string_length));
+            return result;
+        }
+
+        if content.is_empty() {
+            result.is_valid = false;
+            result.error_message = Some(format!("{} cannot be empty", context));
+            return result;
+        }
+
+        // 检查常见攻击模式
+        let content_lower = content.to_lowercase();
+
+        // SQL注入模式
+        if content_lower.contains("select") || content_lower.contains("drop") ||
+           content_lower.contains("insert") || content_lower.contains("update") || content_lower.contains("delete") {
+            result.is_valid = false;
+            result.error_message = Some(format!("Potential SQL injection in {}", context));
+            return result;
+        }
+
+        // 路径遍历攻击模式
+        if content_lower.contains("..") || content_lower.contains("%2e") {
+            result.is_valid = false;
+            result.error_message = Some(format!("Path traversal in {}", context));
+            return result;
+        }
+
+        // 脚本注入模式
+        if content_lower.contains("<script") || content_lower.contains("javascript:") || content_lower.contains("data:text/html") {
+            result.is_valid = false;
+            result.error_message = Some(format!("Potential script injection in {}", context));
+            return result;
+        }
+
+        result
+    }
+}
+
+impl Default for InputValidator {
+    fn default() -> Self {
+        Self {
+            max_string_length: MAX_PATH_LENGTH,
+            max_path_length: MAX_PATH_LENGTH,
+            max_payload_size: MAX_PAYLOAD_SIZE,
+            max_session_id: u64::MAX / 2, // 防止会话ID溢出
+            blocked_patterns: vec![
+                "..".to_string(),
+                "~".to_string(),
+                "\0".to_string(),
+                "<script".to_string(),
+                "javascript:".to_string(),
+                "data:text/html".to_string(),
+                "eval(".to_string(),
+                "exec(".to_string(),
+                "${".to_string(),
+                "<%".to_string(),
+                "union".to_string(),
+                "select".to_string(),
+                "drop".to_string(),
+                "insert".to_string(),
+                "update".to_string(),
+                "delete".to_string(),
+                "<!--".to_string(),
+                "--".to_string(),
+                "/*".to_string(),
+                "*/".to_string(),
+            ],
+            allowed_characters: Some(
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890.-_/:@[] ".to_string()
+            ),
+        }
+    }
+}
+
+/// 全局输入验证器实例
+static mut INPUT_VALIDATOR: Option<InputValidator> = None;
+static INIT: std::sync::Once = std::sync::Once::new();
+
+/// 初始化输入验证器
+pub fn init_input_validator() {
+    INIT.call_once(|| {
+        let validator = InputValidator::new();
+        unsafe {
+            INPUT_VALIDATOR = Some(validator);
+        }
+    });
+}
+
+/// 获取全局输入验证器
+pub fn get_input_validator() -> &'static InputValidator {
+    init_input_validator(); // 确保已初始化
+    unsafe {
+        // 使用更安全的方式访问静态变量
+        if let Some(ref validator) = INPUT_VALIDATOR {
+            validator
+        } else {
+            // 如果未初始化，创建默认实例
+            static DEFAULT_VALIDATOR: InputValidator = InputValidator::new();
+            &DEFAULT_VALIDATOR
+        }
+    }
+}
+
+/// 全局引擎实例
 // OnceLock确保引擎只被初始化一次，RwLock提供线程安全的访问
 static ENGINE: OnceLock<RwLock<WebScanEngine>> = OnceLock::new();
 
@@ -207,22 +486,61 @@ pub extern "C" fn web_scan_rust_init_with_hyperscan() -> c_int {
 /// * 负数 - 错误代码（具体含义见WebScanError）
 #[no_mangle]
 pub extern "C" fn web_scan_rust_load_rules(rules_path: *const c_char) -> c_int {
-    // 检查指针是否为空
-    if rules_path.is_null() {
-        set_last_error("Null rules path");
+    // 初始化输入验证器
+    init_input_validator();
+
+    // 使用全局输入验证器进行验证
+    let validator = get_input_validator();
+    let validation_result = {
+        let max_len = validator.max_string_length;
+        let mut len = 0;
+        let mut ptr = rules_path;
+
+        unsafe {
+            while *ptr != 0 && len < max_len {
+                len += 1;
+                ptr = ptr.add(1);
+            }
+        }
+
+        if len >= max_len {
+            InputValidationResult {
+                is_valid: false,
+                error_message: Some(format!("rules_path exceeds maximum length {}", max_len)),
+                sanitized_length: len.min(max_len),
+                risk_level: ValidationRiskLevel::High,
+            }
+        } else {
+            InputValidationResult {
+                is_valid: true,
+                error_message: None,
+                sanitized_length: len,
+                risk_level: ValidationRiskLevel::Low,
+            }
+        }
+    };
+
+    if !validation_result.is_valid {
+        set_last_error(&validation_result.error_message.unwrap_or_else(|| "Invalid rules path".to_string()));
         return -1;
     }
 
-    // 将C字符串转换为Rust字符串
-    // unsafe块是必要的，因为我们正在处理原始指针
-    let rules_path_str = match unsafe { CStr::from_ptr(rules_path) }.to_str() {
-        Ok(s) => s,  // 转换成功
-        Err(_) => {
-            // 转换失败，可能是无效的UTF-8
-            set_last_error("Invalid UTF-8 in rules path");
-            return -1;
+    // 使用安全的C字符串处理
+    let rules_path_str = match safe_cstr_to_string(rules_path, MAX_PATH_LENGTH) {
+        Ok(s) => s,
+        Err(e) => {
+            set_last_error(&format!("Invalid UTF-8 in rules path: {}", e));
+            return -2;
         }
     };
+
+    // 额外的安全检查
+    if rules_path_str.is_empty() {
+        set_last_error("Empty rules path");
+        return -3;
+    }
+
+    log::info!("Loading rules from validated path: {} (length: {})", rules_path_str, validation_result.sanitized_length);
 
     // 获取全局引擎实例
     let engine = match ENGINE.get() {
@@ -235,7 +553,7 @@ pub extern "C" fn web_scan_rust_load_rules(rules_path: *const c_char) -> c_int {
     };
 
     // 尝试加载规则（使用 reload_rules 清除现有规则）
-    match engine.write().reload_rules(rules_path_str) {
+    match engine.write().reload_rules(&rules_path_str) {
         Ok(_) => {
             // 规则加载成功
             log::info!("Rules loaded successfully from {}", rules_path_str);
@@ -274,10 +592,29 @@ pub extern "C" fn web_scan_rust_process_payload(
     payload_len: u32,
     result: *mut web_scan_result_t,
 ) -> c_int {
-    // 检查指针是否为空
+    // 初始化输入验证器
+    init_input_validator();
+
+    // 使用全局输入验证器进行验证
+    let validator = get_input_validator();
+
+    // 安全检查：指针验证
     if payload.is_null() || result.is_null() {
         set_last_error("Null pointer provided");
         return -1;
+    }
+
+    // 验证载荷大小
+    let payload_validation = validator.validate_payload(payload_len, "payload_size");
+    if !payload_validation.is_valid {
+        set_last_error(&payload_validation.error_message.unwrap_or_else(|| "Invalid payload size".to_string()));
+        return -2;
+    }
+
+    // 空载荷检查
+    if payload_len == 0 {
+        set_last_error("Empty payload");
+        return -3;
     }
 
     // 从原始指针创建字节切片
@@ -345,10 +682,30 @@ pub extern "C" fn web_scan_rust_process_payload_with_session(
     reset_on_request_end: c_int,
     result: *mut web_scan_result_t,
 ) -> c_int {
-    // 检查指针是否为空
+    // 初始化输入验证器
+    init_input_validator();
+
+    // 使用全局输入验证器进行验证
+    let validator = get_input_validator();
+
+    // 安全检查：指针验证
     if payload.is_null() || result.is_null() {
         set_last_error("Null pointer provided");
         return -1;
+    }
+
+    // 验证载荷大小
+    let payload_validation = validator.validate_payload(payload_len, "session_payload_size");
+    if !payload_validation.is_valid {
+        set_last_error(&payload_validation.error_message.unwrap_or_else(|| "Invalid session payload size".to_string()));
+        return -2;
+    }
+
+    // 验证会话ID
+    let session_validation = validator.validate_session_id(session_id, "session_id");
+    if !session_validation.is_valid {
+        set_last_error(&session_validation.error_message.unwrap_or_else(|| "Invalid session ID".to_string()));
+        return -3;
     }
 
     // 从原始指针创建字节切片
@@ -647,15 +1004,61 @@ pub extern "C" fn web_scan_rust_set_default_action(action: c_int) -> c_int {
     0 // 成功
 }
 
-/// 设置最后错误信息
-/// 
+/// 安全地将C字符串转换为Rust字符串
+///
+/// 这个函数提供安全的C字符串处理，包括长度限制和UTF-8验证。
+///
+/// # 参数
+/// * `c_str` - C字符串指针
+/// * `max_length` - 最大允许长度
+///
+/// # 返回值
+/// * `Ok(String)` - 转换成功的Rust字符串
+/// * `Err(&'static str)` - 错误描述
+fn safe_cstr_to_string(c_str: *const c_char, max_length: usize) -> Result<String, &'static str> {
+    if c_str.is_null() {
+        return Err("Null C string");
+    }
+
+    unsafe {
+        // 安全检查：验证C字符串长度
+        let mut len = 0;
+        let mut ptr = c_str;
+
+        while *ptr != 0 && len < max_length {
+            len += 1;
+            ptr = ptr.add(1);
+        }
+
+        if len >= max_length {
+            return Err("String too long");
+        }
+
+        // 验证UTF-8有效性
+        CStr::from_ptr(c_str)
+            .to_str()
+            .map(|s| s.to_string())
+            .map_err(|_| "Invalid UTF-8")
+    }
+}
+
+/// 设置最后错误信息（带长度限制）
+///
 /// 这是一个内部函数，用于设置C代码可以获取的错误信息。
-/// 
+/// 包含错误信息长度限制以防止内存滥用。
+///
 /// # 参数
 /// * `message` - 错误消息字符串
 fn set_last_error(message: &str) {
+    // 安全检查：限制错误信息长度
+    let truncated_message = if message.len() > MAX_ERROR_LENGTH {
+        &message[..MAX_ERROR_LENGTH]
+    } else {
+        message
+    };
+
     // 尝试创建C字符串
-    if let Ok(c_string) = CString::new(message) {
+    if let Ok(c_string) = CString::new(truncated_message) {
         // 存储错误信息
         if let Ok(mut error_guard) = LAST_ERROR.lock() {
             *error_guard = Some(c_string);

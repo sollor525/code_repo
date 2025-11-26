@@ -293,6 +293,32 @@ impl Default for SessionThresholdConfig {
     }
 }
 
+/// 会话清理配置
+///
+/// 定义用于会话生命周期管理的参数，防止内存泄漏。
+#[derive(Debug, Clone)]
+pub struct SessionCleanupConfig {
+    /// 会话超时时间（秒），超过此时间未活动的会话将被清理
+    pub session_timeout_seconds: u64,
+    /// 最大活跃会话数量，超过此数量将强制清理最旧的会话
+    pub max_active_sessions: usize,
+    /// 清理检查间隔（秒），定期检查和清理过期会话
+    pub cleanup_interval_seconds: u64,
+    /// 单次清理的最大会话数量，防止清理操作阻塞太久
+    pub max_cleanup_per_run: usize,
+}
+
+impl Default for SessionCleanupConfig {
+    fn default() -> Self {
+        Self {
+            session_timeout_seconds: 300,      // 5分钟超时
+            max_active_sessions: 10000,       // 最大1万个会话
+            cleanup_interval_seconds: 60,       // 每分钟检查一次
+            max_cleanup_per_run: 1000,         // 单次最多清理1000个会话
+        }
+    }
+}
+
 /// 会话统计信息
 ///
 /// 用于记录和报告会话级别的检测统计。
@@ -310,6 +336,10 @@ pub struct SessionStats {
     pub current_threat_level: u8,
     /// 会话方向
     pub direction: crate::protocol::PacketDirection,
+    /// 最后活动时间戳（用于超时清理）
+    pub last_activity_time: std::time::Instant,
+    /// 会话创建时间
+    pub created_time: std::time::Instant,
 }
 
 /// Hyperscan扫描器
@@ -329,6 +359,11 @@ pub struct HyperscanScanner {
     threshold_config: SessionThresholdConfig,
     /// 会话统计信息（用于报告）
     session_stats: Arc<RwLock<HashMap<u64, SessionStats>>>,
+    /// ===== 新增：会话清理配置 =====
+    /// 会话清理配置
+    cleanup_config: SessionCleanupConfig,
+    /// 最后清理时间（用于定期清理）
+    last_cleanup_time: Arc<Mutex<std::time::Instant>>,
 }
 
 impl HyperscanScanner {
@@ -348,6 +383,8 @@ impl HyperscanScanner {
             fast_sessions: Arc::new(RwLock::new(HashMap::new())),
             threshold_config: SessionThresholdConfig::default(),
             session_stats: Arc::new(RwLock::new(HashMap::new())),
+            cleanup_config: SessionCleanupConfig::default(),
+            last_cleanup_time: Arc::new(Mutex::new(std::time::Instant::now())),
         })
     }
 
@@ -359,6 +396,17 @@ impl HyperscanScanner {
         self.threshold_config = config.clone();
         log::info!("Session threshold config updated: match_threshold={}, time_window={}s",
                  config.match_threshold, config.time_window_seconds);
+    }
+
+    /// 设置会话清理配置
+    ///
+    /// # 参数
+    /// * `config` - 清理配置
+    pub fn set_cleanup_config(&mut self, config: SessionCleanupConfig) {
+        self.cleanup_config = config.clone();
+        log::info!("Session cleanup config updated: timeout={}s, max_sessions={}, interval={}s, max_cleanup={}",
+                 config.session_timeout_seconds, config.max_active_sessions,
+                 config.cleanup_interval_seconds, config.max_cleanup_per_run);
     }
 
     /// 获取会话统计信息
@@ -412,7 +460,112 @@ impl HyperscanScanner {
         drop(session_stats);
     }
 
-    /// 计算会话威胁级别
+      /// 智能会话清理（包含超时和数量限制）
+    ///
+    /// 综合考虑会话超时、最大会话数量限制等因素进行智能清理。
+    /// 此函数会在每次数据包处理时被调用，但实际清理操作有频率限制。
+    pub fn smart_cleanup_sessions(&self) {
+        let current_time = std::time::Instant::now();
+
+        // 检查是否到了清理时间（防止频繁清理）
+        {
+            let mut last_cleanup = self.last_cleanup_time.lock().unwrap();
+            if current_time.duration_since(*last_cleanup) < std::time::Duration::from_secs(self.cleanup_config.cleanup_interval_seconds) {
+                return; // 还没到清理时间
+            }
+            *last_cleanup = current_time;
+        }
+
+        let mut sessions = self.sessions.write();
+        let mut fast_sessions = self.fast_sessions.write();
+        let mut session_stats = self.session_stats.write();
+
+        let timeout_duration = std::time::Duration::from_secs(self.cleanup_config.session_timeout_seconds);
+        let max_sessions = self.cleanup_config.max_active_sessions;
+        let max_cleanup = self.cleanup_config.max_cleanup_per_run;
+
+        // 收集需要清理的会话ID
+        let mut sessions_to_remove = Vec::new();
+
+        // 1. 清理超时会话
+        for (session_id, session_arc) in sessions.iter() {
+            if let Some(session_inner) = session_arc.inner.lock().ok() {
+                // 检查最后活动时间
+                if current_time.duration_since(session_inner.last_activity_time) > timeout_duration {
+                    sessions_to_remove.push(*session_id);
+                    continue;
+                }
+
+                // 备用检查：会话开始时间
+                if let Some(start_time) = session_inner.session_start_time {
+                    if current_time.duration_since(start_time) > timeout_duration * 2 {
+                        sessions_to_remove.push(*session_id);
+                    }
+                }
+            }
+        }
+
+        // 2. 如果会话数量仍超过限制，清理最旧的会话
+        if sessions.len() > max_sessions {
+            let mut sessions_by_age: Vec<_> = sessions.iter()
+                .filter_map(|(id, arc)| {
+                    arc.inner.lock().ok().map(|inner| {
+                        let age = inner.session_start_time
+                            .map(|start| current_time.duration_since(start))
+                            .unwrap_or(timeout_duration);
+                        (*id, age)
+                    })
+                })
+                .collect();
+
+            // 按年龄排序（最旧的在前）
+            sessions_by_age.sort_by(|a, b| b.cmp(&a));
+
+            // 标记最旧的会话进行清理（但不超过max_cleanup限制）
+            let excess_count = sessions.len() - max_sessions;
+            let cleanup_count = std::cmp::min(excess_count, max_cleanup - sessions_to_remove.len());
+
+            for (session_id, _) in sessions_by_age.iter().take(cleanup_count) {
+                sessions_to_remove.push(*session_id);
+            }
+        }
+
+        // 限制单次清理数量
+        if sessions_to_remove.len() > max_cleanup {
+            sessions_to_remove.truncate(max_cleanup);
+        }
+
+        // 执行清理操作
+        for session_id in &sessions_to_remove {
+            sessions.remove(session_id);
+            fast_sessions.remove(session_id);
+            session_stats.remove(session_id);
+        }
+
+        if !sessions_to_remove.is_empty() {
+            log::info!("Smart cleanup: removed {} sessions ({} remaining)",
+                      sessions_to_remove.len(), sessions.len());
+        }
+
+        // 释放锁
+        drop(sessions);
+        drop(fast_sessions);
+        drop(session_stats);
+    }
+
+    /// 获取会话统计信息
+    ///
+    /// # 返回值
+    /// * `(usize, usize)` - (活跃会话数, 快速会话数)
+    pub fn get_session_counts(&self) -> (usize, usize) {
+        let sessions_count = self.sessions.read().len();
+        let fast_sessions_count = self.fast_sessions.read().len();
+
+        (sessions_count, fast_sessions_count)
+    }
+
+    
+/// 计算会话威胁级别
     ///
     /// 基于匹配的规则权重计算威胁级别。
     ///
@@ -612,6 +765,9 @@ impl HyperscanScanner {
     /// # 返回值
     /// * `Result<Vec<MatchResult>>` - 匹配结果列表
     pub fn scan_stream_with_session(&self, session_id: u64, data: &[u8], is_final: bool, reset_on_request_end: bool) -> Result<Vec<MatchResult>> {
+        // 智能清理：定期清理过期会话，防止内存泄漏
+        self.smart_cleanup_sessions();
+
         // 第一步：快速获取或创建会话，然后立即释放sessions锁
         let session = {
             let db = self.database.read();
