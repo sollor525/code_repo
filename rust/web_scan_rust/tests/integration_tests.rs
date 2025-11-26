@@ -13,7 +13,7 @@
 //! 
 //! 如果使用默认的并发模式（`cargo test`），测试可能会因为状态干扰而失败。
 
-use web_scan_rust::{Protocol, WebScanResult, WebScanStats, WebScanAction};
+use web_scan_rust::{WebScanResult, WebScanStats, WebScanAction};
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 
@@ -42,8 +42,6 @@ extern "C" {
     fn web_scan_rust_set_default_action(action: WebScanAction) -> c_int;
     fn web_scan_rust_get_rule_count() -> c_int;
     fn web_scan_rust_is_hyperscan_enabled() -> c_int;
-    #[warn(dead_code)]
-    fn web_scan_rust_reload_rules(rules_path: *const c_char) -> c_int;
     fn web_scan_rust_get_last_error() -> *const c_char;
     fn web_scan_rust_cleanup() -> c_int;
     fn web_scan_rust_close_session(session_id: u64) -> c_int;
@@ -57,7 +55,7 @@ fn test_hyperscan_initialization() {
     assert_eq!(result, 0);
 
     // 此时 Hyperscan 应该是启用的，即使没有规则
-    let hyperscan_enabled = unsafe { web_scan_rust_is_hyperscan_enabled() };
+    let _hyperscan_enabled = unsafe { web_scan_rust_is_hyperscan_enabled() };
     // 注意：在没有规则的情况下可能返回 0，这是正常的
 
     // 清理
@@ -360,7 +358,6 @@ fn test_engine_control() {
 #[test]
 fn test_concurrent_safety() {
     use std::thread;
-    use std::sync::Arc;
     
     // 初始化引擎并确保启用
     let result = unsafe { web_scan_rust_init() };

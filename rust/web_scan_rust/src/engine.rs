@@ -8,7 +8,7 @@ use crate::error::Result;
 // 导入协议检测相关类型
 use crate::protocol::{Protocol, ProtocolDetector, PacketDirection};
 // 导入规则管理相关类型
-use crate::rules::{RuleAction, RuleManager, Rule, RuleThresholdConfig, ThresholdTrackBy, ThresholdType};
+use crate::rules::{RuleAction, RuleManager, Rule, RuleThresholdConfig, ThresholdTrackBy};
 // 导入统计收集器
 use crate::stats::StatsCollector;
 // 导入Hyperscan相关类型
@@ -20,7 +20,7 @@ use std::sync::Arc;
 // 导入HashMap用于threshold跟踪
 use std::collections::HashMap;
 // 导入时间相关类型
-use std::time::{Instant, Duration};
+use std::time::Instant;
 
 /// Web扫描动作枚举
 /// 
@@ -63,7 +63,7 @@ pub struct WebScanResult {
     pub protocol: Protocol,         // 检测到的协议类型
     pub confidence: u8,             // 协议检测的置信度（0-100）
     pub direction: PacketDirection,  // 数据包流向（请求/响应）
-    pub status_code: Option<u16>,   // HTTP状态码（仅响应包）
+    pub status_code: u16,           // HTTP状态码（仅响应包），0表示无状态码
 }
 
 // 为WebScanResult实现Default trait
@@ -78,7 +78,7 @@ impl Default for WebScanResult {
             protocol: Protocol::Unknown,       // 未知协议
             confidence: 0,                     // 零置信度
             direction: PacketDirection::Unknown, // 未知流向
-            status_code: None,                  // 无状态码
+            status_code: 0,                    // 无状态码
         }
     }
 }
@@ -197,6 +197,16 @@ impl WebScanEngine {
         Ok(())
     }
 
+    /// 获取规则管理器的只读引用
+    /// 
+    /// 返回规则管理器的只读引用，用于访问规则信息。
+    /// 
+    /// # 返回值
+    /// * `Arc<RwLock<RuleManager>>` - 规则管理器的只读引用
+    pub fn get_rule_manager(&self) -> Arc<RwLock<RuleManager>> {
+        self.rule_manager.clone()
+    }
+
     /// 处理数据包载荷并返回检测结果
     /// 
     /// 这是引擎的核心方法，执行完整的检测流程：
@@ -272,7 +282,7 @@ impl WebScanEngine {
         };
 
         // 第三步：规则匹配 - 使用 Hyperscan
-        let (matched_rule_id, action) = {
+        let (matched_rule_id, _action) = {
             // 使用 Hyperscan 进行高性能匹配（始终启用）
             match self._hyperscan_match(payload) {
                 Ok(Some(rule_id)) => {
@@ -545,7 +555,7 @@ impl WebScanEngine {
                 protocol: proto,
                 confidence: 80u8,  // 0.8 * 100 = 80%
                 direction: crate::protocol::PacketDirection::Unknown, // 默认未知流向
-                status_code: None, // 未知协议没有状态码
+                status_code: 0, // 未知协议没有状态码
             }
         } else {
             self.protocol_detector.detect(data)?
@@ -1120,12 +1130,21 @@ impl WebScanEngine {
                             // 验证PCRE模式是否在正确的HTTP位置匹配
                             // 对于只有PCRE模式的规则，只要有一个PCRE模式匹配即可
                             let mut matched = false;
-                            for pcre_pattern in &rule.pcre_patterns {
+                            log::debug!("Rule {} has {} PCRE patterns to check", rule.id, rule.pcre_patterns.len());
+                            
+                            for (pcre_index, pcre_pattern) in rule.pcre_patterns.iter().enumerate() {
+                                log::debug!("Checking PCRE pattern {} for rule {}: match_type={:?}, http_location={:?}", 
+                                          pcre_index, rule.id, pcre_pattern.match_type, pcre_pattern.http_location);
+                                log::debug!("  raw_pattern: {}", pcre_pattern.raw_pattern);
+                                log::debug!("  processed_pattern: {}", pcre_pattern.processed_pattern);
+                                log::debug!("  has_compiled_regex: {}", pcre_pattern.compiled_regex.is_some());
+                                
                                 // 跳过Any位置的模式（如果没有特定位置要求，应该在full_content中匹配）
                                 if pcre_pattern.http_location == crate::rules::HttpMatchLocation::Any {
                                     // 对于Any位置，在整个HTTP内容中匹配
                                     if let Some(regex) = &pcre_pattern.compiled_regex {
                                         if regex.is_match(http_parts.full_content) {
+                                            log::debug!("✅ Rule {} PCRE pattern {} matched (Any location)", rule.id, pcre_index);
                                             matched = true;
                                             break;
                                         }
@@ -1144,7 +1163,12 @@ impl WebScanEngine {
                                     crate::rules::HttpMatchLocation::RequestHeader => http_parts.request_header,
                                 };
                                 
+                                log::debug!("Target content length: {}, content preview: '{}'", 
+                                          target_content.len(), 
+                                          if target_content.len() > 50 { &target_content[..50] } else { target_content });
+                                
                                 if target_content.is_empty() {
+                                    log::debug!("Target content is empty, skipping this pattern");
                                     continue; // 如果目标内容为空，跳过这个模式
                                 }
                                 
@@ -1155,14 +1179,31 @@ impl WebScanEngine {
                                 
                                 // 验证PCRE模式是否匹配
                                 if let Some(regex) = &pcre_pattern.compiled_regex {
-                                    // 使用已编译的 regex
-                                    if regex.is_match(target_content) {
-                                        log::debug!("✅ Rule {} PCRE pattern matched (compiled regex)", rule.id);
-                                        matched = true;
-                                        break;
+                                    // 对于RegexFallback类型，直接使用已编译的regex
+                                    if pcre_pattern.match_type == crate::pcre::PcreMatchType::RegexFallback {
+                                        log::debug!("Using RegexFallback pattern with pre-compiled regex");
+                                        if regex.is_match(target_content) {
+                                            log::debug!("✅ Rule {} PCRE pattern {} matched (RegexFallback)", rule.id, pcre_index);
+                                            matched = true;
+                                            break;
+                                        } else {
+                                            log::debug!("PCRE pattern {} did not match (RegexFallback)", pcre_index);
+                                        }
+                                    } else {
+                                        // 对于Hyperscan类型，使用已编译的regex
+                                        log::debug!("Using Hyperscan pattern with pre-compiled regex");
+                                        if regex.is_match(target_content) {
+                                            log::debug!("✅ Rule {} PCRE pattern {} matched (Hyperscan)", rule.id, pcre_index);
+                                            matched = true;
+                                            break;
+                                        } else {
+                                            log::debug!("PCRE pattern {} did not match (Hyperscan)", pcre_index);
+                                        }
                                     }
                                 } else {
-                                    // 对于 Hyperscan 类型的 PCRE 模式，动态创建 regex 进行匹配
+                                    // 如果没有预编译的regex，尝试动态创建（这应该很少发生）
+                                    log::debug!("Rule {} PCRE pattern {} has no compiled regex, attempting dynamic compilation", rule.id, pcre_index);
+                                    
                                     // 使用 processed_pattern（已转换的模式）
                                     let pattern_to_use = &pcre_pattern.processed_pattern;
                                     
@@ -1186,9 +1227,11 @@ impl WebScanEngine {
                                     match builder.build() {
                                         Ok(regex) => {
                                             if regex.is_match(target_content) {
-                                                log::debug!("✅ Rule {} PCRE pattern matched (dynamic regex)", rule.id);
+                                                log::debug!("✅ Rule {} PCRE pattern {} matched (dynamic regex)", rule.id, pcre_index);
                                                 matched = true;
                                                 break;
+                                            } else {
+                                                log::debug!("PCRE pattern {} did not match (dynamic regex)", pcre_index);
                                             }
                                         }
                                         Err(e) => {
@@ -1466,20 +1509,6 @@ impl WebScanEngine {
                     pcre.processed_pattern == p.pattern
                 })
             });
-        
-        // 特殊调试：规则1000101
-        if rule.id == 1000101 {
-            log::debug!("🔍 Rule 1000101 verify_http_location_match:");
-            log::debug!("  patterns.len()={}, pcre_patterns.len()={}", rule.patterns.len(), rule.pcre_patterns.len());
-            log::debug!("  pcre_has_location_requirement={}, patterns_are_from_pcre={}", pcre_has_location_requirement, patterns_are_from_pcre);
-            for (idx, p) in rule.patterns.iter().enumerate() {
-                log::debug!("  Pattern[{}]: '{}'", idx, p.pattern);
-            }
-            for (idx, pcre) in rule.pcre_patterns.iter().enumerate() {
-                log::debug!("  PCRE[{}]: type={:?}, location={:?}, pattern='{}'", 
-                           idx, pcre.match_type, pcre.http_location, pcre.processed_pattern);
-            }
-        }
         
         // 如果规则只有PCRE模式（或patterns都是PCRE转换来的）且有HTTP位置要求，需要验证PCRE模式
         if (rule.patterns.is_empty() || patterns_are_from_pcre) && pcre_has_location_requirement {

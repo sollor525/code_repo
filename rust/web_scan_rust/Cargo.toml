@@ -77,6 +77,11 @@ tempfile = "3.8"                          # 临时文件创建库，用于测试
 name = "detection_bench"                   # 基准测试的名称
 harness = false                            # 禁用默认的基准测试框架，使用criterion
 
+[[bench]]
+# PCRE性能基准测试配置
+name = "pcre_performance"                  # PCRE性能基准测试的名称
+harness = false                            # 禁用默认的基准测试框架，使用criterion
+
 
 [profile.release]
 # 发布版本的编译优化配置

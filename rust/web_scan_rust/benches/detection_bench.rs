@@ -31,7 +31,7 @@ fn bench_protocol_detection(c: &mut Criterion) {
 fn bench_rule_matching(c: &mut Criterion) {
     let mut engine = WebScanEngine::new();
     
-    // Create a temporary rules file for testing
+    // Create a temporary rules file for testing with .rules extension
     let rules_content = r#"
 alert http any any -> any any (msg:"Admin access"; content:"/admin/"; sid:1001;)
 alert http any any -> any any (msg:"Login page"; content:"login.php"; sid:1002;)
@@ -40,7 +40,11 @@ alert http any any -> any any (msg:"XSS attempt"; content:"<script>"; sid:1004;)
 alert http any any -> any any (msg:"Directory traversal"; content:"../"; sid:1005;)
 "#;
     
-    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+    // Create a temporary file with .rules extension
+    let mut temp_file = tempfile::Builder::new()
+        .suffix(".rules")
+        .tempfile()
+        .unwrap();
     temp_file.write_all(rules_content.as_bytes()).unwrap();
     
     engine.init_with_rules(temp_file.path().to_str().unwrap()).unwrap();
@@ -78,7 +82,11 @@ fn bench_concurrent_processing(c: &mut Criterion) {
         let rules_content = r#"
 alert http any any -> any any (msg:"Test rule"; content:"test"; sid:1001;)
 "#;
-        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        // Create a temporary file with .rules extension
+        let mut temp_file = tempfile::Builder::new()
+            .suffix(".rules")
+            .tempfile()
+            .unwrap();
         temp_file.write_all(rules_content.as_bytes()).unwrap();
         engine.init_with_rules(temp_file.path().to_str().unwrap()).unwrap();
         engine

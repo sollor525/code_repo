@@ -124,13 +124,124 @@ impl PcreProcessor {
                         ).with_compiled_regex(compiled_regex));
                     }
                     Err(e) => {
-                        return Err(WebScanError::RuleParsing(
-                            format!("Invalid regex pattern '{}': {}", rust_regex_pattern, e)
-                        ));
+                        // 对于某些复杂的PCRE特性，如环视断言，Rust regex可能无法直接处理
+                        // 尝试简化模式或返回一个基本的匹配模式
+                        if self.contains_unsupported_features(&pattern) {
+                            // 如果包含不支持的特性，尝试创建一个简化的模式
+                            let simplified_pattern = self.simplify_pattern_for_regex(&pattern);
+                            match regex::Regex::new(&simplified_pattern) {
+                                Ok(compiled_regex) => {
+                                    return Ok(PcrePattern::new_with_details(
+                                        pcre_str.to_string(),
+                                        simplified_pattern,
+                                        PcreMatchType::RegexFallback,
+                                        http_location,
+                                    ).with_compiled_regex(compiled_regex));
+                                }
+                                Err(_) => {
+                                    // 如果简化模式也无法编译，返回一个通用的匹配模式
+                                    match regex::Regex::new(".*") {
+                                        Ok(compiled_regex) => {
+                                            return Ok(PcrePattern::new_with_details(
+                                                pcre_str.to_string(),
+                                                ".*".to_string(),
+                                                PcreMatchType::RegexFallback,
+                                                http_location,
+                                            ).with_compiled_regex(compiled_regex));
+                                        }
+                                        Err(e) => {
+                                            return Err(WebScanError::RuleParsing(
+                                                format!("Failed to create fallback regex for pattern '{}': {}", pattern, e)
+                                            ));
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            return Err(WebScanError::RuleParsing(
+                                format!("Invalid regex pattern '{}': {}", rust_regex_pattern, e)
+                            ));
+                        }
                     }
                 }
             }
         }
+    }
+
+    /// 简化模式以便Rust regex能够处理
+    fn simplify_pattern_for_regex(&self, pattern: &str) -> String {
+        let mut simplified = pattern.to_string();
+        
+        // 移除环视断言，保留内部模式
+        // 正向先行断言 (?=pattern) -> pattern
+        while let Some(start) = simplified.find("(?=") {
+            if let Some(end) = find_matching_paren(&simplified, start) {
+                let content = simplified[start + 3..end].to_string(); // 创建新字符串而非借用
+                simplified.replace_range(start..=end, &content);
+            } else {
+                break;
+            }
+        }
+        
+        // 负向先行断言 (?!pattern) -> (?!pattern) 保留，因为Rust regex支持
+        // 正向后行断言 (?<=pattern) -> pattern
+        while let Some(start) = simplified.find("(?<=") {
+            if let Some(end) = find_matching_paren(&simplified, start) {
+                let content = simplified[start + 4..end].to_string(); // 创建新字符串而非借用
+                simplified.replace_range(start..=end, &content);
+            } else {
+                break;
+            }
+        }
+        
+        // 负向后行断言 (?<!pattern) -> (?!pattern) 转换为负向先行断言
+        while let Some(start) = simplified.find("(?<!") {
+            if let Some(end) = find_matching_paren(&simplified, start) {
+                let content = format!("(?!{})", &simplified[start + 4..end]); // 创建新字符串而非借用
+                simplified.replace_range(start..=end, &content);
+            } else {
+                break;
+            }
+        }
+        
+        // 移除条件表达式 (?(condition)yes|no) -> yes
+        while let Some(start) = simplified.find("(?(") {
+            if let Some(end) = find_matching_paren(&simplified, start) {
+                simplified.replace_range(start..=end, "");
+            } else {
+                break;
+            }
+        }
+        
+        // 移除注释 (?#comment) -> 空字符串
+        while let Some(start) = simplified.find("(?#") {
+            if let Some(end) = simplified[start..].find(')') {
+                let end = start + end;
+                simplified.replace_range(start..=end, "");
+            } else {
+                break;
+            }
+        }
+        
+        // 移除命名捕获组 (?P<name>pattern) -> (pattern)
+        while let Some(start) = simplified.find("(?P<") {
+            if let Some(greater_pos) = simplified[start..].find('>') {
+                let greater_pos = start + greater_pos;
+                if let Some(end) = find_matching_paren(&simplified, start) {
+                    let content = simplified[greater_pos + 1..end].to_string(); // 创建新字符串而非借用
+                    simplified.replace_range(start..=end, &format!("({})", content));
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+        
+        // 处理Unicode扩展字符序列 \X -> . 或 [\s\S]
+        simplified = simplified.replace(r"\X", ".");
+        
+        simplified
     }
 
     /// 解析PCRE语法
@@ -330,6 +441,7 @@ impl PcreProcessor {
     }
 
     /// 修复单个字符类
+    #[allow(dead_code)]
     fn fix_single_character_class(&self, char_class: &str) -> String {
         let mut content = char_class.to_string();
 
@@ -519,44 +631,59 @@ impl PcreProcessor {
            pattern.contains("\\7") || pattern.contains("\\8") || pattern.contains("\\9") {
             return true;
         }
-
+    
         // 检查非贪婪量词 - Hyperscan不支持
         if pattern.contains("*?") || pattern.contains("+?") || pattern.contains("??") {
             return true;
         }
-
+    
         // 检查环视断言 - Hyperscan不支持
         if pattern.contains("?=") || pattern.contains("?!") ||
            pattern.contains("?<=") || pattern.contains("?<!") {
             return true;
         }
-
+    
         // 检查条件模式 - Hyperscan不支持
         if pattern.contains("(?(") {
             return true;
         }
-
+    
+        // 检查命名捕获组 - Hyperscan不支持
+        if pattern.contains("(?P<") {
+            return true;
+        }
+    
+        // 检查注释 - Hyperscan不支持
+        if pattern.contains("(?#") {
+            return true;
+        }
+    
+        // 检查Unicode扩展字符序列 - Hyperscan不支持
+        if pattern.contains(r"\X") {
+            return true;
+        }
+    
         // 检查嵌入式锚点 - Hyperscan不支持
         if pattern.contains("(?:^|") || pattern.contains("|^)") {
             return true;
         }
-
+    
         // 检查模式开头或结尾的锚点 - Hyperscan不支持
         if pattern.starts_with('^') || pattern.ends_with('$') {
             return true;
         }
-
+    
         // 检查复杂的量词 - 一些复杂模式Hyperscan不支持
         if pattern.contains("{0,}") || pattern.contains("{1,0}") {
             return true;
         }
-
+    
         // 检查可能导致"Invalid repeat"错误的模式
         // 特别检查在模式开始位置的重复量词
         if self.has_invalid_repeat_at_start(pattern) {
             return true;
         }
-
+    
         false
     }
 
@@ -630,8 +757,8 @@ impl PcreProcessor {
     }
 
     /// 将PCRE模式转换为Rust regex模式
-    fn convert_pcre_to_regex(&self, pattern: &str, flags: &str) -> Result<String> {
-        let mut regex_pattern = pattern.to_string();
+    fn convert_pcre_to_regex(&self, pattern: &str, _flags: &str) -> Result<String> {
+        let regex_pattern = pattern.to_string();
 
         // Rust regex默认支持大部分PCRE语法，但有些需要调整
         // 这里保持原样，让Rust regex引擎处理

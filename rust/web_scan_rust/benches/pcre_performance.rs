@@ -6,6 +6,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion, Benchmark
 use web_scan_rust::pcre::{PcreProcessor, PcrePattern, PcreMatchType};
 use web_scan_rust::rules::{RuleManager, HttpMatchLocation};
 use std::path::Path;
+use regex::Regex;
 
 /// 基准测试：PCRE模式创建和编译
 fn bench_pcre_pattern_creation(c: &mut Criterion) {
@@ -25,7 +26,12 @@ fn bench_pcre_pattern_creation(c: &mut Criterion) {
             pattern,
             |b, pattern| {
                 b.iter(|| {
-                    let pcre_pattern = PcrePattern::new(pattern);
+                    let pcre_pattern = PcrePattern::new_with_details(
+                        pattern.to_string(),
+                        pattern.to_string(),
+                        PcreMatchType::RegexFallback,
+                        HttpMatchLocation::Any,
+                    );
                     black_box(pcre_pattern);
                 });
             },
@@ -61,27 +67,29 @@ Server: Apache/2.4.41
         ("email", r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
         ("html_tag", r"<[^>]+>"),
         ("script", r"<script[^>]*>.*?</script>"),
-        ("form_field", r"<input[^>]*name=\"[^\"]+\""),
-        ("password_field", r"<input[^>]*type=\"password\""),
+        ("form_field", r"<input[^>]*name=\x22[^\x22]+\x22>"),
+        ("password_field", r"<input[^>]*type=\x22password\x22>"),
     ];
 
     let mut group = c.benchmark_group("regex_matching");
 
     for (name, pattern) in &patterns {
-        let pcre_pattern = PcrePattern::new(pattern);
+        // 创建并编译正则表达式
+        let regex = match Regex::new(pattern) {
+            Ok(r) => r,
+            Err(_) => continue, // 跳过无效的正则表达式
+        };
 
-        if let Some(ref regex) = pcre_pattern.compiled_regex {
-            group.bench_with_input(
-                BenchmarkId::new("match", name),
-                &test_data,
-                |b, data| {
-                    b.iter(|| {
-                        let result = regex.is_match(data);
-                        black_box(result);
-                    });
-                },
-            );
-        }
+        group.bench_with_input(
+            BenchmarkId::new("match", name),
+            &test_data,
+            |b, data| {
+                b.iter(|| {
+                    let result = regex.is_match(data);
+                    black_box(result);
+                });
+            },
+        );
     }
 
     group.finish();
@@ -238,20 +246,22 @@ SELECT * FROM users WHERE id = 1 UNION SELECT username,password FROM admin
     let mut group = c.benchmark_group("complex_regex");
 
     for (i, pattern) in complex_patterns.iter().enumerate() {
-        let pcre_pattern = PcrePattern::new(pattern);
+        // 创建并编译正则表达式
+        let regex = match Regex::new(pattern) {
+            Ok(r) => r,
+            Err(_) => continue, // 跳过无效的正则表达式
+        };
 
-        if let Some(ref regex) = pcre_pattern.compiled_regex {
-            group.bench_with_input(
-                BenchmarkId::new("complex_match", i),
-                &test_data,
-                |b, data| {
-                    b.iter(|| {
-                        let result = regex.is_match(data);
-                        black_box(result);
-                    });
-                },
-            );
-        }
+        group.bench_with_input(
+            BenchmarkId::new("complex_match", i),
+            &test_data,
+            |b, data| {
+                b.iter(|| {
+                    let result = regex.is_match(data);
+                    black_box(result);
+                });
+            },
+        );
     }
 
     group.finish();

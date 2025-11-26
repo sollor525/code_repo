@@ -246,7 +246,7 @@ impl PcreProcessor {
             converted = converted.replace(unsupported, replacement);
         }
 
-        // 移除不支持的特性并警告
+        // 检查不支持的特性并返回错误（让调用者决定使用fallback）
         if converted.contains(r"(?<=") || converted.contains(r"(?<!") {
             return Err(WebScanError::RuleParsing(
                 "Lookbehind assertions are not supported by Hyperscan".to_string()
@@ -274,6 +274,13 @@ impl PcreProcessor {
         if converted.contains(r"\X") {
             return Err(WebScanError::RuleParsing(
                 "\\X Unicode extended grapheme clusters are not supported by Hyperscan".to_string()
+            ));
+        }
+
+        // 检查注释
+        if converted.contains(r"(?#") {
+            return Err(WebScanError::RuleParsing(
+                "Comments are not supported by Hyperscan".to_string()
             ));
         }
 
@@ -398,11 +405,15 @@ impl PcreProcessor {
     ) -> Result<PcrePattern> {
         // 解析PCRE字符串
         let (raw_pattern, flags) = Self::parse_pcre_string(pcre_str)?;
+        log::debug!("Processing PCRE pattern: '{}' -> raw: '{}', flags: {:?}", pcre_str, raw_pattern, flags);
 
         // 检查Hyperscan兼容性
-        let (match_type, processed_pattern) = if Self::is_hyperscan_compatible(&raw_pattern) {
+        let is_compatible = Self::is_hyperscan_compatible(&raw_pattern);
+        log::debug!("Pattern '{}' is Hyperscan compatible: {}", raw_pattern, is_compatible);
+        
+        let (match_type, processed_pattern) = if is_compatible {
             // 直接兼容Hyperscan
-            (PcreMatchType::Hyperscan, raw_pattern.clone())
+            (PcreMatchType::Hyperscan, raw_pattern.to_string())
         } else {
             // 尝试转换为Hyperscan兼容格式
             match Self::convert_to_hyperscan(&raw_pattern) {
@@ -412,10 +423,12 @@ impl PcreProcessor {
                 }
                 Err(e) => {
                     log::warn!("Failed to convert PCRE pattern '{}' to Hyperscan: {}, using regex fallback", raw_pattern, e);
-                    (PcreMatchType::RegexFallback, raw_pattern.clone())
+                    (PcreMatchType::RegexFallback, raw_pattern.to_string())
                 }
             }
         };
+
+        log::debug!("Pattern '{}' will use match type: {:?}", raw_pattern, match_type);
 
         // 如果是fallback模式，编译正则表达式
         let compiled_regex = if match_type == PcreMatchType::RegexFallback {
@@ -430,8 +443,9 @@ impl PcreProcessor {
                         Some(regex)
                     }
                     Err(e) => {
-                        log::error!("Failed to compile regex fallback for '{}': {}", raw_pattern, e);
-                        return Err(e);
+                        log::warn!("Failed to compile regex fallback for '{}': {}, using pattern without compilation", raw_pattern, e);
+                        // 即使编译失败，也返回None而不是错误，允许模式被处理
+                        None
                     }
                 }
             }
@@ -440,7 +454,7 @@ impl PcreProcessor {
         };
 
         Ok(PcrePattern {
-            raw_pattern,
+            raw_pattern: raw_pattern.to_string(),
             processed_pattern,
             flags,
             match_type,

@@ -40,7 +40,7 @@ pub struct ProtocolResult {
     pub protocol: Protocol,        // 检测到的协议类型
     pub confidence: u8,            // 置信度，范围0-100
     pub direction: PacketDirection, // 数据包流向
-    pub status_code: Option<u16>,   // HTTP状态码（仅响应包）
+    pub status_code: u16,           // HTTP状态码（仅响应包），0表示无状态码
 }
 
 // 协议检测器结构体
@@ -93,7 +93,7 @@ impl ProtocolDetector {
                 protocol: Protocol::Unknown,
                 confidence: 0,
                 direction: PacketDirection::Unknown,
-                status_code: None,
+                status_code: 0,
             });
         }
 
@@ -104,7 +104,7 @@ impl ProtocolDetector {
                 protocol: Protocol::Http2,
                 confidence: 100,  // 100%置信度
                 direction: PacketDirection::ToServer, // HTTP/2连接前言是请求包
-                status_code: None,
+                status_code: 0,
             });
         }
 
@@ -114,7 +114,7 @@ impl ProtocolDetector {
                 protocol: Protocol::Https,
                 confidence: 90,   // 90%置信度
                 direction: PacketDirection::ToServer, // TLS握手是客户端发起的
-                status_code: None,
+                status_code: 0,
             });
         }
 
@@ -133,7 +133,7 @@ impl ProtocolDetector {
             protocol: Protocol::Unknown,
             confidence: 0,
             direction: PacketDirection::Unknown,
-            status_code: None,
+            status_code: 0,
         })
     }
 
@@ -141,6 +141,7 @@ impl ProtocolDetector {
     ///
     /// 这个私有方法分析载荷的第一行，寻找HTTP特征。
     /// 返回Option<u8>，Some(confidence)表示检测到HTTP，None表示未检测到。
+    #[allow(dead_code)]
     fn detect_http(&self, payload: &[u8]) -> Option<u8> {
         // 调用详细检测方法，只返回置信度部分
         self.detect_http_detailed(payload).map(|(conf, _, _)| conf)
@@ -150,7 +151,7 @@ impl ProtocolDetector {
     ///
     /// 这个私有方法分析载荷的完整内容，识别HTTP协议、数据包流向和状态码。
     /// 返回Option<(u8, PacketDirection, Option<u16>)>，包含置信度、流向和状态码。
-    fn detect_http_detailed(&self, payload: &[u8]) -> Option<(u8, PacketDirection, Option<u16>)> {
+    fn detect_http_detailed(&self, payload: &[u8]) -> Option<(u8, PacketDirection, u16)> {
         // 将字节转换为字符串进行解析（只需要第一行）
         // iter()创建迭代器，position()找到第一个匹配条件的位置
         // |&b| 是闭包语法，&b表示解引用字节
@@ -180,7 +181,7 @@ impl ProtocolDetector {
             }
 
             if confidence >= 50 {
-                return Some((confidence.min(100), direction, Some(status_code)));
+                return Some((confidence.min(100), direction, status_code));
             } else {
                 return None;
             }
@@ -221,7 +222,7 @@ impl ProtocolDetector {
         // 如果置信度达到50分以上，认为是HTTP
         if confidence >= 50 {
             // min(100)确保置信度不超过100
-            Some((confidence.min(100), direction, None))
+            Some((confidence.min(100), direction, 0)) // 0表示无状态码
         } else {
             None  // 置信度不够，不是HTTP
         }
@@ -326,7 +327,7 @@ mod tests {
         // assert_eq!宏用于断言两个值相等
         assert_eq!(result.protocol, Protocol::Http);
         assert_eq!(result.direction, PacketDirection::ToServer); // 请求包
-        assert_eq!(result.status_code, None); // 请求包没有状态码
+        assert_eq!(result.status_code, 0); // 请求包没有状态码
         // assert!宏用于断言条件为真
         assert!(result.confidence >= 75);
     }
@@ -343,7 +344,7 @@ mod tests {
 
         assert_eq!(result.protocol, Protocol::Http);
         assert_eq!(result.direction, PacketDirection::ToClient); // 响应包
-        assert_eq!(result.status_code, Some(200)); // 200状态码
+        assert_eq!(result.status_code, 200); // 200状态码
         assert!(result.confidence >= 80);
     }
 
@@ -359,7 +360,7 @@ mod tests {
 
         assert_eq!(result.protocol, Protocol::Http);
         assert_eq!(result.direction, PacketDirection::ToClient);
-        assert_eq!(result.status_code, Some(404));
+        assert_eq!(result.status_code, 404);
         assert!(result.confidence >= 80);
     }
 
@@ -378,7 +379,7 @@ mod tests {
         let result = detector.detect(&tls_handshake).unwrap();
         assert_eq!(result.protocol, Protocol::Https);
         assert_eq!(result.direction, PacketDirection::ToServer); // TLS握手是客户端发起的
-        assert_eq!(result.status_code, None); // TLS握手没有HTTP状态码
+        assert_eq!(result.status_code, 0); // TLS握手没有HTTP状态码
     }
 
     /// 测试HTTP/2检测功能
@@ -393,7 +394,7 @@ mod tests {
         assert_eq!(result.protocol, Protocol::Http2);
         assert_eq!(result.direction, PacketDirection::ToServer); // HTTP/2连接前言是请求包
         assert_eq!(result.confidence, 100);  // 应该是100%置信度
-        assert_eq!(result.status_code, None);
+        assert_eq!(result.status_code, 0);
     }
 
     /// 测试未知协议检测
@@ -409,6 +410,207 @@ mod tests {
         assert_eq!(result.protocol, Protocol::Unknown);
         assert_eq!(result.confidence, 0);
         assert_eq!(result.direction, PacketDirection::Unknown);
-        assert_eq!(result.status_code, None);
+        assert_eq!(result.status_code, 0);
+    }
+
+    /// 测试空数据检测
+    #[test]
+    fn test_empty_data() {
+        let detector = ProtocolDetector::new();
+        let empty_data = b"";
+        let result = detector.detect(empty_data).unwrap();
+
+        assert_eq!(result.protocol, Protocol::Unknown);
+        assert_eq!(result.confidence, 0);
+        assert_eq!(result.direction, PacketDirection::Unknown);
+        assert_eq!(result.status_code, 0);
+    }
+
+    /// 测试极小数据包检测
+    #[test]
+    fn test_minimal_data() {
+        let detector = ProtocolDetector::new();
+        let minimal_data = b"G";
+        let result = detector.detect(minimal_data).unwrap();
+
+        assert_eq!(result.protocol, Protocol::Unknown);
+        assert_eq!(result.confidence, 0);
+        assert_eq!(result.direction, PacketDirection::Unknown);
+        assert_eq!(result.status_code, 0);
+    }
+
+    /// 测试不完整HTTP请求
+    #[test]
+    fn test_incomplete_http_request() {
+        let detector = ProtocolDetector::new();
+        let incomplete_request = b"GET /";
+        let result = detector.detect(incomplete_request).unwrap();
+
+        // 不完整的HTTP请求可能被识别为Unknown或低置信度的Http
+        assert_eq!(result.protocol, Protocol::Unknown);
+        assert_eq!(result.confidence, 0);
+    }
+
+    /// 测试不完整TLS握手
+    #[test]
+    fn test_incomplete_tls_handshake() {
+        let detector = ProtocolDetector::new();
+        let incomplete_tls = b"\x16\x03"; // 只有内容类型和部分版本
+        let result = detector.detect(incomplete_tls).unwrap();
+
+        assert_eq!(result.protocol, Protocol::Unknown);
+        assert_eq!(result.confidence, 0);
+    }
+
+    /// 测试无效HTTP版本
+    #[test]
+    fn test_invalid_http_version() {
+        let detector = ProtocolDetector::new();
+        let invalid_http = b"GET / HTTP/9.9\r\nHost: example.com\r\n\r\n";
+        let result = detector.detect(invalid_http).unwrap();
+
+        // 应该识别为HTTP，但置信度较低
+        assert_eq!(result.protocol, Protocol::Http);
+        assert!(result.confidence < 50); // 置信度应该低于50
+    }
+
+    /// 测试无效HTTP状态码
+    #[test]
+    fn test_invalid_http_status_code() {
+        let detector = ProtocolDetector::new();
+        let invalid_status = b"HTTP/1.1 999 OK\r\nContent-Type: text/html\r\n\r\n";
+        let result = detector.detect(invalid_status).unwrap();
+
+        // 应该识别为HTTP，但状态码为0（无效）
+        assert_eq!(result.protocol, Protocol::Http);
+        assert_eq!(result.status_code, 0);
+    }
+
+    /// 测试非UTF-8数据
+    #[test]
+    fn test_non_utf8_data() {
+        let detector = ProtocolDetector::new();
+        let non_utf8 = &[0xFF, 0xFE, 0xFD, 0xFC];
+        let result = detector.detect(non_utf8).unwrap();
+
+        assert_eq!(result.protocol, Protocol::Unknown);
+        assert_eq!(result.confidence, 0);
+    }
+
+    /// 测试HTTP方法边界情况
+    #[test]
+    fn test_http_method_edge_cases() {
+        let detector = ProtocolDetector::new();
+
+        // 测试非标准但可能有效的方法
+        let non_standard_method = b"CUSTOM /path HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        let result = detector.detect(non_standard_method).unwrap();
+        assert_eq!(result.protocol, Protocol::Http);
+        assert!(result.confidence >= 50);
+
+        // 测试大小写混合的方法
+        let mixed_case_method = b"Get /path HTTP/1.1\r\nHost: example.com\r\n\r\n";
+        let result = detector.detect(mixed_case_method).unwrap();
+        assert_eq!(result.protocol, Protocol::Http);
+        assert!(result.confidence < 50); // 应该是低置信度，因为方法不标准
+    }
+
+    /// 测试HTTP头部边界情况
+    #[test]
+    fn test_http_headers_edge_cases() {
+        let detector = ProtocolDetector::new();
+
+        // 测试没有Host头部的请求
+        let no_host = b"GET /path HTTP/1.1\r\nUser-Agent: test\r\n\r\n";
+        let result = detector.detect(no_host).unwrap();
+        assert_eq!(result.protocol, Protocol::Http);
+        assert!(result.confidence >= 50);
+
+        // 测试只有头部没有主体的请求
+        let headers_only = b"GET /path HTTP/1.1\r\nHost: example.com\r\n";
+        let result = detector.detect(headers_only).unwrap();
+        assert_eq!(result.protocol, Protocol::Http);
+        assert!(result.confidence >= 50);
+    }
+
+    /// 测试TLS版本边界情况
+    #[test]
+    fn test_tls_version_edge_cases() {
+        let detector = ProtocolDetector::new();
+
+        // 测试SSL 3.0 (0x0300)
+        let ssl_3_0 = [0x16, 0x03, 0x00, 0x00, 0x40];
+        let result = detector.detect(&ssl_3_0).unwrap();
+        assert_eq!(result.protocol, Protocol::Unknown); // SSL 3.0不在支持范围内
+
+        // 测试TLS 1.4 (0x0305) - 不存在的版本
+        let tls_1_4 = [0x16, 0x03, 0x05, 0x00, 0x40];
+        let result = detector.detect(&tls_1_4).unwrap();
+        assert_eq!(result.protocol, Protocol::Unknown); // TLS 1.4不在支持范围内
+
+        // 测试非握手内容类型
+        let non_handshake = [0x17, 0x03, 0x03, 0x00, 0x40]; // 0x17是应用数据
+        let result = detector.detect(&non_handshake).unwrap();
+        assert_eq!(result.protocol, Protocol::Unknown); // 不是握手包
+    }
+
+    /// 测试HTTP/2边界情况
+    #[test]
+    fn test_http2_edge_cases() {
+        let detector = ProtocolDetector::new();
+
+        // 测试不完整的HTTP/2前言
+        let incomplete_preface = b"PRI * HTTP/2.0\r\n\r\n";
+        let result = detector.detect(incomplete_preface).unwrap();
+        assert_eq!(result.protocol, Protocol::Unknown);
+
+        // 测试HTTP/2前言后有额外数据
+        let preface_with_extra = b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\nEXTRA";
+        let result = detector.detect(preface_with_extra).unwrap();
+        assert_eq!(result.protocol, Protocol::Http2);
+        assert_eq!(result.confidence, 100);
+    }
+
+    /// 测试协议检测性能
+    #[test]
+    fn test_protocol_detection_performance() {
+        let detector = ProtocolDetector::new();
+        let http_request = b"GET /admin/login.php HTTP/1.1\r\nHost: example.com\r\nUser-Agent: Mozilla/5.0\r\nAccept: text/html\r\n\r\n";
+
+        // 测试多次检测的性能
+        let start = std::time::Instant::now();
+        for _ in 0..1000 {
+            let _ = detector.detect(http_request).unwrap();
+        }
+        let duration = start.elapsed();
+
+        // 1000次检测应该在合理时间内完成（这里设置为100ms）
+        assert!(duration.as_millis() < 100);
+    }
+
+    /// 测试协议检测并发安全性
+    #[test]
+    fn test_protocol_detection_thread_safety() {
+        use std::sync::Arc;
+        use std::thread;
+
+        let detector = Arc::new(ProtocolDetector::new());
+        let mut handles = vec![];
+
+        // 创建多个线程同时进行协议检测
+        for _ in 0..10 {
+            let detector_clone = Arc::clone(&detector);
+            let handle = thread::spawn(move || {
+                let http_request = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
+                let result = detector_clone.detect(http_request).unwrap();
+                assert_eq!(result.protocol, Protocol::Http);
+            });
+            handles.push(handle);
+        }
+
+        // 等待所有线程完成
+        for handle in handles {
+            handle.join().unwrap();
+        }
     }
 }

@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_from_pattern_config() {
-        let chain = ChainProcessor::from_pattern_config(true, Some((0, false)), false);
+        let _chain = ChainProcessor::from_pattern_config(true, Some((0, false)), false);
 
         // 当前的处理器顺序：先小写转换，再base64解码
         // 由于处理器链会先进行小写转换，我们需要提供一个能通过这种处理的测试
@@ -281,5 +281,162 @@ mod tests {
         let chain = ChainProcessor::from_pattern_config(true, None, false); // 只启用小写转换
         let result = chain.process(input).unwrap();
         assert_eq!(result, "ahllo world!");
+    }
+    
+    #[test]
+    fn test_base64_decode_with_offset() {
+        // 测试带偏移量的base64解码
+        let processor = Base64DecodeProcessor::new(6, false); // 跳过前6个字符
+        let input = "prefixSGVsbG8gV29ybGQh"; // "prefix" + base64编码的 "Hello World!"
+        let result = processor.process(input).unwrap();
+        assert_eq!(result, "Hello World!");
+    }
+    
+    #[test]
+    fn test_base64_decode_relative() {
+        // 测试相对位置的base64解码
+        let processor = Base64DecodeProcessor::new(0, true); // 相对位置，从开始解码
+        let input = "SGVsbG8gV29ybGQh"; // base64编码的 "Hello World!"
+        let result = processor.process(input).unwrap();
+        assert_eq!(result, "Hello World!");
+    }
+    
+    #[test]
+    fn test_base64_decode_invalid_offset() {
+        // 测试无效偏移量
+        let processor = Base64DecodeProcessor::new(100, false); // 偏移量超过数据长度
+        let input = "SGVsbG8gV29ybGQh"; // base64编码的 "Hello World!"
+        let result = processor.process(input);
+        assert!(result.is_err());
+        
+        if let Err(ContentProcessorError::InvalidOffset(_)) = result {
+            // 预期的错误类型
+        } else {
+            panic!("Expected InvalidOffset error");
+        }
+    }
+    
+    #[test]
+    fn test_base64_decode_invalid_base64() {
+        // 测试无效的base64数据
+        let processor = Base64DecodeProcessor::new(0, false);
+        let input = "invalid_base64!@#";
+        let result = processor.process(input);
+        assert!(result.is_err());
+        
+        if let Err(ContentProcessorError::Base64DecodeError(_)) = result {
+            // 预期的错误类型
+        } else {
+            panic!("Expected Base64DecodeError error");
+        }
+    }
+    
+    #[test]
+    fn test_chain_processor_multiple_steps() {
+        // 测试多步骤处理链
+        let mut chain = ChainProcessor::new();
+        chain.add_processor(Box::new(LowercaseProcessor::new()));
+        chain.add_processor(Box::new(Base64DecodeProcessor::new(0, false)));
+        
+        // 先小写转换，再base64解码
+        let input = "SGVSBG8GIFVPTCBHCEGH"; // base64编码的 "HELLO WORLD!"（大写）
+        let result = chain.process(input);
+        
+        // 由于小写转换会破坏base64格式，这应该会失败
+        assert!(result.is_err());
+    }
+    
+    #[test]
+    fn test_chain_processor_cache() {
+        // 测试处理器链的缓存功能
+        let mut chain = ChainProcessor::new();
+        chain.add_processor(Box::new(LowercaseProcessor::new()));
+        
+        let input = "Hello WORLD!";
+        
+        // 第一次处理
+        let result1 = chain.process(input).unwrap();
+        assert_eq!(result1, "hello world!");
+        
+        // 第二次处理应该使用缓存
+        let result2 = chain.process(input).unwrap();
+        assert_eq!(result2, "hello world!");
+        
+        // 验证缓存大小
+        // 注意：由于cache是私有字段，我们无法直接检查其大小
+        // 但可以通过重复处理相同输入来间接验证缓存功能
+    }
+    
+    #[test]
+    fn test_chain_processor_empty_chain() {
+        // 测试空处理链
+        let chain = ChainProcessor::new();
+        
+        let input = "Hello WORLD!";
+        let result = chain.process(input).unwrap();
+        assert_eq!(result, input); // 空链应该返回原始内容
+    }
+    
+    #[test]
+    fn test_chain_processor_from_config_both_options() {
+        // 测试同时启用小写转换和base64解码
+        let chain = ChainProcessor::from_pattern_config(true, Some((0, false)), false);
+        
+        // 由于先进行小写转换，base64解码会失败
+        // 我们使用一个能通过小写转换后仍然是有效base64的字符串
+        // "aGVsbG8gd29ybGQh" 是 "hello world!" 的base64编码，且全小写
+        let input = "aGVsbG8gd29ybGQh";
+        let result = chain.process(input).unwrap();
+        assert_eq!(result, "hello world!");
+    }
+    
+    #[test]
+    fn test_content_processor_error_display() {
+        // 测试错误类型的Display实现
+        let offset_error = ContentProcessorError::InvalidOffset("Test offset error".to_string());
+        let display_str = format!("{}", offset_error);
+        assert!(display_str.contains("Invalid offset"));
+        assert!(display_str.contains("Test offset error"));
+        
+        let base64_error = ContentProcessorError::Base64DecodeError("Test base64 error".to_string());
+        let display_str = format!("{}", base64_error);
+        assert!(display_str.contains("Base64 decode error"));
+        assert!(display_str.contains("Test base64 error"));
+        
+        let memory_error = ContentProcessorError::MemoryError("Test memory error".to_string());
+        let display_str = format!("{}", memory_error);
+        assert!(display_str.contains("Memory error"));
+        assert!(display_str.contains("Test memory error"));
+        
+        let other_error = ContentProcessorError::Other("Test other error".to_string());
+        let display_str = format!("{}", other_error);
+        assert!(display_str.contains("Error"));
+        assert!(display_str.contains("Test other error"));
+    }
+    
+    #[test]
+    fn test_processor_names() {
+        // 测试处理器名称
+        let lowercase = LowercaseProcessor::new();
+        assert_eq!(lowercase.name(), "lowercase");
+        
+        let base64 = Base64DecodeProcessor::new(0, false);
+        assert_eq!(base64.name(), "base64_decode");
+        
+        let chain = ChainProcessor::new();
+        assert_eq!(chain.name(), "chain");
+    }
+    
+    #[test]
+    fn test_chain_processor_debug() {
+        // 测试链处理器的Debug实现
+        let mut chain = ChainProcessor::new();
+        chain.add_processor(Box::new(LowercaseProcessor::new()));
+        chain.add_processor(Box::new(Base64DecodeProcessor::new(0, false)));
+        
+        let debug_str = format!("{:?}", chain);
+        assert!(debug_str.contains("ChainProcessor"));
+        assert!(debug_str.contains("processors_count"));
+        assert!(debug_str.contains("cache_size"));
     }
 }

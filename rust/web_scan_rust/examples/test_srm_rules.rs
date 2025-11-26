@@ -58,9 +58,6 @@ fn main() {
             } else {
                 println!("URI: (无空格分隔符)");
             }
-                let matches = uri.contains(&pattern.pattern);
-                println!("  Pattern{} '{}' 在URI中: {}", j + 1, pattern.pattern, matches);
-            }
 
             // 使用Rust引擎测试
             let mut engine = web_scan_rust::engine::WebScanEngine::new();

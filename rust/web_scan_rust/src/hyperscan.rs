@@ -229,6 +229,7 @@ struct HyperscanStreamSession {
 ///
 /// 包含实际的流和scratch空间，由Mutex保护。
 /// 由于单个TCP流只会在单个线程处理，状态字段已经在Mutex保护下，无需额外同步。
+#[allow(dead_code)]
 struct HyperscanStreamSessionInner {
     /// Hyperscan流实例
     stream: hyperscan::Stream,
@@ -421,6 +422,7 @@ impl HyperscanScanner {
     ///
     /// # 返回值
     /// * `u8` - 威胁级别（0-255）
+    #[allow(dead_code)]
     fn calculate_threat_level(&self, rule_ids: &std::collections::HashSet<u32>, rule_metadata: &std::collections::HashMap<u32, crate::rules::RuleMetadata>) -> u8 {
         let mut threat_score = 0u32;
 
@@ -438,7 +440,7 @@ impl HyperscanScanner {
         }
 
         // 将威胁分数限制在0-255范围内
-        (threat_score.min(255) as u8)
+        threat_score.min(255) as u8
     }
 
     /// 检查会话阈值
@@ -451,6 +453,7 @@ impl HyperscanScanner {
     ///
     /// # 返回值
     /// * `bool` - 是否触发阈值告警
+    #[allow(dead_code)]
     fn check_session_threshold(&self, session_id: u64, session_inner: &mut HyperscanStreamSessionInner) -> bool {
         let current_time = std::time::Instant::now();
 

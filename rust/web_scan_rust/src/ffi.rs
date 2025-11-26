@@ -11,6 +11,8 @@
 use crate::engine::{WebScanEngine, WebScanResult, WebScanAction};
 // 导入统计信息类型
 use crate::stats::WebScanStats;
+// 导入协议类型
+use crate::protocol::Protocol;
 // 导入Hyperscan相关类型
 // 导入C字符串处理类型
 use std::ffi::{CStr, CString};
@@ -32,6 +34,84 @@ static ENGINE: OnceLock<RwLock<WebScanEngine>> = OnceLock::new();
 // 错误处理
 // 存储最后一次错误的C字符串，用于C代码获取错误信息
 static LAST_ERROR: Mutex<Option<CString>> = Mutex::new(None);
+
+/// C语言兼容的Web扫描检测结果结构体
+///
+/// 这个结构体与C头文件中的web_scan_result_t完全兼容，用于FFI接口。
+/// 注意：这个结构体不包含direction和status_code字段，因为C头文件中不包含这些字段。
+#[repr(C)]
+pub struct web_scan_result_t {
+    pub is_matched: bool,           // 是否匹配到规则
+    pub rule_id: u32,              // 匹配的规则ID（如果匹配的话）
+    pub action: web_scan_action_t,  // 建议执行的动作
+    pub content_length: u32,        // 检测内容的长度
+    pub protocol: web_scan_protocol_t, // 检测到的协议类型
+    pub confidence: u8,             // 协议检测的置信度（0-100）
+}
+
+/// C语言兼容的动作枚举
+///
+/// 这个枚举与C头文件中的web_scan_action_e完全兼容。
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum web_scan_action_t {
+    None = 0,       // 无动作
+    Alert = 1,      // 告警
+    Block = 2,      // 阻断
+    Log = 3,        // 记录日志
+}
+
+/// C语言兼容的协议枚举
+///
+/// 这个枚举与C头文件中的web_scan_protocol_e完全兼容。
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum web_scan_protocol_t {
+    Unknown = 0,    // 未知协议
+    Http = 1,       // HTTP协议
+    Https = 2,      // HTTPS协议
+    Http2 = 3,      // HTTP/2协议
+    WebSocket = 4,  // WebSocket协议
+}
+
+/// 从Rust的WebScanAction转换为C兼容的web_scan_action_t
+impl From<WebScanAction> for web_scan_action_t {
+    fn from(action: WebScanAction) -> Self {
+        match action {
+            WebScanAction::None => web_scan_action_t::None,
+            WebScanAction::Alert => web_scan_action_t::Alert,
+            WebScanAction::Drop => web_scan_action_t::Block,  // 映射Drop到Block
+            WebScanAction::Reset => web_scan_action_t::Block, // 映射Reset到Block
+        }
+    }
+}
+
+/// 从Rust的Protocol转换为C兼容的web_scan_protocol_t
+impl From<Protocol> for web_scan_protocol_t {
+    fn from(protocol: Protocol) -> Self {
+        match protocol {
+            Protocol::Unknown => web_scan_protocol_t::Unknown,
+            Protocol::Http => web_scan_protocol_t::Http,
+            Protocol::Https => web_scan_protocol_t::Https,
+            Protocol::Http2 => web_scan_protocol_t::Http2,
+            // Protocol枚举中没有WebSocket变体，所以移除这行
+        }
+    }
+}
+
+/// 从Rust的WebScanResult转换为C兼容的web_scan_result_t
+impl From<&WebScanResult> for web_scan_result_t {
+    fn from(result: &WebScanResult) -> Self {
+        Self {
+            is_matched: result.is_matched,
+            rule_id: result.rule_id,
+            action: result.action.into(),
+            content_length: result.content_length,
+            protocol: result.protocol.into(),
+            confidence: result.confidence,
+        }
+    }
+}
 
 /// 初始化Web扫描检测引擎
 ///
@@ -183,7 +263,7 @@ pub extern "C" fn web_scan_rust_load_rules(rules_path: *const c_char) -> c_int {
 /// # 安全性
 /// 调用者必须确保：
 /// - `payload`指向至少`payload_len`字节的有效内存
-/// - `result`指向有效的WebScanResult结构体内存
+/// - `result`指向有效的web_scan_result_t结构体内存
 ///
 /// # 返回值
 /// * `0` - 成功处理
@@ -192,7 +272,7 @@ pub extern "C" fn web_scan_rust_load_rules(rules_path: *const c_char) -> c_int {
 pub extern "C" fn web_scan_rust_process_payload(
     payload: *const u8,
     payload_len: u32,
-    result: *mut WebScanResult,
+    result: *mut web_scan_result_t,
 ) -> c_int {
     // 检查指针是否为空
     if payload.is_null() || result.is_null() {
@@ -218,9 +298,12 @@ pub extern "C" fn web_scan_rust_process_payload(
     // 处理数据包载荷
     match engine.read().process_payload(payload_slice) {
         Ok(scan_result) => {
+            // 将Rust的WebScanResult转换为C兼容的web_scan_result_t
+            let c_result = web_scan_result_t::from(&scan_result);
+            
             // 将结果写入C代码提供的结果结构体
             unsafe {
-                *result = scan_result;
+                *result = c_result;
             }
             0 // 成功
         }
@@ -248,7 +331,7 @@ pub extern "C" fn web_scan_rust_process_payload(
 /// # 安全性
 /// 调用者必须确保：
 /// - `payload`指向至少`payload_len`字节的有效内存
-/// - `result`指向有效的WebScanResult结构体内存
+/// - `result`指向有效的web_scan_result_t结构体内存
 ///
 /// # 返回值
 /// * `0` - 成功处理
@@ -260,7 +343,7 @@ pub extern "C" fn web_scan_rust_process_payload_with_session(
     payload_len: u32,
     is_final: c_int,
     reset_on_request_end: c_int,
-    result: *mut WebScanResult,
+    result: *mut web_scan_result_t,
 ) -> c_int {
     // 检查指针是否为空
     if payload.is_null() || result.is_null() {
@@ -287,9 +370,12 @@ pub extern "C" fn web_scan_rust_process_payload_with_session(
     let reset_on_request_end_bool = reset_on_request_end != 0;
     match engine.read().process_payload_with_session(session_id, payload_slice, is_final_bool, reset_on_request_end_bool) {
         Ok(scan_result) => {
+            // 将Rust的WebScanResult转换为C兼容的web_scan_result_t
+            let c_result = web_scan_result_t::from(&scan_result);
+            
             // 将结果写入C代码提供的结果结构体
             unsafe {
-                *result = scan_result;
+                *result = c_result;
             }
             0 // 成功
         }
@@ -731,8 +817,6 @@ pub extern "C" fn web_scan_rust_cleanup() -> c_int {
 mod tests {
     // 导入父模块的所有公共项
     use super::*;
-    // 导入协议类型用于测试
-    use crate::protocol::Protocol;
 
     /// 测试引擎初始化
     #[test]
@@ -799,7 +883,14 @@ mod tests {
         
         let session_id = 40001;
         let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
-        let mut result = WebScanResult::default();
+        let mut result = web_scan_result_t {
+            is_matched: false,
+            rule_id: 0,
+            action: web_scan_action_t::None,
+            content_length: 0,
+            protocol: web_scan_protocol_t::Unknown,
+            confidence: 0,
+        };
         
         // 处理载荷（带会话）
         let ret = web_scan_rust_process_payload_with_session(
@@ -808,12 +899,12 @@ mod tests {
             payload.len() as u32,
             0,  // is_final = 0
             0,  // reset_on_request_end = 0
-            &mut result as *mut WebScanResult,
+            &mut result as *mut web_scan_result_t,
         );
         
         assert_eq!(ret, 0);
         // 标准的HTTP/1.1请求应该被正确识别为HTTP协议
-        assert_eq!(result.protocol, Protocol::Http, "Standard HTTP/1.1 request should be detected as HTTP protocol");
+        assert_eq!(result.protocol, web_scan_protocol_t::Http, "Standard HTTP/1.1 request should be detected as HTTP protocol");
         assert!(result.confidence >= 50, "HTTP detection confidence should be at least 50");
         // content_length 应该始终等于payload的实际长度
         assert_eq!(result.content_length, payload.len() as u32, "content_length should equal payload length");
@@ -830,7 +921,14 @@ mod tests {
         
         let session_id = 40002;
         let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
-        let mut result = WebScanResult::default();
+        let mut result = web_scan_result_t {
+            is_matched: false,
+            rule_id: 0,
+            action: web_scan_action_t::None,
+            content_length: 0,
+            protocol: web_scan_protocol_t::Unknown,
+            confidence: 0,
+        };
         
         // 第一次请求，不重置
         let ret1 = web_scan_rust_process_payload_with_session(
@@ -839,7 +937,7 @@ mod tests {
             payload.len() as u32,
             0,  // is_final = 0
             0,  // reset_on_request_end = 0
-            &mut result as *mut WebScanResult,
+            &mut result as *mut web_scan_result_t,
         );
         assert_eq!(ret1, 0);
         
@@ -850,7 +948,7 @@ mod tests {
             payload.len() as u32,
             0,  // is_final = 0
             1,  // reset_on_request_end = 1
-            &mut result as *mut WebScanResult,
+            &mut result as *mut web_scan_result_t,
         );
         assert_eq!(ret2, 0);
         
@@ -861,7 +959,7 @@ mod tests {
             payload.len() as u32,
             0,  // is_final = 0
             0,  // reset_on_request_end = 0
-            &mut result as *mut WebScanResult,
+            &mut result as *mut web_scan_result_t,
         );
         assert_eq!(ret3, 0);
     }
@@ -877,7 +975,14 @@ mod tests {
         
         let session_id = 40003;
         let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
-        let mut result = WebScanResult::default();
+        let mut result = web_scan_result_t {
+            is_matched: false,
+            rule_id: 0,
+            action: web_scan_action_t::None,
+            content_length: 0,
+            protocol: web_scan_protocol_t::Unknown,
+            confidence: 0,
+        };
         
         // 处理载荷
         let ret = web_scan_rust_process_payload_with_session(
@@ -886,7 +991,7 @@ mod tests {
             payload.len() as u32,
             0,  // is_final = 0
             0,  // reset_on_request_end = 0
-            &mut result as *mut WebScanResult,
+            &mut result as *mut web_scan_result_t,
         );
         assert_eq!(ret, 0);
         
@@ -901,7 +1006,7 @@ mod tests {
             payload.len() as u32,
             0,  // is_final = 0
             0,  // reset_on_request_end = 0
-            &mut result as *mut WebScanResult,
+            &mut result as *mut web_scan_result_t,
         );
         assert_eq!(ret2, 0);
     }
@@ -917,7 +1022,14 @@ mod tests {
         
         let session_id = 40004;
         let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
-        let mut result = WebScanResult::default();
+        let mut result = web_scan_result_t {
+            is_matched: false,
+            rule_id: 0,
+            action: web_scan_action_t::None,
+            content_length: 0,
+            protocol: web_scan_protocol_t::Unknown,
+            confidence: 0,
+        };
         
         // 创建会话
         let ret = web_scan_rust_process_payload_with_session(
@@ -926,7 +1038,7 @@ mod tests {
             payload.len() as u32,
             0,  // is_final = 0
             0,  // reset_on_request_end = 0
-            &mut result as *mut WebScanResult,
+            &mut result as *mut web_scan_result_t,
         );
         assert_eq!(ret, 0);
         
@@ -950,7 +1062,14 @@ mod tests {
         
         let session_id = 40005;
         let payload = b"GET /test HTTP/1.1\r\nHost: example.com\r\n\r\n";
-        let mut result = WebScanResult::default();
+        let mut result = web_scan_result_t {
+            is_matched: false,
+            rule_id: 0,
+            action: web_scan_action_t::None,
+            content_length: 0,
+            protocol: web_scan_protocol_t::Unknown,
+            confidence: 0,
+        };
         
         // 处理载荷并标记为最终
         let ret = web_scan_rust_process_payload_with_session(
@@ -959,7 +1078,7 @@ mod tests {
             payload.len() as u32,
             1,  // is_final = 1
             0,  // reset_on_request_end = 0
-            &mut result as *mut WebScanResult,
+            &mut result as *mut web_scan_result_t,
         );
         assert_eq!(ret, 0);
         
@@ -970,7 +1089,7 @@ mod tests {
             payload.len() as u32,
             0,  // is_final = 0
             0,  // reset_on_request_end = 0
-            &mut result as *mut WebScanResult,
+            &mut result as *mut web_scan_result_t,
         );
         assert_eq!(ret2, 0);
     }
@@ -987,7 +1106,14 @@ mod tests {
         // 创建多个不同的会话
         for i in 1..=3 {
             let session_id = 40010 + i;
-            let mut result = WebScanResult::default();
+            let mut result = web_scan_result_t {
+                is_matched: false,
+                rule_id: 0,
+                action: web_scan_action_t::None,
+                content_length: 0,
+                protocol: web_scan_protocol_t::Unknown,
+                confidence: 0,
+            };
             
             let ret = web_scan_rust_process_payload_with_session(
                 session_id,
@@ -995,11 +1121,11 @@ mod tests {
                 payload.len() as u32,
                 0,  // is_final = 0
                 0,  // reset_on_request_end = 0
-                &mut result as *mut WebScanResult,
+                &mut result as *mut web_scan_result_t,
             );
             assert_eq!(ret, 0);
             // 标准的HTTP/1.1请求应该被正确识别为HTTP协议
-            assert_eq!(result.protocol, Protocol::Http, "Standard HTTP/1.1 request should be detected as HTTP protocol");
+            assert_eq!(result.protocol, web_scan_protocol_t::Http, "Standard HTTP/1.1 request should be detected as HTTP protocol");
             assert!(result.confidence >= 50, "HTTP detection confidence should be at least 50");
             // content_length 应该始终等于payload的实际长度
             assert_eq!(result.content_length, payload.len() as u32, "content_length should equal payload length");

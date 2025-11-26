@@ -1682,24 +1682,387 @@ impl RuleManager {
                         }
                     }
                     "http.method" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
                         current_http_location = HttpMatchLocation::Method;
+                        log::debug!("Setting http_location to Method due to http.method");
                     }
                     "http.uri" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
                         current_http_location = HttpMatchLocation::Uri;
+                        log::debug!("Setting http_location to Uri due to http.uri");
                     }
                     "http.uri.raw" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
                         current_http_location = HttpMatchLocation::UriRaw;
+                        log::debug!("Setting http_location to UriRaw due to http.uri.raw");
                     }
                     "http.cookie" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
                         current_http_location = HttpMatchLocation::Cookie;
+                        log::debug!("Setting http_location to Cookie due to http.cookie");
                     }
                     "http.request_body" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
                         current_http_location = HttpMatchLocation::RequestBody;
+                        log::debug!("Setting http_location to RequestBody due to http.request_body");
                     }
                     "http.request_header" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
                         current_http_location = HttpMatchLocation::RequestHeader;
+                        log::debug!("Setting http_location to RequestHeader due to http.request_header");
                     }
                     "http.header" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
                         current_http_location = HttpMatchLocation::RequestHeader;
                         log::debug!("Setting http_location to RequestHeader due to http.header");
                     }
@@ -1814,12 +2177,336 @@ impl RuleManager {
                 match option {
                     "startswith" => current_startswith = true,
                     "endswith" => current_endswith = true,
-                    "http.method" => current_http_location = HttpMatchLocation::Method,
-                    "http.uri" => current_http_location = HttpMatchLocation::Uri,
-                    "http.uri.raw" => current_http_location = HttpMatchLocation::UriRaw,
-                    "http.cookie" => current_http_location = HttpMatchLocation::Cookie,
-                    "http.request_body" => current_http_location = HttpMatchLocation::RequestBody,
-                    "http.request_header" => current_http_location = HttpMatchLocation::RequestHeader,
+                    "http.method" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
+                        current_http_location = HttpMatchLocation::Method;
+                        log::debug!("Setting http_location to Method due to http.method");
+                    }
+                    "http.uri" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
+                        current_http_location = HttpMatchLocation::Uri;
+                        log::debug!("Setting http_location to Uri due to http.uri");
+                    }
+                    "http.uri.raw" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
+                        current_http_location = HttpMatchLocation::UriRaw;
+                        log::debug!("Setting http_location to UriRaw due to http.uri.raw");
+                    }
+                    "http.cookie" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
+                        current_http_location = HttpMatchLocation::Cookie;
+                        log::debug!("Setting http_location to Cookie due to http.cookie");
+                    }
+                    "http.request_body" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
+                        current_http_location = HttpMatchLocation::RequestBody;
+                        log::debug!("Setting http_location to RequestBody due to http.request_body");
+                    }
+                    "http.request_header" => {
+                        // 如果已经有pattern，先保存前一个
+                        if !current_pattern.is_empty() {
+                            let hyperscan_flags = modifiers_to_hyperscan_flags(
+                                current_nocase,
+                                current_startswith,
+                                current_endswith,
+                            );
+
+                            // 添加调试日志
+                            log::debug!("Creating PatternWithLocation for pattern: '{}'", current_pattern);
+                            log::debug!("  -> http_location: {:?}", current_http_location);
+                            log::debug!("  -> is_fast_pattern: {}", current_is_fast_pattern);
+                            log::debug!("  -> header_lowercase: {}", current_header_lowercase);
+                            log::debug!("  -> base64_decode: {:?}", current_base64_decode);
+                            log::debug!("  -> base64_data: {}", current_base64_data);
+
+                            // 如果是fast pattern，记录其索引
+                            if current_is_fast_pattern {
+                                fast_pattern_index = Some(patterns.len());
+                                log::debug!("  -> Recording fast pattern at index: {}", patterns.len());
+                            }
+
+                            patterns.push(PatternWithLocation {
+                                pattern: current_pattern.clone(),
+                                http_location: current_http_location,
+                                is_fast_pattern: current_is_fast_pattern,  // 使用解析的fast_pattern状态
+                                nocase: current_nocase,       // 使用解析的nocase状态
+                                startswith: current_startswith,
+                                endswith: current_endswith,
+                                distance: current_distance,
+                                depth: current_depth,
+                                offset: current_offset,
+                                within: current_within,
+                                hyperscan_flags,             // 使用计算的flags
+                                requires_fallback: false,     // 默认不需要fallback
+                                header_lowercase: current_header_lowercase,
+                                base64_decode: current_base64_decode,
+                                base64_data: current_base64_data,
+                            });
+                            // 重置当前pattern状态
+                            current_pattern.clear();
+                            current_nocase = false;        // 重置nocase状态
+                            current_startswith = false;
+                            current_endswith = false;
+                            current_distance = None;
+                            current_depth = None;
+                            current_offset = None;
+                            current_within = None;
+                            current_is_fast_pattern = false; // 重置fast_pattern状态
+                        }
+                        // 然后更新http_location
+                        current_http_location = HttpMatchLocation::RequestHeader;
+                        log::debug!("Setting http_location to RequestHeader due to http.request_header");
+                    }
                     _ => {} // 忽略其他标志选项
                 }
             }
@@ -2641,4 +3328,18 @@ mod tests {
         // 第二个规则应该失败（ID重复）
         assert!(manager.add_rule(rule2).is_err());
     }
+    
+    /// 测试规则验证功能
+    #[test]
+    fn test_rule_validation() {
+        // 测试有效规则
+        let valid_rule = Rule::new(1, RuleAction::Alert, "Valid Rule".to_string(), "valid_pattern".to_string());
+        assert!(valid_rule.is_ok());
+        
+        // 测试无效正则表达式
+        let invalid_rule = Rule::new(2, RuleAction::Alert, "Invalid Rule".to_string(), "[invalid_regex".to_string());
+        assert!(invalid_rule.is_err());
+    }
+    
+
 }
