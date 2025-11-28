@@ -264,18 +264,16 @@ alert http any any -> [$HOME_NET,$HTTP_SERVERS] any (msg:"ET EXPLOIT Apache Couc
 alert http any any -> $HOME_NET any (msg:"ET WEB_SPECIFIC_APPS Fortinet FortiWeb Fabric Connector Unauthenticated SQL Injection (CVE-2025-25257) M1"; flow:established,to_server; http.uri; content:"/api/fabric/device/status"; fast_pattern; startswith; http.header; to_lowercase; content:"authorization|3a 20|bearer|20|"; pcre:"/^.*?[\x27\x22\x3b\x2d\x5c\x2a\x2f]/R"; reference:url,labs.watchtowr.com/pre-auth-sql-injection-to-rce-fortinet-fortiweb-fabric-connector-cve-2025-25257/; reference:cve,2025-25257; classtype:web-application-attack; sid:2063426; rev:1;)
 alert http any any -> $HOME_NET any (msg:"ET HUNTING Microsoft Sharepoint Server Insecure Deserialization via Scorecard DataSet Gadget"; flow:established,to_server; http.method; content:"POST"; http.request_body; content:"microsoft.performancepoint.scorecards"; fast_pattern; nocase; content:"exceldataset"; nocase; content:"compresseddatatable"; nocase; pcre:"/^(?:\x3d|\x253[dD]|\x26equals\x3b)(?:\x22|\x2522|\x26quot\x3b)H4sIAAAA/R"; reference:url,research.eye.security/sharepoint-under-siege/; classtype:web-application-attack; sid:2063684; rev:1;)
 
-# Additional simple pattern rules for basic web attack detection
-#alert http any any -> any any (msg:"ET WEB_DETECTION SQL Injection Pattern"; content:"union"; nocase; http.uri; classtype:web-application-attack; sid:3000001; rev:1;)
-#alert http any any -> any any (msg:"ET WEB_DETECTION Select Pattern"; content:"select"; nocase; http.uri; classtype:web-application-attack; sid:3000002; rev:1;)
-#alert http any any -> any any (msg:"ET WEB_DETECTION PHP Shell"; content:"shell.php"; nocase; http.uri; classtype:web-application-attack; sid:3000014; rev:1;)
-#alert http any any -> any any (msg:"ET WEB_DETECTION C99 Shell"; content:"c99.php"; nocase; http.uri; classtype:web-application-attack; sid:3000015; rev:1;)
-#alert http any any -> any any (msg:"ET WEB_DETECTION R57 Shell"; content:"r57.php"; nocase; http.uri; classtype:web-application-attack; sid:3000016; rev:1;)
-#alert http any any -> any any (msg:"ET WEB_DETECTION Log4j Exploit"; content:"${jndi:"; nocase; classtype:web-application-attack; sid:3000030; rev:1;)
-#alert http any any -> any any (msg:"ET WEB_DETECTION Admin Panel"; content:"admin"; nocase; http.uri; classtype:web-application-attack; sid:3000011; rev:1;)
-#alert http any any -> any any (msg:"ET WEB_DETECTION Backup File"; content:".rar"; nocase; http.uri; classtype:web-application-attack; sid:3000025; rev:1;)
-#
 
-#备份文件访问
+alert http any any -> any any (msg:"ET WEB_DETECTION Select Pattern"; content:"select"; nocase; http.uri; classtype:web-application-attack; sid:3000002; rev:1;)
+alert http any any -> any any (msg:"ET WEB_DETECTION PHP Shell"; content:"shell.php"; nocase; http.uri; classtype:web-application-attack; sid:3000014; rev:1;)
+alert http any any -> any any (msg:"ET WEB_DETECTION C99 Shell"; content:"c99.php"; nocase; http.uri; classtype:web-application-attack; sid:3000015; rev:1;)
+alert http any any -> any any (msg:"ET WEB_DETECTION R57 Shell"; content:"r57.php"; nocase; http.uri; classtype:web-application-attack; sid:3000016; rev:1;)
+alert http any any -> any any (msg:"ET WEB_DETECTION Log4j Exploit"; content:"${jndi:"; nocase; classtype:web-application-attack; sid:3000030; rev:1;)
+alert http any any -> any any (msg:"ET WEB_DETECTION Admin Panel"; content:"admin"; nocase; http.uri; classtype:web-application-attack; sid:3000011; rev:1;)
+alert http any any -> any any (msg:"ET WEB_DETECTION Backup File"; content:".rar"; nocase; http.uri; classtype:web-application-attack; sid:3000025; rev:1;)
+
+
 alert http any any -> $HTTP_SERVERS $HTTP_PORTS (
     msg:"ET WEB_ATTACKS Backup File Access Attempt";
     flow:established,to_server;
@@ -287,7 +285,7 @@ alert http any any -> $HTTP_SERVERS $HTTP_PORTS (
 
 alert http any any -> $HTTP_SERVERS $HTTP_PORTS (
     msg:"ET SCAN Potential Web Directory Brute Force - High 404 Count";
-    flow:established,from_server;  # 关键：检查服务器响应
+    flow:established,from_server;
     http.response;
     http.stat_code; content:"404"; 
     threshold:type threshold, track by_src, count 20, seconds 60;
@@ -295,7 +293,6 @@ alert http any any -> $HTTP_SERVERS $HTTP_PORTS (
     sid:1000102; rev:1;
 )
 
-# 检测对常见管理路径的集中访问
 alert http any any -> $HTTP_SERVERS $HTTP_PORTS (
     msg:"ET SCAN Admin Path Enumeration";
     flow:established,to_server;
@@ -306,4 +303,28 @@ alert http any any -> $HTTP_SERVERS $HTTP_PORTS (
     sid:1000103; rev:1;
 )
 
+alert http any any -> any any (msg:"HTTP潜在攻击：检测到DEBUG方法请求"; content:"DEBUG"; http.method; nocase; sid:9010001; rev:1;)
+alert http any any -> any any (msg:"HTTP潜在攻击：检测到TRACE方法，存在跨站跟踪风险"; content:"TRACE"; http.method; nocase; sid:9010002; rev:1;)
+alert http any any -> any any (msg:"HTTP潜在攻击：检测到PUT方法，可能存在未授权文件上传"; content:"PUT"; http.method; nocase; sid:9010003; rev:1;)
+alert http any any -> any any (msg:"HTTP潜在攻击：检测到DELETE方法，可能存在数据删除风险"; content:"DELETE"; http.method; nocase; sid:9010004; rev:1;)
+alert http any any -> any any (msg:"HTTP潜在攻击：检测到CONNECT方法，可能用于建立隧道代理"; content:"CONNECT"; http.method; nocase; sid:9010005; rev:1;)
+
+alert http any any -> any any (msg:"HTTP潜在攻击：检测到WebDAV扩展方法COPY"; pcre:"/^COPY$/i"; http.method; sid:9010006; rev:1;)
+alert http any any -> any any (msg:"HTTP潜在攻击：检测到WebDAV扩展方法MOVE"; pcre:"/^MOVE$/i"; http.method; sid:9010007; rev:1;)
+alert http any any -> any any (msg:"HTTP潜在攻击：检测到WebDAV扩展方法LOCK"; pcre:"/^LOCK$/i"; http.method; sid:9010008; rev:1;)
+
+alert http any any -> any any (msg:"HTTP潜在攻击：检测到TRACK方法，存在跨站跟踪风险"; content:"TRACK"; http.method; nocase; sid:9010009; rev:1;)
+alert http any any -> any any (msg:"HTTP潜在攻击：检测到PATCH方法，可能存在未授权资源修改"; content:"PATCH"; http.method; nocase; sid:9010010; rev:1;)
+
+alert http any any -> any any (msg:"HTTP Method Attack: DEBUG request detected"; content:"DEBUG"; http.method; nocase; sid:9010001; rev:1;)
+alert http any any -> any any (msg:"HTTP Method Attack: TRACE request detected"; content:"TRACE"; http.method; nocase; sid:9010002; rev:1;)
+alert http any any -> any any (msg:"HTTP Method Attack: PUT request detected"; content:"PUT"; http.method; nocase; sid:9010003; rev:1;)
+alert http any any -> any any (msg:"HTTP Method Attack: DELETE request detected"; content:"DELETE"; http.method; nocase; sid:9010004; rev:1;)
+alert http any any -> any any (msg:"HTTP Method Attack: CONNECT request detected"; content:"CONNECT"; http.method; nocase; sid:9010005; rev:1;)
+
+alert http any any -> any any (msg:"HTTP WebDAV Attack: COPY method detected"; pcre:"/^COPY$/i"; http.method; sid:9010006; rev:1;)
+alert http any any -> any any (msg:"HTTP WebDAV Attack: MOVE method detected"; pcre:"/^MOVE$/i"; http.method; sid:9010007; rev:1;)
+alert http any any -> any any (msg:"HTTP WebDAV Attack: LOCK method detected"; pcre:"/^LOCK$/i"; http.method; sid:9010008; rev:1;)
+alert http any any -> any any (msg:"HTTP WebDAV Attack: TRACK request detected"; content:"TRACK"; http.method; nocase; sid:9010009; rev:1;)
+alert http any any -> any any (msg:"HTTP Method Attack: PATCH request detected"; content:"PATCH"; http.method; nocase; sid:9010010; rev:1;)
 

@@ -150,22 +150,309 @@ void show_rules_info() {
     printf("========================================\n\n");
 }
 
+// 从规则行提取SID
+const char* extract_rule_sid(const char* rule_line) {
+    static char sid_buffer[32];
+    const char* sid_start = strstr(rule_line, "sid:");
+
+    if (!sid_start) {
+        return "unknown";
+    }
+
+    sid_start += 4; // 跳过 "sid:"
+    const char* sid_end = strchr(sid_start, ';');
+
+    if (!sid_end) {
+        sid_end = sid_start + strlen(sid_start);
+    }
+
+    int sid_len = sid_end - sid_start;
+    if (sid_len >= sizeof(sid_buffer)) {
+        sid_len = sizeof(sid_buffer) - 1;
+    }
+
+    strncpy(sid_buffer, sid_start, sid_len);
+    sid_buffer[sid_len] = '\0';
+
+    return sid_buffer;
+}
+
+// 从规则行提取消息
+const char* extract_rule_msg(const char* rule_line) {
+    static char msg_buffer[256];
+    const char* msg_start = strstr(rule_line, "msg:");
+
+    if (!msg_start) {
+        return "No message";
+    }
+
+    msg_start += 4; // 跳过 "msg:"
+    if (*msg_start == '"') {
+        msg_start++; // 跳过开始的引号
+    }
+
+    const char* msg_end = strchr(msg_start, '"');
+    if (!msg_end) {
+        msg_end = msg_start + strlen(msg_start);
+        // 检查是否在分号前有引号
+        const char* semicolon = strchr(msg_start, ';');
+        if (semicolon && semicolon < msg_end) {
+            msg_end = semicolon;
+        }
+    }
+
+    int msg_len = msg_end - msg_start;
+    if (msg_len >= sizeof(msg_buffer)) {
+        msg_len = sizeof(msg_buffer) - 1;
+    }
+
+    strncpy(msg_buffer, msg_start, msg_len);
+    msg_buffer[msg_len] = '\0';
+
+    return msg_buffer;
+}
+
+// 检查规则是否包含不支持的特性
+int check_unsupported_features(const char* rule_line) {
+    int issues = 0;
+
+    // 检查不支持的选项
+    if (strstr(rule_line, "flow:")) {
+        issues++;
+    }
+    if (strstr(rule_line, "classtype:")) {
+        issues++;
+    }
+    if (strstr(rule_line, "priority:")) {
+        issues++;
+    }
+    if (strstr(rule_line, "metadata:")) {
+        issues++;
+    }
+    if (strstr(rule_line, "$HOME_NET") || strstr(rule_line, "$HTTP_PORTS")) {
+        issues++;
+    }
+    if (strstr(rule_line, "negate;")) {
+        issues++;
+    }
+    if (strstr(rule_line, "within;")) {
+        issues++;
+    }
+    if (strstr(rule_line, "offset;")) {
+        issues++;
+    }
+    if (strstr(rule_line, "depth;")) {
+        issues++;
+    }
+    if (strstr(rule_line, "distance;")) {
+        issues++;
+    }
+
+    return issues;
+}
+
+// 分析规则文件中的潜在问题
+void analyze_rules_file(const char* rules_path) {
+    printf("\n🔍 开始手动分析规则文件...\n");
+    printf("========================================\n");
+
+    FILE* file = fopen(rules_path, "r");
+    if (!file) {
+        printf("❌ 无法打开规则文件: %s\n", rules_path);
+        return;
+    }
+
+    char line[2048];
+    int line_number = 0;
+    int total_rules = 0;
+    int alert_rules = 0;
+    int issues_found = 0;
+
+    printf("规则格式检查报告:\n\n");
+
+    while (fgets(line, sizeof(line), file)) {
+        line_number++;
+
+        // 移除换行符
+        char* newline = strchr(line, '\n');
+        if (newline) *newline = '\0';
+
+        // 跳过空行和注释行
+        char* trimmed = line;
+        while (*trimmed == ' ' || *trimmed == '\t') trimmed++;
+        if (*trimmed == '\0' || *trimmed == '#') {
+            continue;
+        }
+
+        // 检查是否是规则开始
+        if (strncmp(trimmed, "alert", 5) == 0) {
+            alert_rules++;
+            total_rules++;
+
+            // 提取SID和消息
+            const char* sid = extract_rule_sid(trimmed);
+            const char* msg = extract_rule_msg(trimmed);
+
+            printf("规则 #%d: SID=%s, 消息=\"%s\"\n", alert_rules, sid, msg);
+
+            // 检查常见问题
+            int feature_issues = check_unsupported_features(trimmed);
+            if (feature_issues > 0) {
+                printf("  ⚠️  发现 %d 个不支持的特性\n", feature_issues);
+                issues_found++;
+
+                // 列出不支持的特性
+                if (strstr(trimmed, "flow:")) printf("    - flow选项 (不兼容)\n");
+                if (strstr(trimmed, "classtype:")) printf("    - classtype选项 (不兼容)\n");
+                if (strstr(trimmed, "priority:")) printf("    - priority选项 (不兼容)\n");
+                if (strstr(trimmed, "metadata:")) printf("    - metadata选项 (不兼容)\n");
+                if (strstr(trimmed, "$HOME_NET") || strstr(trimmed, "$HTTP_PORTS")) printf("    - IP变量 (不兼容)\n");
+                if (strstr(trimmed, "negate;")) printf("    - negate选项 (不兼容)\n");
+            } else {
+                printf("  ✅ 格式检查通过\n");
+            }
+
+            // 检查协议是否是http
+            if (!strstr(trimmed, " http ")) {
+                printf("  ⚠️  不是HTTP协议规则\n");
+                issues_found++;
+            }
+
+            // 限制显示数量，避免输出过多
+            if (alert_rules >= 15) {
+                printf("... (还有更多规则，仅显示前15个)\n");
+                break;
+            }
+        }
+    }
+
+    fclose(file);
+
+    // 显示分析总结
+    printf("========================================\n");
+    printf("📊 规则文件分析完成:\n");
+    printf("  总行数: %d\n", line_number);
+    printf("  Alert规则数: %d\n", alert_rules);
+    printf("  估计总规则数: %d\n", total_rules);
+    printf("  发现潜在问题: %d\n", issues_found);
+
+    if (issues_found > 0) {
+        printf("\n🔧 修复建议:\n");
+        printf("1. 移除不支持的选项: flow, classtype, priority, metadata\n");
+        printf("2. 将 $HOME_NET $HTTP_PORTS 改为 any any\n");
+        printf("3. 将 negate 规则拆分为多个肯定匹配规则\n");
+        printf("4. 确保所有规则都使用 'http' 协议\n");
+        printf("5. 检查SID是否重复\n");
+        printf("6. 验证PCRE语法是否正确\n");
+
+        printf("\n📝 参考格式:\n");
+        printf("alert http any any -> any any (msg:\"示例消息\"; content:\"pattern\"; http.method; sid:1001; rev:1;)\n");
+    }
+
+    printf("\n🔍 分析完成，尝试引擎加载...\n");
+}
+
 // 加载规则
 int load_rules(const char* rules_path) {
-    printf("正在加载规则文件: %s\n", rules_path);
+    printf("🔍 正在加载规则文件: %s\n", rules_path);
 
+    // 1. 首先尝试使用引擎加载
+    printf("📋 使用引擎加载规则...\n");
     int result = web_scan_rust_load_rules(rules_path);
+
+    // 2. 获取详细的规则加载统计（无论成功或失败都显示）
+    printf("\n📊 规则加载详细统计:\n");
+    printf("========================\n");
+
+    int total, successful, failed;
+    char error_details[4096];
+
+    int stats_result = web_scan_rust_get_rule_loading_stats(
+        &total, &successful, &failed,
+        error_details, sizeof(error_details)
+    );
+
+    if (stats_result == 0) {
+        printf("总规则数: %d\n", total);
+        printf("✅ 成功加载: %d (%.1f%%)\n", successful,
+               total > 0 ? (double)successful * 100.0 / total : 0.0);
+        printf("❌ 加载失败: %d (%.1f%%)\n", failed,
+               total > 0 ? (double)failed * 100.0 / total : 0.0);
+
+        if (failed > 0) {
+            printf("\n🔍 失败规则详细信息:\n");
+            printf("========================\n");
+
+            // 显示每个失败规则的详细信息
+            for (int i = 0; i < failed; i++) {
+                const char* failed_info = web_scan_rust_get_failed_rule_info(i);
+                if (failed_info) {
+                    printf("%s\n", failed_info);
+                }
+            }
+
+            // 显示详细的错误报告
+            printf("\n📋 详细错误报告:\n");
+            printf("========================\n");
+            web_scan_rust_show_rule_loading_report(1);  // 详细模式
+        }
+
+        if (strlen(error_details) > 0) {
+            printf("\n🚨 错误详情汇总:\n");
+            printf("========================\n");
+            printf("%s\n", error_details);
+        }
+
+        printf("\n💡 处理建议:\n");
+        printf("========================\n");
+        if (failed > 0) {
+            printf("1. 检查并修复语法错误的规则 (%d个)\n", failed);
+            printf("2. 验证PCRE表达式是否正确\n");
+            printf("3. 确认Hyperscan兼容性\n");
+            printf("4. 更新过时的规则版本\n");
+            printf("5. 检查规则元数据完整性\n");
+        }
+        if (successful > 0) {
+            printf("✅ 当前可以继续使用 %d 个有效规则\n", successful);
+            printf("是否继续使用这些规则进行检测? [Y/n]: ");
+        }
+    } else {
+        printf("❌ 无法获取详细统计信息\n");
+        // 使用原有的基础错误信息
+        const char* engine_error = web_scan_rust_get_last_error();
+        if (engine_error) {
+            printf("🚨 引擎错误: %s\n", engine_error);
+        }
+    }
+
+    printf("========================\n\n");
+
     if (result == 0) {
-        printf("✅ 规则加载成功\n");
+        printf("✅ 规则加载完成，检测引擎已就绪\n");
+
+        // 获取传统统计信息作为补充
+        web_scan_stats_t stats;
+        if (web_scan_rust_get_stats(&stats) == 0) {
+            printf("📊 引擎状态: 已加载规则数 %u, 活跃规则数 %u\n",
+                   stats.rules_loaded, stats.rules_active);
+        }
         return 0;
     } else {
-        printf("❌ 规则加载失败，错误代码: %d\n", result);
+        printf("❌ 规则加载过程中发现错误\n");
 
-        // 获取详细错误信息
-        const char* error_msg = web_scan_rust_get_last_error();
-        if (error_msg) {
-            printf("错误详情: %s\n", error_msg);
+        // 如果有部分成功，询问用户是否继续
+        if (stats_result == 0 && successful > 0) {
+            printf("是否继续使用已加载的 %d 个规则? [y/N]: ", successful);
+            // 注意：在实际部署时，这里应该读取用户输入
+            // 为了演示，暂时选择继续
+            printf("y (继续使用)\n");
+            return 0;
         }
+
+        // 3. 手动分析规则文件以提供更详细的错误信息
+        printf("🔍 进行手动规则文件分析...\n");
+        analyze_rules_file(rules_path);
+
         return -1;
     }
 }

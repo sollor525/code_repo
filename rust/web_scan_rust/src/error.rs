@@ -67,6 +67,56 @@ pub enum WebScanError {
     MemoryAllocation,
 }
 
+/// 错误严重程度枚举
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(C)]
+pub enum ErrorSeverity {
+    /// 警告 - 可以继续执行
+    Warning = 1,
+    /// 错误 - 跳过当前项但继续
+    Error = 2,
+    /// 致命错误 - 必须终止
+    Fatal = 3,
+}
+
+/// 规则错误详细信息
+#[derive(Debug, Clone)]
+pub struct RuleError {
+    pub rule_id: u32,
+    pub line_number: usize,
+    pub error_type: RuleErrorType,
+    pub message: String,
+    pub severity: ErrorSeverity,
+}
+
+/// 规则警告信息
+#[derive(Debug, Clone)]
+pub struct RuleWarning {
+    pub rule_id: u32,
+    pub line_number: usize,
+    pub warning_type: RuleWarningType,
+    pub message: String,
+}
+
+/// 规则错误类型
+#[derive(Debug, Clone)]
+pub enum RuleErrorType {
+    SyntaxError(String),
+    HyperscanIncompatibility(String),
+    PcreError(String),
+    ContentError(String),
+    MetadataError(String),
+}
+
+/// 规则警告类型
+#[derive(Debug, Clone)]
+pub enum RuleWarningType {
+    HyperscanCompatibilityWarning(String),
+    PerformanceWarning(String),
+    VersionDeprecated(String),
+    OptimizationSuggestion(String),
+}
+
 // 为WebScanError实现方法
 impl WebScanError {
     /// 将Rust错误转换为C兼容的错误代码
@@ -90,5 +140,77 @@ impl WebScanError {
             WebScanError::MemoryAllocation => -10,
             WebScanError::ContentProcessing(_) => -11,
         }
+    }
+}
+
+/// 规则加载统计结构
+#[derive(Debug, Clone, Default)]
+pub struct RuleLoadingStats {
+    pub total_rules: usize,
+    pub successful_rules: usize,
+    pub failed_rules: Vec<RuleError>,
+    pub skipped_rules: usize,
+    pub warnings: Vec<RuleWarning>,
+}
+
+/// 错误返回数据结构（用于C接口）
+#[repr(C)]
+#[derive(Debug)]
+pub struct rule_loading_error_t {
+    pub rule_id: u32,
+    pub line_number: u32,
+    pub error_code: i32,
+    pub severity: i32,  // ErrorSeverity enum value
+    pub message: [u8; 256],
+}
+
+impl Default for rule_loading_error_t {
+    fn default() -> Self {
+        Self {
+            rule_id: 0,
+            line_number: 0,
+            error_code: 0,
+            severity: 0,
+            message: [0; 256],
+        }
+    }
+}
+
+impl RuleLoadingStats {
+    /// 创建新的规则加载统计实例
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// 获取失败规则数量
+    pub fn failed_count(&self) -> usize {
+        self.failed_rules.len()
+    }
+
+    /// 获取警告数量
+    pub fn warning_count(&self) -> usize {
+        self.warnings.len()
+    }
+
+    /// 格式化错误详情为字符串
+    pub fn format_error_details(&self) -> String {
+        let mut details = String::new();
+
+        for error in &self.failed_rules {
+            details.push_str(&format!("❌ [规则{}] {}: {}\n",
+                error.rule_id,
+                match error.severity {
+                    ErrorSeverity::Warning => "警告",
+                    ErrorSeverity::Error => "错误",
+                    ErrorSeverity::Fatal => "致命错误",
+                },
+                error.message));
+        }
+
+        for warning in &self.warnings {
+            details.push_str(&format!("⚠️  [规则{}] {}\n", warning.rule_id, warning.message));
+        }
+
+        details
     }
 }
