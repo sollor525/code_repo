@@ -277,33 +277,15 @@ impl Default for InputValidator {
     }
 }
 
-/// 全局输入验证器实例
-static mut INPUT_VALIDATOR: Option<InputValidator> = None;
-static INIT: std::sync::Once = std::sync::Once::new();
+/// 全局输入验证器实例（使用OnceLock实现线程安全的延迟初始化）
+static INPUT_VALIDATOR: std::sync::OnceLock<InputValidator> = std::sync::OnceLock::new();
 
-/// 初始化输入验证器
-pub fn init_input_validator() {
-    INIT.call_once(|| {
-        let validator = InputValidator::new();
-        unsafe {
-            INPUT_VALIDATOR = Some(validator);
-        }
-    });
-}
-
-/// 获取全局输入验证器
+/// 获取全局输入验证器实例
 pub fn get_input_validator() -> &'static InputValidator {
-    init_input_validator(); // 确保已初始化
-    unsafe {
-        // 使用更安全的方式访问静态变量
-        if let Some(ref validator) = INPUT_VALIDATOR {
-            validator
-        } else {
-            // 如果未初始化，创建默认实例
-            static DEFAULT_VALIDATOR: InputValidator = InputValidator::new();
-            &DEFAULT_VALIDATOR
-        }
-    }
+    INPUT_VALIDATOR.get_or_init(|| {
+        // 创建默认输入验证器实例
+        InputValidator::new()
+    })
 }
 
 /// 全局引擎实例
@@ -486,8 +468,7 @@ pub extern "C" fn web_scan_rust_init_with_hyperscan() -> c_int {
 /// * 负数 - 错误代码（具体含义见WebScanError）
 #[no_mangle]
 pub extern "C" fn web_scan_rust_load_rules(rules_path: *const c_char) -> c_int {
-    // 初始化输入验证器
-    init_input_validator();
+    // OnceLock会自动初始化输入验证器
 
     // 使用全局输入验证器进行验证
     let validator = get_input_validator();
@@ -592,8 +573,7 @@ pub extern "C" fn web_scan_rust_process_payload(
     payload_len: u32,
     result: *mut web_scan_result_t,
 ) -> c_int {
-    // 初始化输入验证器
-    init_input_validator();
+    // OnceLock会自动初始化输入验证器
 
     // 使用全局输入验证器进行验证
     let validator = get_input_validator();
@@ -682,8 +662,7 @@ pub extern "C" fn web_scan_rust_process_payload_with_session(
     reset_on_request_end: c_int,
     result: *mut web_scan_result_t,
 ) -> c_int {
-    // 初始化输入验证器
-    init_input_validator();
+    // OnceLock会自动初始化输入验证器
 
     // 使用全局输入验证器进行验证
     let validator = get_input_validator();

@@ -33,16 +33,17 @@ use log::info;        // 日志宏，用于输出信息级别的日志
 static INIT: Once = Once::new();
 
 /// 初始化Web扫描检测引擎
-/// 
+///
 /// 这个函数使用Once类型确保初始化代码只执行一次，
 /// 即使被多次调用也是安全的。
 pub fn init() {
     // call_once方法确保闭包内的代码只执行一次
     INIT.call_once(|| {
-        // 初始化环境日志记录器
-        env_logger::init();
-        // 输出初始化成功的信息
-        info!("Web Scan Detection Engine (Rust) initialized");
+        // 初始化环境日志记录器，使用try_init避免重复初始化panic
+        match env_logger::try_init() {
+            Ok(_) => info!("Web Scan Detection Engine (Rust) initialized"),
+            Err(_) => info!("Web Scan Detection Engine (Rust) logger already initialized"),
+        }
     });
 }
 
