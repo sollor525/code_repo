@@ -1,5 +1,8 @@
 # 忽略所有名为 `target` 的目录及其内容
 **/target/
+**/build/
+**/.claude/
+**/.cursor/
 
 # Cargo 的调试信息和构建缓存
 Cargo.lock
@@ -17,3 +20,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+*.idx
+
+*.gz
+*.tar
