@@ -24,3 +24,5 @@ Thumbs.db
 
 *.gz
 *.tar
+ebpf/eunomia-bpf/ecc
+ebpf/eunomia-bpf/ecli
