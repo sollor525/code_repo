@@ -136,7 +136,7 @@ pub struct FragmentCache {
     /// 是否有重叠
     has_overlaps: bool,
     /// 重叠计数
-    overlap_count: u32,
+    #[allow(dead_code)] overlap_count: u32,  // 暂未使用，保留用于统计
 }
 
 impl FragmentCache {

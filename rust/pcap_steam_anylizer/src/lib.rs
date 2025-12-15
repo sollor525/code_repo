@@ -9,6 +9,7 @@ pub mod output;
 pub mod protocol;
 pub mod parallel;
 pub mod rayon_parallel;
+pub mod time_limit;
 
 // 重新导出主要类型
 pub use pcap::{PcapReader, PacketParser, PcapError};

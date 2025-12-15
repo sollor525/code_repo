@@ -20,5 +20,3 @@ pub use stream::{
     StreamEvent, StreamEventRecord,
 };
 
-#[cfg(test)]
-pub mod types_example;

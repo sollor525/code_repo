@@ -127,9 +127,7 @@ impl RayonProcessor {
             .collect();
 
         // 使用 Rayon 并行处理批次
-        let batch_count = batches.len();
-        let mut processed_packets = 0u64;
-        let mut parse_errors = 0u64;
+        let _batch_count = batches.len();
 
         // 使用 Mutex 保护计数器
         let processed_counter = Mutex::new(0u64);
@@ -167,10 +165,9 @@ impl RayonProcessor {
             });
 
         // 获取最终计数
-        {
-            processed_packets = *processed_counter.lock().unwrap();
-            parse_errors = *error_counter.lock().unwrap();
-        }
+        let (processed_packets, parse_errors) = {
+            (*processed_counter.lock().unwrap(), *error_counter.lock().unwrap())
+        };
 
         // 完成进度条
         if let Some(pb) = progress {
@@ -243,7 +240,7 @@ impl RayonProcessor {
         let processed_counter = Mutex::new(0u64);
 
         flow_map.into_par_iter()
-            .for_each(|(flow_key, mut packets)| {
+            .for_each(|(_flow_key, mut packets)| {
                 // 按时间排序每个流的数据包
                 packets.sort_by_key(|p| p.timestamp);
 

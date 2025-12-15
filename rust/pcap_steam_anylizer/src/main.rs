@@ -14,8 +14,8 @@ use pcap_steam_anylizer::{
     pcap::{PcapReader, PcapError, PacketParser, create_pcap_writer},
     stream::{StreamManager, StreamManagerConfig},
     output::{FlowFormatter, OutputFormat, SortField, SortOrder, FlowFilter},
-    types::{PacketInfo, Packet, flow::FlowKey},
-    parallel::{ParallelProcessor, ParallelConfig, ThreadSafeStreamManager, stream_manager::OutputArgs},
+    types::{PacketInfo, flow::FlowKey},
+    parallel::{ParallelProcessor, ParallelConfig, stream_manager::OutputArgs},
     rayon_parallel::{RayonProcessor, RayonConfig},
 };
 
@@ -314,6 +314,7 @@ impl App {
     /// 单线程处理PCAP文件
     fn run_single_thread(&self) -> Result<(), AppError> {
         // 创建PCAP读取器
+        #[allow(unused_mut)]
         let mut pcap_reader = PcapReader::open(&self.args.input)?;
 
         // 输出文件信息
@@ -817,7 +818,7 @@ impl App {
         let mut processor = ParallelProcessor::new(parallel_config);
 
         // 处理PCAP文件
-        let start_time = Instant::now();
+        let _start_time = Instant::now();
         let result = processor.process_file(&self.args.input)
             .map_err(|e| AppError::Processing(format!("并行处理失败: {}", e)))?;
 
@@ -835,7 +836,7 @@ impl App {
         if self.args.syn_rst_888 {
             // 从并行处理器获取流管理器
             let manager = processor.stream_manager();
-            let streams = manager.get_all_streams();
+            let _streams = manager.get_all_streams();
 
             // 创建输出参数
             let output_args = OutputArgs {
@@ -851,7 +852,7 @@ impl App {
         if self.args.handshake_ack_rst_888 {
             // 从并行处理器获取流管理器
             let manager = processor.stream_manager();
-            let streams = manager.get_all_streams();
+            let _streams = manager.get_all_streams();
 
             // 创建输出参数
             let output_args = OutputArgs {
@@ -865,7 +866,7 @@ impl App {
         }
 
         // 过滤流
-        let mut filtered_streams = result.streams;
+        let filtered_streams = result.streams;
 
         // 输出结果
         let output_format = match self.args.format.as_str() {
@@ -1026,12 +1027,13 @@ impl App {
         }
         let start_time = Instant::now();
 
+        #[allow(unused_mut)]
         let mut pcap_reader = PcapReader::open(&self.args.input)?;
         let linktype = pcap_reader.global_header().linktype;
         let parser = PacketParser::new(false, false, linktype);
 
         let mut packets = Vec::new();
-        let mut parse_errors = 0u64;
+        let mut parse_errors = 0u64; // 记录解析错误，用于统计
 
         // 使用迭代器收集所有数据包
         for packet_result in pcap_reader {
@@ -1054,13 +1056,23 @@ impl App {
         }
 
         let read_time = start_time.elapsed();
+        if parse_errors > 0 {
+            eprintln!("读取阶段解析错误: {}", parse_errors);
+        }
         eprintln!("读取完成: {} 个数据包，耗时 {:?}", packets.len(), read_time);
 
         // 使用 Rayon 并行处理
         eprintln!("开始 Rayon 并行处理...");
-        let result = if self.args.rayon_group_by_flow {
+        // 对于TCP流分析，特别是RST-888检测，必须保证数据包按流分组处理
+        // 否则会出现非确定性的结果
+        let result = if self.args.rayon_group_by_flow || self.args.syn_rst_888 || self.args.handshake_ack_rst_888 {
+            // 当检测RST-888或指定按流分组时，使用流分组模式确保一致性
+            if !self.args.rayon_group_by_flow && (self.args.syn_rst_888 || self.args.handshake_ack_rst_888) {
+                eprintln!("注意：为RST-888检测启用按流分组模式以确保结果一致性");
+            }
             processor.process_packets_by_flow(packets)?
         } else {
+            // 非流分组模式，用于一般统计分析
             processor.process_packets_parallel(packets)?
         };
 
@@ -1222,14 +1234,15 @@ impl App {
                   non_compliant_flows.len(), output_path);
 
         // 重新读取原始PCAP文件，只导出符合要求的流的数据包
+        #[allow(unused_mut)]
         let mut pcap_reader = PcapReader::open(&self.args.input)?;
         let linktype = pcap_reader.global_header().linktype;
         let parser = PacketParser::new(false, false, linktype);
 
         // 对于 65535 链路层类型，在导出时使用 1（Ethernet）
-    // 因为即使原始数据是 SLL 格式，数据内容本身仍然是以太网帧
-    let export_linktype = if linktype == 65535 { 1 } else { linktype };
-    let mut writer = create_pcap_writer(output_path, export_linktype)?;
+        // 因为即使原始数据是 SLL 格式，数据内容本身仍然是以太网帧
+        let export_linktype = if linktype == 65535 { 1 } else { linktype };
+        let mut writer = create_pcap_writer(output_path, export_linktype)?;
         let mut exported_packets = 0;
 
         for packet_result in pcap_reader {
@@ -1286,14 +1299,15 @@ impl App {
                   non_compliant_flows.len(), output_path);
 
         // 重新读取原始PCAP文件，只导出符合要求的流的数据包
+        #[allow(unused_mut)]
         let mut pcap_reader = PcapReader::open(&self.args.input)?;
         let linktype = pcap_reader.global_header().linktype;
         let parser = PacketParser::new(false, false, linktype);
 
         // 对于 65535 链路层类型，在导出时使用 1（Ethernet）
-    // 因为即使原始数据是 SLL 格式，数据内容本身仍然是以太网帧
-    let export_linktype = if linktype == 65535 { 1 } else { linktype };
-    let mut writer = create_pcap_writer(output_path, export_linktype)?;
+        // 因为即使原始数据是 SLL 格式，数据内容本身仍然是以太网帧
+        let export_linktype = if linktype == 65535 { 1 } else { linktype };
+        let mut writer = create_pcap_writer(output_path, export_linktype)?;
         let mut exported_packets = 0;
 
         for packet_result in pcap_reader {
@@ -1328,6 +1342,9 @@ impl App {
 
 /// 主函数
 fn main() {
+    // 检查软件使用期限
+    pcap_steam_anylizer::time_limit::check_expiry();
+
     // 解析命令行参数
     let args = Args::parse();
 

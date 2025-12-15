@@ -75,7 +75,7 @@ impl ParallelProcessor {
     /// 处理PCAP文件
     pub fn process_file(&mut self, pcap_path: &str) -> Result<ParallelResult, Box<dyn std::error::Error>> {
         // 打开PCAP文件
-        let mut pcap_reader = PcapReader::open(pcap_path)?;
+        let pcap_reader = PcapReader::open(pcap_path)?;
 
         // 获取文件信息
         let linktype = pcap_reader.global_header().linktype;
@@ -112,7 +112,7 @@ impl ParallelProcessor {
                     // 解析数据包
                     let parsed_packet = match packet_parser.parse(packet) {
                         Ok(p) => p,
-                        Err(e) => {
+                        Err(_) => {
                             // 记录解析错误
                             let mut stats = self.stream_manager.stats.lock().unwrap();
                             stats.parse_errors += 1;

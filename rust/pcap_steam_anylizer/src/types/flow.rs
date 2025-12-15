@@ -162,18 +162,6 @@ impl FlowKey {
         self.protocol == 17
     }
 
-    /// 获取流的字符串表示
-    pub fn to_string(&self) -> String {
-        format!(
-            "{}:{} -> {}:{} ({})",
-            self.src_ip(),
-            self.src_port(),
-            self.dst_ip(),
-            self.dst_port(),
-            self.protocol_name()
-        )
-    }
-
     /// 获取协议名称
     pub fn protocol_name(&self) -> &'static str {
         match self.protocol {
@@ -221,7 +209,15 @@ impl FlowKey {
 
 impl fmt::Display for FlowKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(
+            f,
+            "{}:{} -> {}:{} ({})",
+            self.src_ip(),
+            self.src_port(),
+            self.dst_ip(),
+            self.dst_port(),
+            self.protocol_name()
+        )
     }
 }
 
@@ -423,9 +419,12 @@ impl FiveTuple {
         is_private_ip(&self.src_ip) && is_private_ip(&self.dst_ip)
     }
 
-    /// 获取五元组的字符串表示
-    pub fn to_string(&self) -> String {
-        format!(
+    }
+
+impl fmt::Display for FiveTuple {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
             "{}:{} -> {}:{} ({})",
             self.src_ip,
             self.src_port,
@@ -439,12 +438,6 @@ impl FiveTuple {
                 _ => "Other",
             }
         )
-    }
-}
-
-impl fmt::Display for FiveTuple {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_string())
     }
 }
 

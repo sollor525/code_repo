@@ -2,6 +2,8 @@
 //!
 //! 提供网络数据包各层协议的解析功能
 
+#![allow(clippy::single_match)]
+
 use crate::types::packet::{Packet, Protocol, PacketLayer, TcpFlags};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use etherparse::{SlicedPacket, LinkSlice, InternetSlice, TransportSlice};
@@ -35,6 +37,12 @@ pub struct PacketParser {
     linktype: u32,
 }
 
+impl Default for PacketParser {
+    fn default() -> Self {
+        Self::new(false, false, 1)  // 默认以太网
+    }
+}
+
 impl PacketParser {
     /// 创建新的数据包解析器
     ///
@@ -51,7 +59,8 @@ impl PacketParser {
     }
 
     /// 创建默认解析器（不验证校验和，不解析负载）
-    pub fn default() -> Self {
+    #[deprecated(note = "use PacketParser::default() instead")]
+    pub fn default_legacy() -> Self {
         Self::new(false, false, 1)  // 默认以太网
     }
 
@@ -102,6 +111,7 @@ impl PacketParser {
             101 | 65535 => {
                 // 对于链路层类型65535，某些情况下实际数据仍然是标准以太网帧
                 // 先尝试作为以太网帧解析
+                #[allow(clippy::single_match)]
                 if self.linktype == 65535 && data_clone.len() >= 14 {
                     // 检查是否是以太网帧（0x0800表示IPv4）
                     if data_clone[12] == 0x08 && data_clone[13] == 0x00 {
@@ -222,6 +232,7 @@ impl PacketParser {
     }
 
     /// 解析链路层（以太网）
+    #[allow(unreachable_patterns)]  // 在某些版本中可能还有其他链路层类型
     fn parse_link_layer(&self, link: &LinkSlice, packet: &mut Packet) -> Result<(), ParseError> {
         match link {
             LinkSlice::Ethernet2(header) => {
@@ -255,6 +266,7 @@ impl PacketParser {
         }
     }
 
+    #[allow(dead_code)]  // 这些函数作为扩展功能保留
     /// 解析VLAN标签
     fn parse_vlan_tag(&self, data: &[u8], packet: &mut Packet) -> Result<(), ParseError> {
         if data.len() < 4 {
@@ -282,6 +294,7 @@ impl PacketParser {
     }
 
     /// 解析VLAN内部数据
+    #[allow(dead_code)]
     fn parse_vlan_inner(&self, _tag: u16, _inner: u16, packet: &mut Packet) -> Result<(), ParseError> {
         // 简化的VLAN处理
         packet.layers.push(PacketLayer::Ethernet);
@@ -289,6 +302,7 @@ impl PacketParser {
     }
 
     /// 解析MPLS标签
+    #[allow(dead_code)]
     fn parse_mpls_tag(&self, data: &[u8], _packet: &mut Packet) -> Result<(), ParseError> {
         if data.len() < 4 {
             return Err(ParseError::TruncatedPacket);
@@ -303,6 +317,7 @@ impl PacketParser {
     }
 
     /// 解析MPLS标签栈
+    #[allow(dead_code)]
     fn parse_mpls_tags(&self, tags: &[u32], _packet: &mut Packet) -> Result<(), ParseError> {
         for (_i, &_label) in tags.iter().enumerate() {
             // 处理每个MPLS标签
@@ -456,11 +471,6 @@ impl PacketParser {
     }
 }
 
-impl Default for PacketParser {
-    fn default() -> Self {
-        Self::default()
-    }
-}
 
 #[cfg(test)]
 mod tests {

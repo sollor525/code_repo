@@ -280,6 +280,7 @@ impl TcpReassembler {
     }
 
     /// 检查是否是重复数据
+    #[allow(dead_code)]  // 暂未使用，保留用于未来的优化
     fn is_duplicate(&self, seq: u32, data: &[u8]) -> bool {
         // 检查是否已经在重组缓冲区中
         if let Some(existing) = self.segments.get(&seq) {
@@ -499,7 +500,6 @@ impl TcpReassembler {
                 // 填充间隙（使用零）
                 let gap_len = segment.seq - current_seq;
                 assembled_data.extend(vec![0; gap_len as usize]);
-                current_seq = segment.seq;
             }
 
             assembled_data.extend_from_slice(&segment.data);
@@ -656,7 +656,7 @@ mod tests {
         // 发送乱序分段
         let seg2 = create_test_segment(1003, vec![4, 5, 6]);
         let seg1 = create_test_segment(1000, vec![1, 2, 3]);
-        let seg3 = create_test_segment(1006, vec![7, 8, 9]);
+        let _seg3 = create_test_segment(1006, vec![7, 8, 9]);
 
         // 先发送seg2，应该缓冲
         let result2 = reassembler.process_segment(&seg2).unwrap();
