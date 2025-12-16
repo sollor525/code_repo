@@ -360,10 +360,22 @@ pub struct TcpStream {
     pub has_immediate_rst_888_after_syn: bool,
     /// SYN包后的数据包计数（用于检测是否紧跟RST-888）
     pub packets_since_syn: u32,
+    /// 是否在SYN-ACK包后收到窗口大小为888的RST报文
+    pub has_rst_888_after_syn_ack: bool,
+    /// SYN-ACK包后的数据包计数
+    pub packets_since_syn_ack: u32,
     /// 是否在三次握手完成后的ACK报文后收到窗口大小为888的RST-ACK报文
     pub has_rst_888_after_handshake_ack: bool,
     /// 三次握手完成后的ACK报文后的数据包计数
     pub packets_since_handshake_ack: u32,
+    /// 是否成功进行单向阻断（在服务器返回数据前，向客户端发送window size 888或RST包）
+    pub has_one_way_blocking: bool,
+    /// 单向阻断包时间（用于计算阻断延迟）
+    pub one_way_blocking_time: Option<u64>,
+    /// 服务器首次发送带载荷数据包的时间
+    pub server_first_data_time: Option<u64>,
+    /// 客户端首次发送带载荷数据包的时间
+    pub client_first_data_time: Option<u64>,
 }
 
 impl TcpStream {
@@ -387,8 +399,14 @@ impl TcpStream {
             has_rst_888_after_syn: false,
             has_immediate_rst_888_after_syn: false,
             packets_since_syn: 0,
+            has_rst_888_after_syn_ack: false,
+            packets_since_syn_ack: 0,
             has_rst_888_after_handshake_ack: false,
             packets_since_handshake_ack: 0,
+            has_one_way_blocking: false,
+            one_way_blocking_time: None,
+            server_first_data_time: None,
+            client_first_data_time: None,
         }
     }
 
@@ -516,18 +534,50 @@ impl TcpStream {
 
         // 只处理RST-ACK包（RST且ACK）
         if tcp_flags.is_rst() && tcp_flags.is_ack_only() {
-            // 检查窗口大小是否为888
-            if packet.tcp_window == Some(888) {
-                // 检查是否已经收到了SYN包
-                if self.connection.handshake.client_syn {
-                    self.has_rst_888_after_syn = true;
+            // 检查窗口大小是否为888或包含888作为因子
+            if let Some(window) = packet.tcp_window {
+                if window == 888 || (window > 888 && window % 888 == 0) {
+                    // 检查是否已经收到了SYN包
+                    if self.connection.handshake.client_syn {
+                        self.has_rst_888_after_syn = true;
+                    }
+                }
+            }
 
-                    // 检查是否紧跟在SYN包后
-                    // packets_since_syn在syn_packet_received中已被重置为0
-                    // 在update_packet_stats中会被递增
-                    // 所以这里检查递增前的值
-                    if self.packets_since_syn == 0 {
-                        self.has_immediate_rst_888_after_syn = true;
+            // 检查是否紧跟在SYN包后
+            // packets_since_syn在syn_packet_received中已被重置为0
+            // 在update_packet_stats中会被递增
+            // 所以这里检查递增前的值
+            if self.packets_since_syn == 0 {
+                self.has_immediate_rst_888_after_syn = true;
+            }
+        }
+    }
+
+    /// 检测SYN-ACK包后的RST报文（非RST-ACK）
+    pub fn detect_rst_after_syn_ack(&mut self, packet: &PacketInfo) {
+        // 检查是否是TCP包
+        if packet.protocol != 6 {
+            return;
+        }
+
+        // 获取TCP标志
+        let tcp_flags = match packet.tcp_flags {
+            Some(flags) => TcpFlags::from_byte(flags),
+            None => return,
+        };
+
+        // 只处理RST包（非RST-ACK）
+        if tcp_flags.is_rst() && !tcp_flags.is_ack_only() {
+            // 检查窗口大小是否为888或包含888作为因子
+            if let Some(window) = packet.tcp_window {
+                if window == 888 || (window > 888 && window % 888 == 0) {
+                    // 检查是否已经收到了SYN-ACK包
+                    if self.connection.handshake.server_syn_ack {
+                        // 检查是否紧接着SYN-ACK包（packets_since_syn_ack应该为0或1）
+                        if self.packets_since_syn_ack <= 1 {
+                            self.has_rst_888_after_syn_ack = true;
+                        }
                     }
                 }
             }
@@ -549,15 +599,17 @@ impl TcpStream {
 
         // 只处理RST包（非RST-ACK）
         if tcp_flags.is_rst() && !tcp_flags.is_ack_only() {
-            // 检查窗口大小是否为888
-            if packet.tcp_window == Some(888) {
-                // 检查三次握手是否已完成
-                if self.connection.handshake.is_complete() {
-                    // 检查是否在三次握手ACK后立即收到RST-888
-                    // 三次握手的ACK后，packets_since_handshake_ack会被设置为1
-                    // 紧接着的RST包，此时packets_since_handshake_ack应该是1（还未递增）
-                    if self.packets_since_handshake_ack == 1 {
-                        self.has_rst_888_after_handshake_ack = true;
+            // 检查窗口大小是否为888或包含888作为因子
+            if let Some(window) = packet.tcp_window {
+                if window == 888 || (window > 888 && window % 888 == 0) {
+                    // 检查三次握手是否已完成
+                    if self.connection.handshake.is_complete() {
+                        // 检查是否在三次握手ACK后立即收到RST-888
+                        // 三次握手的ACK后，packets_since_handshake_ack会被设置为1
+                        // 紧接着的RST包，此时packets_since_handshake_ack应该是1（还未递增）
+                        if self.packets_since_handshake_ack == 1 {
+                            self.has_rst_888_after_handshake_ack = true;
+                        }
                     }
                 }
             }
@@ -692,6 +744,181 @@ impl TcpStream {
             self.client_received,
             self.server_received
         )
+    }
+
+    /// 检测单向阻断（在服务器返回数据前，向客户端发送window size 888或RST包）
+    pub fn detect_one_way_blocking(&mut self, packet: &PacketInfo) {
+        // 检查是否是TCP包
+        if packet.protocol != 6 {
+            return;
+        }
+
+        // 检查是否已有单向阻断记录
+        if self.has_one_way_blocking {
+            return;
+        }
+
+
+        // 情况1：SYN包后收到RST-ACK（syn-rst-888的情况）
+        if self.has_rst_888_after_syn || self.has_immediate_rst_888_after_syn {
+            self.has_one_way_blocking = true;
+            self.one_way_blocking_time = Some(packet.timestamp);
+            return;
+        }
+
+        // 情况2：SYN-ACK包后收到RST-888（synack-rst-888的情况）
+        if self.has_rst_888_after_syn_ack {
+            self.has_one_way_blocking = true;
+            self.one_way_blocking_time = Some(packet.timestamp);
+            return;
+        }
+
+        // 情况3：三次握手完成后的ACK后立即收到RST-888（handshake-ack-rst-888的情况）
+        // 这个应该总是被算作单向阻断，因为是在服务器响应前收到的RST-888
+        if self.has_rst_888_after_handshake_ack {
+            self.has_one_way_blocking = true;
+            self.one_way_blocking_time = Some(packet.timestamp);
+            return;
+        }
+
+        // 情况4：三次握手完成后的ACK后紧接着收到window size 888的TCP数据包
+        // 这种情况不需要是RST包，任何窗口大小为888的包都算
+        // 但前提是服务器还没有发送响应数据
+        if self.connection.handshake.is_complete() &&
+           self.packets_since_handshake_ack == 1 {
+            // 检查窗口大小是否为888或包含888作为因子
+            let is_win_888 = if let Some(window) = packet.tcp_window {
+                window == 888 || (window > 888 && window % 888 == 0)
+            } else {
+                false
+            };
+
+            if is_win_888 {
+                // 检查服务器是否已经发送了响应数据
+                if self.server_first_data_time.is_some() {
+                    // 服务器已经响应，不能算单向阻断
+                    return;
+                }
+
+                // 检查包的方向（应该是发送给客户端的）
+                let is_to_client = packet.dst_ip == *self.flow_key.src_ip() &&
+                                  packet.dst_port == self.flow_key.src_port();
+
+                if is_to_client {
+                    self.has_one_way_blocking = true;
+                    self.one_way_blocking_time = Some(packet.timestamp);
+                    return;
+                }
+            }
+        }
+
+        // 情况4b：三次握手完成后的ACK后收到RST包（窗口888）
+        // 这是 detect_rst_after_handshake_ack 已经处理的，但为了完整性在这里也检查
+        // 检测已经在前面通过 has_rst_888_after_handshake_ack 完成了
+
+        // 情况5：客户端已发送请求，但服务器还未响应，此时收到阻断包
+
+        // 首先确认三次握手已完成
+        if !self.connection.handshake.is_complete() {
+            return;
+        }
+
+        // 确认客户端已经发送过带载荷的请求包
+        if self.client_first_data_time.is_none() {
+            return; // 客户端还没发送数据，不符合单向阻断条件
+        }
+
+        // 确认服务器还没有发送响应数据
+        if self.server_first_data_time.is_some() {
+            return; // 服务器已经响应，不能算单向阻断
+        }
+
+        // 检查包的方向（应该是服务器或中间设备发送给客户端的包）
+        let is_server_to_client = packet.src_ip == *self.flow_key.dst_ip() &&
+                                   packet.src_port == self.flow_key.dst_port();
+
+        // 也可能是中间设备（防火墙等）发送给客户端的包
+        // 这种情况下，源IP可能不是服务器IP，但目的IP是客户端IP
+        let is_to_client = packet.dst_ip == *self.flow_key.src_ip() &&
+                          packet.dst_port == self.flow_key.src_port();
+
+        if !is_server_to_client && !is_to_client {
+            return;
+        }
+
+        // 获取TCP标志
+        let tcp_flags = match packet.tcp_flags {
+            Some(flags) => TcpFlags::from_byte(flags),
+            None => return,
+        };
+
+        // 检查是否是RST包或窗口大小为888的数据包
+        let is_rst = tcp_flags.is_rst();
+        let is_win_888 = if let Some(window) = packet.tcp_window {
+            window == 888 || (window > 888 && window % 888 == 0)
+        } else {
+            false
+        };
+
+        if is_rst || is_win_888 {
+            // 记录单向阻断成功
+            self.has_one_way_blocking = true;
+            self.one_way_blocking_time = Some(packet.timestamp);
+        }
+    }
+
+    /// 检测服务器首次发送带载荷的数据包
+    pub fn detect_server_first_data(&mut self, packet: &PacketInfo) {
+        // 检查是否是TCP包
+        if packet.protocol != 6 {
+            return;
+        }
+
+        // 检查是否是服务器发送给客户端
+        let is_server_to_client = packet.src_ip == *self.flow_key.dst_ip() &&
+                                   packet.src_port == self.flow_key.dst_port();
+
+        if !is_server_to_client {
+            return;
+        }
+
+        // 如果已经记录过，不再处理
+        if self.server_first_data_time.is_some() {
+            return;
+        }
+
+        // 检查是否有载荷（payload长度大于0）
+        if packet.payload.len() > 0 {
+            // 记录服务器首次发送数据的时间
+            self.server_first_data_time = Some(packet.timestamp);
+        }
+    }
+
+    /// 检测客户端首次发送带载荷的数据包
+    pub fn detect_client_first_data(&mut self, packet: &PacketInfo) {
+        // 检查是否是TCP包
+        if packet.protocol != 6 {
+            return;
+        }
+
+        // 检查是否是客户端发送给服务器
+        let is_client_to_server = packet.src_ip == *self.flow_key.src_ip() &&
+                                   packet.src_port == self.flow_key.src_port();
+
+        if !is_client_to_server {
+            return;
+        }
+
+        // 如果已经记录过，不再处理
+        if self.client_first_data_time.is_some() {
+            return;
+        }
+
+        // 检查是否有载荷（payload长度大于0）
+        if packet.payload.len() > 0 {
+            // 记录客户端首次发送数据的时间
+            self.client_first_data_time = Some(packet.timestamp);
+        }
     }
 }
 

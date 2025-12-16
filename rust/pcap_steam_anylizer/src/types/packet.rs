@@ -317,10 +317,34 @@ impl Packet {
     /// 获取负载（去掉所有头部后的数据）
     pub fn payload(&self) -> Option<&[u8]> {
         if self.is_tcp() {
-            // 简单实现：去掉以太网头(14) + IP头(20或40) + TCP头(20)
-            let header_size = if self.is_ipv4() { 54 } else { 74 };
-            if self.data.len() > header_size {
-                Some(&self.data[header_size..])
+            // 需要正确计算TCP头长度（包含选项）
+            let ip_header_size = if self.is_ipv4() { 20 } else { 40 };
+            let ethernet_header_size = 14;
+
+            // 从IP头中获取总长度
+            let total_length = if self.data.len() >= ethernet_header_size + ip_header_size + 2 {
+                // IP总长度字段在偏移ethernet_header_size + 2字节处
+                ((self.data[ethernet_header_size + 2] as u16) << 8) |
+                (self.data[ethernet_header_size + 3] as u16)
+            } else {
+                0
+            };
+
+            // 从TCP头中获取头长度（以4字节为单位）
+            let tcp_header_offset = ethernet_header_size + ip_header_size;
+            let tcp_header_size = if self.data.len() > tcp_header_offset + 12 {
+                // TCP头长度字段的高4位在偏移12字节处
+                let tcp_header_len_field = self.data[tcp_header_offset + 12];
+                ((tcp_header_len_field >> 4) & 0x0F) as usize * 4
+            } else {
+                20 // 默认20字节
+            };
+
+            let header_size = ethernet_header_size + ip_header_size + tcp_header_size;
+            let payload_size = total_length as usize - ip_header_size - tcp_header_size;
+
+            if payload_size > 0 && self.data.len() >= header_size + payload_size {
+                Some(&self.data[header_size..header_size + payload_size])
             } else {
                 None
             }

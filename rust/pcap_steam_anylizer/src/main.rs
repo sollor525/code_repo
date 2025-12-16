@@ -201,6 +201,13 @@ struct Args {
     )]
     handshake_ack_rst_888: bool,
 
+    /// 检测单向阻断是否成功
+    #[arg(
+        long = "one-way-blocking",
+        help = "检测单向阻断是否成功（在服务器返回数据包前，向客户端发送window size 888或RST包）"
+    )]
+    one_way_blocking: bool,
+
     /// 启用并行处理
     #[arg(
         long = "parallel",
@@ -282,6 +289,7 @@ impl App {
             cleanup_interval: std::time::Duration::from_secs(60),
             syn_rst_888: args.syn_rst_888,
             handshake_ack_rst_888: args.handshake_ack_rst_888,
+            one_way_blocking: args.one_way_blocking,
         };
 
         let stream_manager = Arc::new(Mutex::new(StreamManager::new(config)));
@@ -344,6 +352,12 @@ impl App {
         if self.args.handshake_ack_rst_888 {
             self.output_handshake_ack_rst_888_detection_results(&self.stream_manager)?;
             // RST-888 检测模式下不输出会话详情，直接返回
+            return Ok(());
+        }
+
+        if self.args.one_way_blocking {
+            self.output_one_way_blocking_detection_results(&self.stream_manager)?;
+            // 单向阻断检测模式下不输出会话详情，直接返回
             return Ok(());
         }
 
@@ -804,6 +818,7 @@ impl App {
             cleanup_interval: std::time::Duration::from_secs(60),
             syn_rst_888: self.args.syn_rst_888,
             handshake_ack_rst_888: self.args.handshake_ack_rst_888,
+            one_way_blocking: self.args.one_way_blocking,
         };
 
         // 配置并行处理器
@@ -1003,6 +1018,7 @@ impl App {
             cleanup_interval: std::time::Duration::from_secs(60),
             syn_rst_888: self.args.syn_rst_888,
             handshake_ack_rst_888: self.args.handshake_ack_rst_888,
+            one_way_blocking: self.args.one_way_blocking,
         };
 
         let rayon_config = RayonConfig {
@@ -1063,12 +1079,12 @@ impl App {
 
         // 使用 Rayon 并行处理
         eprintln!("开始 Rayon 并行处理...");
-        // 对于TCP流分析，特别是RST-888检测，必须保证数据包按流分组处理
+        // 对于TCP流分析，特别是RST-888检测和单向阻断检测，必须保证数据包按流分组处理
         // 否则会出现非确定性的结果
-        let result = if self.args.rayon_group_by_flow || self.args.syn_rst_888 || self.args.handshake_ack_rst_888 {
-            // 当检测RST-888或指定按流分组时，使用流分组模式确保一致性
-            if !self.args.rayon_group_by_flow && (self.args.syn_rst_888 || self.args.handshake_ack_rst_888) {
-                eprintln!("注意：为RST-888检测启用按流分组模式以确保结果一致性");
+        let result = if self.args.rayon_group_by_flow || self.args.syn_rst_888 || self.args.handshake_ack_rst_888 || self.args.one_way_blocking {
+            // 当检测RST-888、单向阻断或指定按流分组时，使用流分组模式确保一致性
+            if !self.args.rayon_group_by_flow && (self.args.syn_rst_888 || self.args.handshake_ack_rst_888 || self.args.one_way_blocking) {
+                eprintln!("注意：为特殊检测启用按流分组模式以确保结果一致性");
             }
             processor.process_packets_by_flow(packets)?
         } else {
@@ -1099,6 +1115,12 @@ impl App {
         if self.args.handshake_ack_rst_888 {
             self.output_handshake_ack_rst_888_detection_results(processor.stream_manager())?;
             // RST-888 检测模式下不输出会话详情，直接返回
+            return Ok(());
+        }
+
+        if self.args.one_way_blocking {
+            self.output_one_way_blocking_detection_results(processor.stream_manager())?;
+            // 单向阻断检测模式下不输出会话详情，直接返回
             return Ok(());
         }
 
@@ -1335,6 +1357,171 @@ impl App {
         }
 
         writer.flush()?;
+        eprintln!("成功导出 {} 个数据包", exported_packets);
+        Ok(())
+    }
+
+    /// 输出单向阻断检测结果
+    fn output_one_way_blocking_detection_results(&self, manager: &Arc<Mutex<StreamManager>>) -> Result<(), AppError> {
+        eprintln!("\n单向阻断检测结果:");
+        eprintln!("查找在服务器返回数据包前，向客户端发送window size 888或RST包的连接...\n");
+
+        let mut total_streams = 0;
+        let mut streams_with_blocking = 0;
+        let mut streams_without_blocking = 0;
+
+        // 创建输出写入器
+        let mut writer: Box<dyn Write> = if let Some(ref output_path) = self.args.output {
+            Box::new(File::create(output_path)?)
+        } else {
+            Box::new(io::stdout())
+        };
+
+        // 写入标题
+        writeln!(writer, "# 单向阻断检测结果报告")?;
+        writeln!(writer, "# 以下会话未成功实现单向阻断（在服务器返回数据前未发送window size 888或RST包）")?;
+        writeln!(writer, "")?;
+
+        for stream in manager.lock().unwrap().get_all_streams() {
+            // 只检查TCP流
+            if stream.flow_key.protocol() != 6 {
+                continue;
+            }
+
+            // 检查是否有数据包
+            if stream.stats.packet_count == 0 {
+                continue;
+            }
+
+            // 检查是否有完整的三次握手
+            if !stream.connection.handshake.is_complete() {
+                continue;
+            }
+
+            total_streams += 1;
+
+            // 判断是否有单向阻断
+            if stream.has_one_way_blocking {
+                streams_with_blocking += 1;
+            } else {
+                streams_without_blocking += 1;
+
+                // 输出无单向阻断的流信息
+                writeln!(writer, "流ID: {}", stream.flow_key)?;
+                writeln!(writer, "  客户端: {}:{}", stream.client_ip(), stream.client_port())?;
+                writeln!(writer, "  服务器: {}:{}", stream.server_ip(), stream.server_port())?;
+                writeln!(writer, "  单向阻断: 未成功")?;
+                writeln!(writer, "  状态: {}", stream.state.as_str())?;
+                writeln!(writer, "  数据包数: {}", stream.stats.packet_count)?;
+                writeln!(writer, "  字节数: {}", stream.stats.byte_count)?;
+
+                // 显示连接持续时间
+                if let Some(duration) = stream.connection.duration_seconds() {
+                    writeln!(writer, "  持续时间: {:.3} 秒", duration)?;
+                }
+
+                // 显示握手状态
+                if stream.connection.handshake.is_complete() {
+                    writeln!(writer, "  握手: 完成")?;
+                } else {
+                    writeln!(writer, "  握手: 未完成")?;
+                }
+
+                // 显示客户端和服务器是否发送了数据
+                if let Some(client_data_time) = stream.client_first_data_time {
+                    writeln!(writer, "  客户端首次发送数据: 是（时间戳: {}）", client_data_time)?;
+                } else {
+                    writeln!(writer, "  客户端首次发送数据: 否")?;
+                }
+
+                if let Some(server_data_time) = stream.server_first_data_time {
+                    writeln!(writer, "  服务器首次发送数据: 是（时间戳: {}）", server_data_time)?;
+                } else {
+                    writeln!(writer, "  服务器首次发送数据: 否")?;
+                }
+
+                writeln!(writer, "")?;
+            }
+        }
+
+        // 输出统计信息
+        writeln!(writer, "# 统计摘要:")?;
+        writeln!(writer, "# 总TCP流数: {}", total_streams)?;
+        writeln!(writer, "# 成功单向阻断的流数: {}", streams_with_blocking)?;
+        writeln!(writer, "# 未成功单向阻断的流数: {}", streams_without_blocking)?;
+
+        // 导出到PCAP文件
+        if streams_without_blocking > 0 {
+            let output_path = "one_way_blocking_non_compliant.pcap";
+            self.export_one_way_blocking_non_compliant_packets_to_pcap(manager, output_path)?;
+            eprintln!("\n正在导出 {} 个未成功单向阻断的会话的数据包到: {}", streams_without_blocking, output_path);
+        }
+
+        Ok(())
+    }
+
+    /// 导出未成功单向阻断的会话的数据包
+    fn export_one_way_blocking_non_compliant_packets_to_pcap(&self, manager: &Arc<Mutex<StreamManager>>, output_path: &str) -> Result<(), AppError> {
+        // 收集需要导出的流的键值
+        let mut non_compliant_flows = std::collections::HashSet::new();
+        for stream in manager.lock().unwrap().get_all_streams() {
+            if stream.flow_key.protocol() == 6 &&
+               stream.stats.packet_count > 0 &&
+               stream.connection.handshake.is_complete() &&
+               !stream.has_one_way_blocking {
+                non_compliant_flows.insert(stream.flow_key.clone());
+            }
+        }
+
+        if non_compliant_flows.is_empty() {
+            return Ok(());
+        }
+
+        // 重新读取原始PCAP文件
+        #[allow(unused_mut)]
+        let mut pcap_reader = PcapReader::open(&self.args.input)?;
+        let linktype = pcap_reader.global_header().linktype;
+        let parser = PacketParser::new(false, false, linktype);
+
+        // 对于 65535 链路层类型，在导出时使用 1（Ethernet）
+        // 因为即使原始数据是 SLL 格式，数据内容本身仍然是以太网帧
+        let export_linktype = if linktype == 65535 { 1 } else { linktype };
+        let mut writer = create_pcap_writer(output_path, export_linktype)?;
+        let mut exported_packets = 0;
+
+        for packet_result in pcap_reader {
+            match packet_result {
+                Ok(raw_packet) => {
+                    match parser.parse(raw_packet.clone()) {
+                        Ok(packet) => {
+                            // 检查这个数据包是否属于不符合要求的流
+                            if let (Some(src_ip), Some(dst_ip), Some(src_port), Some(dst_port)) =
+                                (packet.src_ip, packet.dst_ip, packet.src_port, packet.dst_port) {
+                                let flow_key = FlowKey::new(
+                                    src_ip, dst_ip, src_port, dst_port, 6
+                                );
+
+                                if non_compliant_flows.contains(&flow_key) {
+                                    // 写入原始数据包
+                                    if let Err(e) = writer.write_packet(&raw_packet) {
+                                        eprintln!("写入数据包时出错: {}", e);
+                                    } else {
+                                        exported_packets += 1;
+                                    }
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            // 解析错误，跳过
+                        }
+                    }
+                }
+                Err(_) => {
+                    // 读取错误，跳过
+                }
+            }
+        }
+
         eprintln!("成功导出 {} 个数据包", exported_packets);
         Ok(())
     }

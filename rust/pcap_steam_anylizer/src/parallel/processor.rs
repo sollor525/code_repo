@@ -36,6 +36,7 @@ impl Default for ParallelConfig {
                 cleanup_interval: Duration::from_secs(60),
                 syn_rst_888: false,
                 handshake_ack_rst_888: false,
+                one_way_blocking: false,
             },
             batch_size: 1000,
             enable_progress: true,

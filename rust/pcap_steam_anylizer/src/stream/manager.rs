@@ -26,6 +26,8 @@ pub struct StreamManagerConfig {
     pub syn_rst_888: bool,
     /// 是否启用三次握手ACK后RST-888检测
     pub handshake_ack_rst_888: bool,
+    /// 是否启用单向阻断检测
+    pub one_way_blocking: bool,
 }
 
 impl Default for StreamManagerConfig {
@@ -38,6 +40,7 @@ impl Default for StreamManagerConfig {
             cleanup_interval: Duration::from_secs(60), // 1分钟
             syn_rst_888: false,
             handshake_ack_rst_888: false,
+            one_way_blocking: false,
         }
     }
 }
@@ -184,6 +187,21 @@ impl StreamManager {
                 stream.detect_rst_after_handshake_ack(&packet);
             }
 
+            // 单向阻断检测（可与其他检测同时进行）
+            if self.config.one_way_blocking {
+                // 在one_way_blocking模式下，也需要检测所有RST-888情况，因为
+                // 这些检测成功的报文都可能是单向阻断成功的
+                if !self.config.syn_rst_888 && !self.config.handshake_ack_rst_888 {
+                    // 如果没有启用其他RST-888检测模式，则在one_way_blocking中检测所有情况
+                    stream.detect_rst_888_after_syn(&packet);
+                    stream.detect_rst_after_syn_ack(&packet);
+                    stream.detect_rst_after_handshake_ack(&packet);
+                }
+                stream.detect_client_first_data(&packet);
+                stream.detect_server_first_data(&packet);
+                stream.detect_one_way_blocking(&packet);
+            }
+
             // 如果是 RST 报文，使用专门的 RST 处理方法
             if rst_flag {
                 if stream.handle_rst(&packet) {
@@ -259,6 +277,8 @@ impl StreamManager {
                 stream.connection.handshake.server_syn_ack = true;
                 // SYN后的计数器递增（SYN-ACK是SYN后的第一个包）
                 stream.packets_since_syn += 1;
+                // 重置SYN-ACK后的计数器（SYN-ACK本身是第一个包）
+                stream.packets_since_syn_ack = 1;
             } else if ack_flag && !syn_flag && !fin_flag && !rst_flag {
                 // ACK包（可能是握手完成）
                 if stream.connection.handshake.client_syn && stream.connection.handshake.server_syn_ack && !stream.connection.handshake.client_ack {
@@ -271,6 +291,7 @@ impl StreamManager {
                 } else {
                     // 普通ACK包
                     stream.packets_since_syn += 1;
+                    stream.packets_since_syn_ack += 1;
                     if stream.connection.handshake.is_complete() {
                         stream.packets_since_handshake_ack += 1;
                     }
@@ -278,6 +299,7 @@ impl StreamManager {
             } else {
                 // 其他数据包
                 stream.packets_since_syn += 1;
+                stream.packets_since_syn_ack += 1;
                 if stream.connection.handshake.is_complete() {
                     stream.packets_since_handshake_ack += 1;
                 }
