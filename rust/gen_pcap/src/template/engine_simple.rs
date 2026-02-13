@@ -2,10 +2,10 @@
 //!
 //! 专注于基本功能，确保能够编译和运行
 
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr};
 use crate::{TcpSession, HttpStatusCode, SessionTemplate};
 use crate::tcp::{build_tcp_handshake_packets, TcpConnection};
-use crate::core::{NetworkConnection};
+use crate::core::{NetworkConnection, IpVersion};
 use crate::vlan::{VlanConfig, build_vlan_ethernet_header};
 use super::{ TemplateConfig, TemplateError};
 
@@ -23,11 +23,13 @@ impl SimpleTemplateEngine {
     fn apply_vlan_to_packet(&self, packet: Vec<u8>, session: &TcpSession) -> Vec<u8> {
         let vlan_config = self.parse_vlan_config();
         if vlan_config.is_qinq || vlan_config.outer_tag.is_some() {
-            // 构建新的VLAN以太网头
+            // 构建 VLAN 以太网头，根据 IP 版本选择正确的以太网类型
+            let ip_version = session.connection.ip_version();
             let vlan_header = build_vlan_ethernet_header(
                 session.connection.src_mac,
                 session.connection.dst_mac,
                 &vlan_config,
+                ip_version,
             );
 
             // 替换原以太网头
@@ -95,8 +97,8 @@ impl SimpleTemplateEngine {
 
             for i in 0..repeat_count {
                 // 简化的会话创建
-                let src_ip = Ipv4Addr::new(10, 10, 1, 100 + i as u8);
-                let dst_ip = Ipv4Addr::new(192, 168, 1, 100);
+                let src_ip = IpAddr::V4(Ipv4Addr::new(10, 10, 1, 100 + i as u8));
+                let dst_ip = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100));
                 let src_mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
                 let dst_mac = [0xe2, 0xc9, 0xfc, 0xf5, 0x9e, 0x3c];
                 let src_port = 30000 + i as u16;

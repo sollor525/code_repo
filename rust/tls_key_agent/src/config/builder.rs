@@ -7,6 +7,7 @@
  */
 use super::*;
 use std::path::Path;
+use tracing::warn;
 
 /// 配置构建器
 pub struct ConfigBuilder {
@@ -54,6 +55,16 @@ impl ConfigBuilder {
         self
     }
 
+    /// 启用UDP传输
+    pub fn enable_udp_transport(mut self, host: &str, port: u16) -> Self {
+        if !self.config.transport.enabled_transports.contains(&TransportType::Udp) {
+            self.config.transport.enabled_transports.push(TransportType::Udp);
+        }
+        self.config.transport.udp.server_host = host.to_string();
+        self.config.transport.udp.server_port = port;
+        self
+    }
+
     /// 启用TCP传输
     pub fn enable_tcp_transport(mut self, host: &str, port: u16) -> Self {
         if !self.config.transport.enabled_transports.contains(&TransportType::Tcp) {
@@ -64,21 +75,17 @@ impl ConfigBuilder {
         self
     }
 
-    /// 启用文件传输
-    pub fn enable_file_transport(mut self, path: &str) -> Self {
-        if !self.config.transport.enabled_transports.contains(&TransportType::File) {
-            self.config.transport.enabled_transports.push(TransportType::File);
-        }
-        self.config.transport.file.enabled = true;
-        self.config.transport.file.output_path = path.to_string();
+    /// 启用文件传输（在新架构中已弃用）
+    pub fn enable_file_transport(self, _path: &str) -> Self {
+        // 在新eBPF架构中，文件传输已被UDP批量传输替代
+        warn!("文件传输功能在新架构中已弃用，使用UDP批量传输");
         self
     }
 
-    /// 启用文件轮转
-    pub fn enable_file_rotation(mut self, max_size: u64, max_files: usize) -> Self {
-        self.config.transport.file.rotation = true;
-        self.config.transport.file.max_file_size = max_size;
-        self.config.transport.file.max_files = max_files;
+    /// 启用文件轮转（在新架构中已弃用）
+    pub fn enable_file_rotation(self, _max_size: u64, _max_files: usize) -> Self {
+        // 在新eBPF架构中，文件传输已被UDP批量传输替代
+        warn!("文件轮转功能在新架构中已弃用，使用UDP批量传输");
         self
     }
 
@@ -96,6 +103,8 @@ impl ConfigBuilder {
             },
             process_name: None,
             pid: None,
+            source_ip_filter: None,
+            priority: 100,
         };
         self.config.filters.push(filter);
         self
@@ -115,6 +124,8 @@ impl ConfigBuilder {
             },
             process_name: Some(process_pattern.to_string()),
             pid: None,
+            source_ip_filter: None,
+            priority: 100,
         };
         self.config.filters.push(filter);
         self
@@ -209,7 +220,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(config.transport.tcp.server_port, 9999);
-        assert_eq!(config.filters.len(), 4); // 3默认 + 1新增
+        assert_eq!(config.filters.len(), 1); // 1新增
         assert!(config.filters.iter().any(|f| f.name == "test"));
     }
 
@@ -217,17 +228,16 @@ mod tests {
     fn test_development_preset() {
         let config = presets::development().build().unwrap();
 
-        assert!(config.transport.enabled_transports.contains(&TransportType::File));
-        assert!(config.transport.file.rotation);
-        assert_eq!(config.transport.file.max_file_size, 10 * 1024 * 1024);
+        assert!(config.transport.enabled_transports.contains(&TransportType::Udp));
+        assert!(config.transport.udp.enabled);
     }
 
     #[test]
     fn test_production_preset() {
         let config = presets::production().build().unwrap();
 
+        assert!(config.transport.enabled_transports.contains(&TransportType::Udp));
         assert!(config.transport.enabled_transports.contains(&TransportType::Tcp));
-        assert!(config.transport.enabled_transports.contains(&TransportType::File));
         assert_eq!(config.agent.log_level, "warn");
         assert_eq!(config.agent.buffer_pool_size, 5000);
     }
@@ -247,7 +257,7 @@ mod tests {
         let config_path = dir.path().join("test_config.toml");
 
         let _config = ConfigBuilder::new()
-            .enable_file_transport("./test.log")
+            .enable_udp_transport("127.0.0.1", 9999)
             .build_and_save(&config_path)
             .unwrap();
 
@@ -255,6 +265,6 @@ mod tests {
 
         // 验证保存的配置可以正确加载
         let loaded_config = Config::from_file(&config_path).unwrap();
-        assert_eq!(loaded_config.transport.file.output_path, "./test.log");
+        assert_eq!(loaded_config.transport.udp.server_host, "127.0.0.1");
     }
 }

@@ -1,0 +1,28 @@
+[Unit]
+Description=TLS Key Agent
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=
+Group=
+ExecStart=/opt/tls_key_agent/bin/tls_key_agent --config /opt/tls_key_agent/config/config.toml
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tls-key-agent
+
+# 安全设置
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/tls_key_agent/logs
+CapabilityBoundingSet=CAP_SYS_ADMIN
+AmbientCapabilities=CAP_SYS_ADMIN
+
+[Install]
+WantedBy=multi-user.target

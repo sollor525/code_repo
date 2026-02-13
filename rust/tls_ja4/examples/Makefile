@@ -1,56 +1,114 @@
-# Examples Makefile for TLS JA4 Project
-# 管理所有示例程序的构建和运行
+# TLS JA4/JA3 C API示例代码Makefile
+# 支持编译基础、高级和VPP集成示例
 
-# 项目设置
-PROJECT_ROOT = ..
-RUST_LIB_DIR = $(PROJECT_ROOT)/target/release
+# 编译器设置
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c99 -O2 -g
+LDFLAGS = -L../target/release
+LIBS = -ltls_ja4 -lpthread
 
-# JA4 Demo目录列表
-JA4_DEMOS = c_demos/ja4_fingerprint \
-           c_demos/ja4_simple
+# 源文件和目标文件
+BASIC_EXAMPLE = c_api_basic_example
+ADVANCED_EXAMPLE = c_api_advanced_example
+VPP_EXAMPLE = c_api_vpp_integration
 
-# C API测试程序
-C_API_TESTS = c_demos/test_c_api \
-             c_demos/test_c_api_comprehensive \
-             c_demos/vpp_integration
+BASIC_SRC = $(BASIC_EXAMPLE).c
+ADVANCED_SRC = $(ADVANCED_EXAMPLE).c
+VPP_SRC = $(VPP_EXAMPLE).c
 
-# 所有demo目录
-ALL_DEMOS = $(JA4_DEMOS) $(C_API_TESTS)
+# 包含路径
+INCLUDES = -I../include -I.
 
 # 默认目标：显示帮助信息
 .DEFAULT_GOAL := help
 
-# 构建所有JA4 demos
+# 检查库是否存在
+check_lib:
+	@if [ ! -f "../target/release/libtls_ja4.so" ]; then \
+		echo "❌ 错误: 找不到libtls_ja4.so"; \
+		echo "请先构建Rust库: cargo build --release"; \
+		exit 1; \
+	fi
+
+# 构建所有C API示例
+all: check_lib $(BASIC_EXAMPLE) $(ADVANCED_EXAMPLE) $(VPP_EXAMPLE)
+
+# 基础示例
+$(BASIC_EXAMPLE): $(BASIC_SRC)
+	@echo "🔨 编译基础C API示例..."
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LDFLAGS) $(LIBS)
+	@echo "✅ 基础示例编译完成: $@"
+
+# 高级示例
+$(ADVANCED_EXAMPLE): $(ADVANCED_SRC)
+	@echo "🔨 编译高级C API示例..."
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LDFLAGS) $(LIBS)
+	@echo "✅ 高级示例编译完成: $@"
+
+# VPP集成示例
+$(VPP_EXAMPLE): $(VPP_SRC)
+	@echo "🔨 编译VPP集成示例..."
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LDFLAGS) $(LIBS)
+	@echo "✅ VPP集成示例编译完成: $@"
+
+# 构建所有JA4 demos（保留原有功能）
 build-ja4-demos:
 	@echo "构建所有JA4 demo程序..."
 	@for demo in $(JA4_DEMOS); do \
-		echo "构建 $$demo..."; \
-		$(MAKE) -C $$demo all || exit 1; \
-		echo "✅ $$demo 构建完成"; \
+		if [ -d "$$demo" ]; then \
+			echo "构建 $$demo..."; \
+			$(MAKE) -C $$demo all || exit 1; \
+			echo "✅ $$demo 构建完成"; \
+		fi; \
 	done
 	@echo "🎉 所有JA4 demo构建完成！"
 
-# 构建所有C API测试程序
+# 构建所有C API测试程序（保留原有功能）
 build-c-api-tests:
 	@echo "构建所有C API测试程序..."
 	@for test in $(C_API_TESTS); do \
-		echo "构建 $$test..."; \
-		$(MAKE) -C c_demos -f Makefile.$(shell basename $$test) all || exit 1; \
-		echo "✅ $$test 构建完成"; \
+		if [ -f "c_demos/Makefile.$(shell basename $$test)" ]; then \
+			echo "构建 $$test..."; \
+			$(MAKE) -C c_demos -f Makefile.$(shell basename $$test) all || exit 1; \
+			echo "✅ $$test 构建完成"; \
+		fi; \
 	done
 	@echo "🎉 所有C API测试程序构建完成！"
 
-# 构建所有demo
-build-all: build-ja4-demos build-c-api-tests
+# 构建所有demo（包括新旧）
+build-all: all build-ja4-demos build-c-api-tests
 	@echo "🎉 所有demo程序构建完成！"
+
+# 运行基础示例
+run-basic: $(BASIC_EXAMPLE)
+	@echo "🚀 运行基础示例..."
+	@export LD_LIBRARY_PATH=../target/release:$$LD_LIBRARY_PATH; \
+	./$(BASIC_EXAMPLE)
+
+# 运行高级示例
+run-advanced: $(ADVANCED_EXAMPLE)
+	@echo "🚀 运行高级示例..."
+	@export LD_LIBRARY_PATH=../target/release:$$LD_LIBRARY_PATH; \
+	./$(ADVANCED_EXAMPLE)
+
+# 运行VPP集成示例
+run-vpp: $(VPP_EXAMPLE)
+	@echo "🚀 运行VPP集成示例..."
+	@export LD_LIBRARY_PATH=../target/release:$$LD_LIBRARY_PATH; \
+	./$(VPP_EXAMPLE)
+
+# 运行所有新示例
+run-all-examples: run-basic run-advanced run-vpp
 
 # 运行所有JA4 demos
 run-ja4-demos:
 	@echo "运行所有JA4 demo程序..."
 	@for demo in $(JA4_DEMOS); do \
-		echo "运行 $$demo..."; \
-		$(MAKE) -C $$demo run || echo "⚠️  $$demo 运行可能需要交互"; \
-		echo ""; \
+		if [ -d "$$demo" ]; then \
+			echo "运行 $$demo..."; \
+			$(MAKE) -C $$demo run || echo "⚠️  $$demo 运行可能需要交互"; \
+			echo ""; \
+		fi; \
 	done
 	@echo "🎉 所有JA4 demo运行完成！"
 
@@ -58,14 +116,16 @@ run-ja4-demos:
 run-c-api-tests:
 	@echo "运行所有C API测试程序..."
 	@for test in $(C_API_TESTS); do \
-		echo "运行 $$test..."; \
-		$(MAKE) -C c_demos -f Makefile.$(shell basename $$test) run || echo "⚠️  $$test 运行可能有问题"; \
-		echo ""; \
+		if [ -f "c_demos/Makefile.$(shell basename $$test)" ]; then \
+			echo "运行 $$test..."; \
+			$(MAKE) -C c_demos -f Makefile.$(shell basename $$test) run || echo "⚠️  $$test 运行可能有问题"; \
+			echo ""; \
+		fi; \
 	done
 	@echo "🎉 所有C API测试程序运行完成！"
 
-# 运行所有demo
-run-all: run-ja4-demos run-c-api-tests
+# 运行所有demo（包括新旧）
+run-all: run-all-examples run-ja4-demos run-c-api-tests
 	@echo "🎉 所有demo程序运行完成！"
 
 # 测试JA4指纹计算功能

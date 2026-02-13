@@ -14,7 +14,7 @@ pub mod vlan;
 
 // 重新导出主要公共接口
 pub use core::{
-    NetworkConnection, IpRange, PortRange, BuildError, PcapError,
+    NetworkConnection, IpRange, IpVersion, PortRange, BuildError, PcapError,
     session::{TcpSession, ApplicationFlow, ApplicationFlowType}
 };
 pub use session::{

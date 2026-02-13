@@ -365,6 +365,12 @@ impl From<Protocol> for web_scan_protocol_t {
 /// 从Rust的WebScanResult转换为C兼容的web_scan_result_t
 impl From<&WebScanResult> for web_scan_result_t {
     fn from(result: &WebScanResult) -> Self {
+        // 调试日志：检查置信度值
+        if result.is_matched && result.confidence == 1 {
+            log::warn!("调试：检测到置信度为1% - 规则ID: {}, 协议置信度: {}",
+                      result.rule_id, result.confidence);
+        }
+
         Self {
             is_matched: result.is_matched,
             rule_id: result.rule_id,
@@ -614,8 +620,22 @@ pub extern "C" fn web_scan_rust_process_payload(
         }
     };
 
-    // 处理数据包载荷
-    match engine.read().process_payload(payload_slice) {
+    // 记录开始时间（用于性能统计）
+    let start_time = std::time::Instant::now();
+
+    // 处理数据包载荷并记录时间
+    let processing_duration = start_time.elapsed();
+    let processing_result = engine.read().process_payload(payload_slice);
+
+    // 记录处理时间（无论成功还是失败）
+    engine.read().record_processing_time(processing_duration);
+
+    // 调试：记录时间统计信息（仅对较长处理时间）
+    if processing_duration.as_micros() > 100 {
+        log::debug!("process_payload: 处理时间 {} 微秒", processing_duration.as_micros());
+    }
+
+    match processing_result {
         Ok(scan_result) => {
             // 将Rust的WebScanResult转换为C兼容的web_scan_result_t
             let c_result = web_scan_result_t::from(&scan_result);
@@ -703,10 +723,24 @@ pub extern "C" fn web_scan_rust_process_payload_with_session(
         }
     };
 
+    // 记录开始时间（用于性能统计）
+    let start_time = std::time::Instant::now();
+
     // 处理数据包载荷（带会话管理）
     let is_final_bool = is_final != 0;
     let reset_on_request_end_bool = reset_on_request_end != 0;
-    match engine.read().process_payload_with_session(session_id, payload_slice, is_final_bool, reset_on_request_end_bool) {
+    let processing_duration = start_time.elapsed();
+    let processing_result = engine.read().process_payload_with_session(session_id, payload_slice, is_final_bool, reset_on_request_end_bool);
+
+    // 记录处理时间（无论成功还是失败）
+    engine.read().record_processing_time(processing_duration);
+
+    // 调试：记录时间统计信息（仅对较长处理时间）
+    if processing_duration.as_micros() > 100 {
+        log::debug!("process_payload_with_session: 处理时间 {} 微秒", processing_duration.as_micros());
+    }
+
+    match processing_result {
         Ok(scan_result) => {
             // 将Rust的WebScanResult转换为C兼容的web_scan_result_t
             let c_result = web_scan_result_t::from(&scan_result);
@@ -756,8 +790,33 @@ pub extern "C" fn web_scan_rust_get_stats(stats: *mut WebScanStats) -> c_int {
     };
 
     // 获取统计信息
-    let current_stats = engine.read().get_stats();
-    
+    let mut current_stats = engine.read().get_stats();
+
+    // 获取实际的规则数量（修复统计不同步问题）
+    let actual_rules_count = engine.read().get_loaded_rules_count();
+
+    // 更新规则数量字段
+    current_stats.rules_loaded = actual_rules_count;
+    current_stats.rules_active = actual_rules_count;
+
+    // 调试：记录时间统计原始数据
+    log::debug!("时间统计原始数据: 处理包数={}, 总时间={}微秒, 平均时间={}微秒, 最大时间={}微秒, 最小时间={}微秒",
+               current_stats.packets_processed,
+               current_stats.total_processing_time,
+               current_stats.avg_processing_time,
+               current_stats.max_processing_time,
+               current_stats.min_processing_time);
+
+    // 修复时间统计显示问题 - 由于stats.rs已经修复了平均时间计算，这里只需要处理边界情况
+    if current_stats.packets_processed == 0 {
+        // 没有处理数据包时，重置时间统计为合理默认值
+        current_stats.total_processing_time = 0;
+        current_stats.avg_processing_time = 0;
+        current_stats.max_processing_time = 0;
+        current_stats.min_processing_time = 0;
+        log::debug!("时间统计修正：没有处理数据包，重置为0");
+    }
+
     // 将统计信息写入C代码提供的结果结构体
     unsafe {
         *stats = current_stats;
@@ -1228,15 +1287,14 @@ pub extern "C" fn web_scan_rust_get_rule_loading_stats(
         }
     };
 
-    // 这里我们暂时返回基本的统计信息
-    // 在实际实现中，应该从规则管理器获取详细的加载统计
-    let stats = engine.read().get_stats();
+    // 获取实际的规则数量
+    let actual_rules_count = engine.read().get_loaded_rules_count();
 
     if !total.is_null() {
-        unsafe { *total = stats.rules_loaded as c_int; }
+        unsafe { *total = actual_rules_count as c_int; }
     }
     if !successful.is_null() {
-        unsafe { *successful = stats.rules_loaded as c_int; }
+        unsafe { *successful = actual_rules_count as c_int; }
     }
     if !failed.is_null() {
         unsafe { *failed = 0 as c_int; } // 暂时没有失败统计
@@ -1245,7 +1303,7 @@ pub extern "C" fn web_scan_rust_get_rule_loading_stats(
     // 设置错误详情
     if !error_details.is_null() && error_details_size > 0 {
         let details = format!("规则加载统计:\n总规则数: {}\n成功加载: {}\n失败规则: {}\n状态: 所有规则已成功加载并激活",
-            stats.rules_loaded, stats.rules_loaded, 0);
+            actual_rules_count, actual_rules_count, 0);
 
         let details_cstring = match CString::new(details) {
             Ok(s) => s,

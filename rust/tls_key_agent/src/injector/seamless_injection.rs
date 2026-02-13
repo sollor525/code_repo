@@ -22,7 +22,7 @@ use crate::injector::TargetProcess;
 pub struct SeamlessInjector {
     config: std::sync::Arc<Config>,
     preload_injector: std::sync::Arc<tokio::sync::RwLock<crate::injector::preload::PreloadInjector>>,
-    ebpf_injector: std::sync::Arc<tokio::sync::RwLock<crate::injector::ebpf::EbpfInjector>>,
+    ebpf_injector: std::sync::Arc<tokio::sync::RwLock<crate::injector::ebpf::EbpfSslHook>>,
     detector: std::sync::Arc<crate::injector::detector::ProcessDetector>,
     current_method: crate::injector::InjectionMethod,
     monitor_interval: Duration,
@@ -36,7 +36,7 @@ impl SeamlessInjector {
     pub async fn new(
         config: std::sync::Arc<Config>,
         preload_injector: std::sync::Arc<tokio::sync::RwLock<crate::injector::preload::PreloadInjector>>,
-        ebpf_injector: std::sync::Arc<tokio::sync::RwLock<crate::injector::ebpf::EbpfInjector>>,
+        ebpf_injector: std::sync::Arc<tokio::sync::RwLock<crate::injector::ebpf::EbpfSslHook>>,
         detector: std::sync::Arc<crate::injector::detector::ProcessDetector>,
         current_method: crate::injector::InjectionMethod,
     ) -> Result<Self> {
@@ -298,17 +298,23 @@ impl SeamlessInjector {
                 injector.inject_process(process).await
             }
             crate::injector::InjectionMethod::Ebpf => {
+                // eBPF是系统级Hook，不需要针对特定进程注入
+                // 只需要确保eBPF程序正在运行即可
                 let injector = self.ebpf_injector.read().await;
-                injector.inject_process(process).await
+                if injector.is_running() {
+                    Ok(())
+                } else {
+                    Err(anyhow::anyhow!("eBPF Hook未运行"))
+                }
             }
             crate::injector::InjectionMethod::Auto => {
                 // 先尝试eBPF，失败则使用LD_PRELOAD
-                match self.ebpf_injector.read().await.inject_process(process).await {
-                    Ok(_) => Ok(()),
-                    Err(e) => {
-                        warn!("eBPF注入失败，切换到LD_PRELOAD: {}", e);
-                        self.preload_injector.read().await.inject_process(process).await
-                    }
+                let injector = self.ebpf_injector.read().await;
+                if injector.is_running() {
+                    Ok(())
+                } else {
+                    warn!("eBPF Hook未运行，切换到LD_PRELOAD");
+                    self.preload_injector.read().await.inject_process(process).await
                 }
             }
         }
@@ -381,12 +387,33 @@ pub struct InjectionStats {
 mod tests {
     use super::*;
     use std::sync::Arc;
+    
+    /// 测试辅助函数：创建SeamlessInjector实例
+    async fn create_test_injector() -> SeamlessInjector {
+        let config = Arc::new(Config::default());
+
+        // 创建所需的组件
+        let preload_injector = Arc::new(tokio::sync::RwLock::new(
+            crate::injector::preload::PreloadInjector::new(config.clone())
+        ));
+        let ebpf_injector = Arc::new(tokio::sync::RwLock::new(
+            crate::injector::ebpf::EbpfSslHook::new(config.clone())
+        ));
+        let detector = Arc::new(crate::injector::detector::ProcessDetector::new());
+        let current_method = crate::injector::InjectionMethod::Auto;
+
+        SeamlessInjector::new(
+            config,
+            preload_injector,
+            ebpf_injector,
+            detector,
+            current_method
+        ).await.unwrap()
+    }
 
     #[tokio::test]
     async fn test_seamless_injector_creation() {
-        let config = Arc::new(Config::default());
-        let manager = Arc::new(InjectionManager::new(config.clone()).await.unwrap());
-        let injector = SeamlessInjector::new(config, manager).await.unwrap();
+        let injector = create_test_injector().await;
 
         // 验证基本属性
         assert!(injector.monitor_interval.as_secs() > 0);
@@ -395,9 +422,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_safety_check() {
-        let config = Arc::new(Config::default());
-        let manager = Arc::new(InjectionManager::new(config.clone()).await.unwrap());
-        let injector = SeamlessInjector::new(config, manager).await.unwrap();
+        let injector = create_test_injector().await;
 
         // 测试关键进程检查
         assert!(injector.is_critical_process(1));
@@ -412,9 +437,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_injection_stats() {
-        let config = Arc::new(Config::default());
-        let manager = Arc::new(InjectionManager::new(config.clone()).await.unwrap());
-        let injector = SeamlessInjector::new(config, manager).await.unwrap();
+        let injector = create_test_injector().await;
 
         let stats = injector.get_injection_stats().await;
         assert_eq!(stats.total_injected, 0);
@@ -424,9 +447,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_should_inject_process() {
-        let config = Arc::new(Config::default());
-        let manager = Arc::new(InjectionManager::new(config.clone()).await.unwrap());
-        let injector = SeamlessInjector::new(config, manager).await.unwrap();
+        let injector = create_test_injector().await;
 
         // 测试黑名单进程
         let blacklisted_process = TargetProcess {

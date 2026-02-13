@@ -1,0 +1,158 @@
+# 安全配置文件
+# 定义了web_scan_rust的安全参数和限制
+
+[security]
+# 内存限制 (单位: bytes)
+max_memory_usage = 134217728    # 128MB
+max_string_length = 4096         # 4KB
+max_pattern_length = 10000       # 10KB
+max_payload_size = 10485760      # 10MB
+
+# 会话限制
+max_sessions = 10000              # 最大并发会话数
+session_timeout = 300             # 会话超时时间 (秒)
+session_cleanup_interval = 60     # 会话清理间隔 (秒)
+
+# 规则限制
+max_rules = 50000                # 最大规则数量
+max_rule_metadata = 1000         # 最大规则元数据长度
+max_file_size = 10485760         # 最大文件大小 (10MB)
+
+# 网络限制
+max_connections = 1000            # 最大连接数
+connection_timeout = 30           # 连接超时 (秒)
+max_requests_per_second = 1000    # 最大每秒请求数
+
+# 日志限制
+max_log_file_size = 10485760     # 最大日志文件大小 (10MB)
+max_log_files = 5                 # 最大日志文件数量
+log_level = "info"               # 日志级别
+
+# 硬编码的安全模式
+[security.hardened]
+# 启用额外的安全检查
+enable_extra_checks = true
+enable_stack_protection = true
+enable_address_space_layout_randomization = true
+enable_memory_protection = true
+enable_format_string_protection = true
+enable_integer_overflow_protection = true
+
+# 危险模式检测
+[security.dangerous_patterns]
+# SQL注入模式
+sql_injection = [
+    "union select", "select from", "drop table",
+    "insert into", "update set", "delete from",
+    "1=1", "1 = 1", "true", "or true", "and true",
+    "--", "#", "/*", "*/"
+]
+
+# XSS模式
+xss_patterns = [
+    "<script", "</script>", "javascript:", "vbscript:",
+    "data:text/html", "onload=", "onerror=", "onclick=",
+    "eval(", "alert(", "confirm(", "prompt("
+]
+
+# 命令注入模式
+command_injection = [
+    ";", "&&", "||", "|", "`", "$(", "${",
+    "rm -rf", "cat /etc/passwd", "wget", "curl",
+    "nc ", "netcat", "telnet", "ssh"
+]
+
+# 路径遍历模式
+path_traversal = [
+    "../", "..\\", "%2e%2e", "..;/", "%c0%af",
+    "/etc/passwd", "/etc/shadow", "/proc/", "/sys/"
+]
+
+# 文件包含模式
+file_inclusion = [
+    "include(", "require(", "require_once", "include_once",
+    "file_get_contents", "fopen(", "readfile(",
+    "file://", "http://", "https://", "ftp://"
+]
+
+# 代码注入模式
+code_injection = [
+    "<?php", "<?", "?>", "<%=", "<%", "%>",
+    "${", "__proto__", "constructor", "prototype",
+    "document.cookie", "window.", "global."
+]
+
+# 资源监控配置
+[monitoring]
+# CPU使用限制 (百分比)
+max_cpu_usage = 80.0
+
+# 内存使用监控
+enable_memory_monitoring = true
+memory_check_interval = 10  # 秒
+
+# 性能监控
+enable_performance_monitoring = true
+performance_check_interval = 60  # 秒
+
+# 错误率监控
+max_error_rate = 0.01  # 1%
+error_check_window = 300  # 秒
+
+# 告警配置
+[alerts]
+# 启用告警
+enable_alerts = true
+
+# 告警阈值
+memory_usage_alert_threshold = 0.8   # 80%
+cpu_usage_alert_threshold = 0.9       # 90%
+error_rate_alert_threshold = 0.05     # 5%
+session_count_alert_threshold = 0.9   # 90%
+
+# 告警级别 (debug, info, warn, error)
+alert_log_level = "warn"
+
+# 网络安全配置
+[network_security]
+# 启用网络限制
+enable_rate_limiting = true
+enable_connection_limits = true
+enable_ip_whitelisting = false
+enable_ip_blacklisting = true
+
+# IP黑名单 (示例)
+ip_blacklist = [
+    "0.0.0.0/8",          # 保留地址
+    "127.0.0.0/8",         # 环回地址
+    "169.254.0.0/16",      # 链路本地地址
+    "224.0.0.0/4",         # 多播地址
+]
+
+# 端口限制 (如果适用)
+allowed_ports = [80, 443, 8080, 8443]
+blocked_ports = [22, 23, 25, 53, 135, 139, 445]
+
+# 数据验证配置
+[data_validation]
+# 启用输入验证
+enable_input_validation = true
+enable_output_validation = true
+enable_protocol_validation = true
+
+# 编码检查
+enable_encoding_validation = true
+allowed_encodings = ["utf-8", "ascii"]
+
+# 文件类型检查
+enable_file_type_validation = true
+blocked_file_extensions = [
+    ".exe", ".bat", ".cmd", ".com", ".pif", ".scr",
+    ".vbs", ".js", ".jar", ".php", ".asp", ".jsp",
+    ".sh", ".py", ".pl", ".rb", ".so", ".dll"
+]
+
+# 大小限制
+max_header_size = 8192           # 8KB
+max_uri_size = 2048              # 2KB
+max_body_size = 10485760         # 10MB

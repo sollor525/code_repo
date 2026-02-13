@@ -2,7 +2,7 @@
 
 use crate::core::{IpRange, PortRange, NetworkConnection, ApplicationFlowType, BuildError, session::TcpSession};
 use crate::session::{SessionFactory, SessionBuilder};
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr};
 
 // TCP会话配置结构体
 #[derive(Debug, Clone)]
@@ -24,11 +24,11 @@ impl Default for TcpSessionConfig {
 impl TcpSessionConfig {
     pub fn new() -> Self {
         Self {
-            src_ip_range: IpRange::new(
+            src_ip_range: IpRange::new_v4(
                 Ipv4Addr::new(10, 10, 1, 100),
                 Ipv4Addr::new(10, 10, 1, 100)
             ),
-            dst_ip_range: IpRange::new(
+            dst_ip_range: IpRange::new_v4(
                 Ipv4Addr::new(192, 168, 1, 100),
                 Ipv4Addr::new(192, 168, 1, 100)
             ),
@@ -119,7 +119,7 @@ impl TcpSessionConfig {
     }
 
     // 使用建造者模式创建单个会话
-    pub fn build_session(&self, src_ip: Ipv4Addr, dst_ip: Ipv4Addr,
+    pub fn build_session(&self, src_ip: IpAddr, dst_ip: IpAddr,
                         src_port: u16, dst_port: u16) -> Result<TcpSession, BuildError> {
         let connection = NetworkConnection {
             src_mac: [0x00, 0x11, 0x22, 0x33, 0x44, 0x55],
@@ -149,11 +149,11 @@ impl TcpSessionConfig {
     // 便利方法：创建随机会话配置
     pub fn random_network() -> Self {
         Self::new()
-            .with_src_ip_range(IpRange::new(
+            .with_src_ip_range(IpRange::new_v4(
                 Ipv4Addr::new(0, 0, 0, 0),
                 Ipv4Addr::new(255, 255, 255, 255)
             ))
-            .with_dst_ip_range(IpRange::new(
+            .with_dst_ip_range(IpRange::new_v4(
                 Ipv4Addr::new(0, 0, 0, 0),
                 Ipv4Addr::new(255, 255, 255, 255)
             ))

@@ -244,6 +244,8 @@ mod tests {
             },
             process_name: None,
             pid: None,
+            source_ip_filter: None,
+            priority: 100,
         };
 
         let engine = FilterEngine::new(vec![rule]);
@@ -265,6 +267,8 @@ mod tests {
             },
             process_name: Some("nginx".to_string()),
             pid: None,
+            source_ip_filter: None,
+            priority: 100,
         };
 
         let engine = FilterEngine::new(vec![rule]);
@@ -286,6 +290,8 @@ mod tests {
             },
             process_name: None,
             pid: None,
+            source_ip_filter: None,
+            priority: 100,
         };
 
         let engine = FilterEngine::new(vec![rule]);

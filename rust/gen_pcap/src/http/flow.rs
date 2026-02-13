@@ -5,7 +5,7 @@ use crate::tcp::build_tcp_packet_with_data;
 use crate::tcp::packet::TcpPacketWithDataParams;
 use super::request::{HttpRequest, HttpMethod};
 use super::response::{HttpResponse, HttpStatusCode};
-use std::net::Ipv4Addr;
+use std::net::IpAddr;
 
 // HTTP流量实现的具体逻辑
 pub struct HttpFlowImplementation;
@@ -68,8 +68,8 @@ impl HttpFlowImplementation {
 pub fn build_http_get_packet(
     src_mac: [u8; 6],
     dst_mac: [u8; 6],
-    src_ip: Ipv4Addr,
-    dst_ip: Ipv4Addr,
+    src_ip: IpAddr,
+    dst_ip: IpAddr,
     src_port: u16,
     dst_port: u16,
     seq: u32,
@@ -90,8 +90,8 @@ pub fn build_http_get_packet(
 pub fn build_http_post_packet(
     src_mac: [u8; 6],
     dst_mac: [u8; 6],
-    src_ip: Ipv4Addr,
-    dst_ip: Ipv4Addr,
+    src_ip: IpAddr,
+    dst_ip: IpAddr,
     src_port: u16,
     dst_port: u16,
     seq: u32,
@@ -116,8 +116,8 @@ pub fn build_http_post_packet(
 pub fn build_http_response_packet_simple(
     src_mac: [u8; 6],
     dst_mac: [u8; 6],
-    src_ip: Ipv4Addr,
-    dst_ip: Ipv4Addr,
+    src_ip: IpAddr,
+    dst_ip: IpAddr,
     src_port: u16,
     dst_port: u16,
     seq: u32,
@@ -140,8 +140,8 @@ pub fn build_http_response_packet_simple(
 pub fn build_http_request_packet(
     src_mac: [u8; 6],
     dst_mac: [u8; 6],
-    src_ip: Ipv4Addr,
-    dst_ip: Ipv4Addr,
+    src_ip: IpAddr,
+    dst_ip: IpAddr,
     src_port: u16,
     dst_port: u16,
     seq: u32,
@@ -160,8 +160,8 @@ pub fn build_http_request_packet(
 pub fn build_http_response_packet(
     src_mac: [u8; 6],
     dst_mac: [u8; 6],
-    src_ip: Ipv4Addr,
-    dst_ip: Ipv4Addr,
+    src_ip: IpAddr,
+    dst_ip: IpAddr,
     src_port: u16,
     dst_port: u16,
     seq: u32,

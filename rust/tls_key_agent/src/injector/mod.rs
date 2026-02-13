@@ -19,6 +19,11 @@ pub mod preload;
 pub mod ebpf;
 pub mod detector;
 pub mod seamless_injection;
+pub mod multi_ssl_injector;
+
+// 重新导出eBPF相关的类型以保持兼容性
+pub use ebpf::{EbpfSslHook, EbpfSslEvent, EbpfSslHookStats};
+pub use multi_ssl_injector::{MultiSslInjector, SslLibraryType, MultiSslEvent, SslLibraryConfig, MultiSslStats};
 
 /// 注入方式枚举
 #[derive(Debug, Clone, PartialEq)]
@@ -57,7 +62,7 @@ pub struct TargetProcess {
 pub struct InjectionManager {
     config: Arc<Config>,
     preload_injector: Arc<RwLock<preload::PreloadInjector>>,
-    ebpf_injector: Arc<RwLock<ebpf::EbpfInjector>>,
+    ebpf_hook: Arc<RwLock<ebpf::EbpfSslHook>>,
     detector: Arc<detector::ProcessDetector>,
     status: Arc<RwLock<InjectionStatus>>,
     seamless_injector: Option<Arc<SeamlessInjector>>,
@@ -69,7 +74,7 @@ impl InjectionManager {
         info!("初始化注入管理器");
 
         let preload_injector = Arc::new(RwLock::new(preload::PreloadInjector::new(config.clone())));
-        let ebpf_injector = Arc::new(RwLock::new(ebpf::EbpfInjector::new(config.clone())));
+        let ebpf_hook = Arc::new(RwLock::new(ebpf::EbpfSslHook::new(config.clone())));
         let detector = Arc::new(detector::ProcessDetector::new());
 
         let status = Arc::new(RwLock::new(InjectionStatus {
@@ -83,7 +88,7 @@ impl InjectionManager {
         Ok(Self {
             config,
             preload_injector,
-            ebpf_injector,
+            ebpf_hook,
             detector,
             status,
             seamless_injector: None,
@@ -135,7 +140,7 @@ impl InjectionManager {
 
         // 停止所有注入器
         let preload_injector = self.preload_injector.read().await;
-        let ebpf_injector = self.ebpf_injector.read().await;
+        let ebpf_injector = self.ebpf_hook.read().await;
 
         if let Err(e) = preload_injector.stop().await {
             warn!("LD_PRELOAD注入器停止失败: {}", e);
@@ -180,17 +185,19 @@ impl InjectionManager {
                     injector.inject_process(process).await
                 }
                 InjectionMethod::Ebpf => {
-                    let injector = self.ebpf_injector.read().await;
-                    injector.inject_process(process).await
+                    // eBPF是系统级Hook，自动监控所有进程
+                    info!("eBPF Hook已启用，进程 {} 将被自动监控", process.pid);
+                    Ok(())
                 }
                 InjectionMethod::Auto => {
-                    // 尝试eBPF，失败则使用LD_PRELOAD
-                    match self.ebpf_injector.read().await.inject_process(process).await {
-                        Ok(_) => Ok(()),
-                        Err(e) => {
-                            warn!("eBPF注入失败，切换到LD_PRELOAD: {}", e);
-                            self.preload_injector.read().await.inject_process(process).await
-                        }
+                    // 检查eBPF是否运行
+                    let ebpf_injector = self.ebpf_hook.read().await;
+                    if ebpf_injector.is_running() {
+                        info!("eBPF Hook已启用，进程 {} 将被自动监控", process.pid);
+                        Ok(())
+                    } else {
+                        warn!("eBPF Hook未运行，切换到LD_PRELOAD");
+                        self.preload_injector.read().await.inject_process(process).await
                     }
                 }
             }
@@ -238,7 +245,7 @@ impl InjectionManager {
         methods.push(InjectionMethod::LdPreload);
 
         // 检查eBPF支持
-        let ebpf_injector = self.ebpf_injector.read().await;
+        let ebpf_injector = self.ebpf_hook.read().await;
         if ebpf_injector.is_supported().await {
             methods.push(InjectionMethod::Ebpf);
         }
@@ -267,7 +274,7 @@ impl InjectionManager {
     /// 启动eBPF注入
     async fn start_ebpf_injection(&self) -> Result<()> {
         info!("启动eBPF注入");
-        let injector = self.ebpf_injector.read().await;
+        let injector = self.ebpf_hook.read().await;
         injector.start().await
     }
 
@@ -284,7 +291,7 @@ impl InjectionManager {
         let seamless_injector = SeamlessInjector::new(
             self.config.clone(),
             self.preload_injector.clone(),
-            self.ebpf_injector.clone(),
+            self.ebpf_hook.clone(),
             self.detector.clone(),
             current_method,
         ).await?;
@@ -347,7 +354,6 @@ impl InjectionManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
 
     #[tokio::test]
     async fn test_injection_method_selection() {

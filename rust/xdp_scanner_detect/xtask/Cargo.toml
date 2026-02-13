@@ -1,0 +1,10 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+aya-build = { version = "0.1.3", git = "https://github.com/aya-rs/aya", branch = "main" }
+anyhow = "1.0"

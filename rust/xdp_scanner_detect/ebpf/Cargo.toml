@@ -1,0 +1,19 @@
+[package]
+name = "xdp-scanner-detect-ebpf"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "xdp-scanner-detect-ebpf"
+path = "src/main.rs"
+
+[dependencies]
+aya-ebpf = { git = "https://github.com/aya-rs/aya", branch = "main" }
+network-types = "0.0.6"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"

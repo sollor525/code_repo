@@ -2,15 +2,16 @@
 
 ## 概述
 
-本文档描述了TLS Key Agent提供的所有API接口，包括C FFI接口、Rust内部API和REST API。TLS Key Agent采用**主动式Hook架构**，提供了丰富的API来支持TLS密钥的提取、处理和传输。
+本文档描述了TLS Key Agent提供的所有API接口，包括C FFI接口、Rust内部API和REST API。TLS Key Agent采用**eBPF内核级架构**，提供了丰富的API来支持系统级TLS密钥的提取、处理和传输。
 
-## 🚀 新增功能（v0.2.0）
+## 🚀 核心功能（v1.0.0）
 
-### 主动式Hook API
-- **SSL函数Hook**: 直接Hook SSL_write、SSL_read、SSL_connect等函数
-- **多算法提取**: Client Random和Master Secret的多策略提取
-- **智能验证**: 密钥有效性验证和熵值检测
-- **线程安全**: 支持高并发场景的密钥提取
+### eBPF架构API
+- **内核级监控**: 基于eBPF的系统级TLS密钥提取
+- **全系统覆盖**: 一次部署监控所有TLS连接
+- **零侵入部署**: 无需修改目标应用程序
+- **企业级可靠性**: 负载均衡、故障恢复、性能监控
+- **多SSL库支持**: OpenSSL、GnuTLS、NSS、BoringSSL、LibreSSL
 
 ## 目录
 
@@ -901,7 +902,32 @@ curl -H "Authorization: Bearer <token>" \
      http://localhost:8080/api/v1/stats
 ```
 
+## 版本更新历史
+
+### v1.0.0 (2025-12-01) - eBPF架构升级
+
+**API变更：**
+- ✅ **架构升级**: 从主动式Hook升级到eBPF内核级监控
+- ✅ **系统级API**: 支持全系统TLS连接监控
+- ✅ **零依赖部署**: 无需LD_PRELOAD配置
+- ✅ **企业级功能**: 负载均衡、故障恢复、性能监控API
+
+**新增API：**
+- eBPF程序加载和管理API
+- 系统级进程过滤API
+- UDP批量传输配置API
+- 企业级监控和告警API
+
+**废弃API：**
+- LD_PRELOAD相关的Hook API
+- 进程级密钥提取API
+- 单进程配置API
+
+### v0.2.0 (2025-11-05) - 主动式Hook重构
+
+### v0.1.0 (2023-11-04) - 初始版本
+
 ---
 
-*API文档版本: v0.1.0*
-*最后更新: 2023-11-04*
+*API文档版本: v1.0.0*
+*最后更新: 2025-12-01*

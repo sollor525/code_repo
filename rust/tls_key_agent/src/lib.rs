@@ -5,18 +5,17 @@ pub mod extractor;
 pub mod transport;
 pub mod common;
 pub mod ffi;
-pub mod integration;
-pub mod monitoring;
+pub mod monitor;
 pub mod injector;
+pub mod resilience;
 
 use anyhow::Result;
 use tracing::info;
 use std::sync::Arc;
 
-pub use config::{Config, FilterRule, TransportConfig};
+pub use config::{Config, FilterRule, TransportConfig, TransportType};
 pub use extractor::KeyExtractor;
-pub use transport::{TransportManager};
-pub use config::TransportType;
+pub use transport::{UdpTransportManager as TransportManager};
 pub use common::{error::TlsKeyAgentError, session::TlsSession, buffer::BufferPool};
 
 #[derive(Debug, Clone)]

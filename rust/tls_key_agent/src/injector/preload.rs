@@ -18,6 +18,7 @@ use crate::config::Config;
 use super::TargetProcess;
 
 /// LD_PRELOAD注入器
+#[allow(dead_code)]
 pub struct PreloadInjector {
     config: std::sync::Arc<Config>,
     hook_library_path: String,
@@ -28,8 +29,7 @@ pub struct PreloadInjector {
 impl PreloadInjector {
     /// 创建新的LD_PRELOAD注入器
     pub fn new(config: std::sync::Arc<Config>) -> Self {
-        let hook_library_path = config.injection.hook_library.clone()
-            .unwrap_or_else(|| "./target/release/libopenssl_hook.so".to_string());
+        let hook_library_path = "./target/release/libopenssl_hook.so".to_string();
 
         Self {
             config,
@@ -298,7 +298,7 @@ mod tests {
         let config = Arc::new(Config::default());
         let injector = PreloadInjector::new(config);
 
-        assert!(!injector.is_active);
+        assert!(!injector.is_active.load(std::sync::atomic::Ordering::Relaxed));
         assert_eq!(injector.hook_library_path, "./target/release/libopenssl_hook.so");
     }
 

@@ -9,12 +9,11 @@ use crate::config::Config;
 use crate::transport::{TransportMessage, TransportEnum, TransportFactory};
 use crate::ffi::set_global_key_processor;
 
-pub mod ld_preload;
+// 注意：ld_preload模块在eBPF架构中不再需要
 pub mod ssl_hook;
 pub mod session_manager;
 pub mod key_processor;
 
-pub use ld_preload::*;
 pub use ssl_hook::*;
 pub use session_manager::*;
 pub use key_processor::*;

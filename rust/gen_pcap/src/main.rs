@@ -1,11 +1,11 @@
 use clap::{Arg, Command};
 use pcap::{Capture, Packet, PacketHeader};
 use libc::timeval;
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr};
 use gen_pcap::{
     TcpSessionConfig, IpRange, PortRange, ApplicationFlowType, NetworkConnection, TcpSession,
     TemplateEngine, TemplateConfig, LicenseManager, VlanConfig, VlanTag, build_vlan_ethernet_header,
-    core::{HttpFlow, ApplicationFlow}
+    core::{HttpFlow, ApplicationFlow, IpVersion}
 };
 
 fn main() {
@@ -249,10 +249,12 @@ fn run_new_mode(matches: &clap::ArgMatches) {
     // 显示配置信息
     println!("[*] 配置信息:");
     println!("    会话数量: {}", session_count);
+    let (src_start, src_end) = format_ip_range(&src_ip_range);
+    let (dst_start, dst_end) = format_ip_range(&dst_ip_range);
     println!("    源IP范围: {} - {} ({}个地址)",
-        src_ip_range.start, src_ip_range.end, if src_ip_range.count() > 1000000 { "很多" } else { &src_ip_range.count().to_string() });
+        src_start, src_end, if src_ip_range.count() > 1000000 { "很多" } else { &src_ip_range.count().to_string() });
     println!("    目标IP范围: {} - {} ({}个地址)",
-        dst_ip_range.start, dst_ip_range.end, if dst_ip_range.count() > 1000000 { "很多" } else { &dst_ip_range.count().to_string() });
+        dst_start, dst_end, if dst_ip_range.count() > 1000000 { "很多" } else { &dst_ip_range.count().to_string() });
     println!("    源端口范围: {} - {} ({}个端口)",
         src_port_range.start, src_port_range.end, src_port_range.count());
     println!("    目标端口范围: {} - {} ({}个端口)",
@@ -435,7 +437,7 @@ fn run_legacy_mode() {
 
     for (idx, &dst_port) in DST_PORTS.iter().enumerate() {
         let connection = NetworkConnection::new(
-            SRC_MAC, DST_MAC, SRC_IP, DST_IP, SRC_PORT, dst_port
+            SRC_MAC, DST_MAC, IpAddr::V4(SRC_IP), IpAddr::V4(DST_IP), SRC_PORT, dst_port
         );
         let session = TcpSession::new(connection, 1000000 + idx as u32);
         let flow = ApplicationFlowType::TcpOnly;
@@ -468,7 +470,7 @@ fn run_legacy_mode() {
     );
 
     let http_connection = NetworkConnection::new(
-        SRC_MAC, DST_MAC, SRC_IP, DST_IP, SRC_PORT, 8080
+        SRC_MAC, DST_MAC, IpAddr::V4(SRC_IP), IpAddr::V4(DST_IP), SRC_PORT, 8080
     );
     let http_session = TcpSession::new(http_connection, 1008080);
     let http_packets = http_session.generate_packets(&http_flow);
@@ -506,7 +508,7 @@ fn run_legacy_mode() {
 
     for (idx, _uri) in VIDEO_URIS.iter().enumerate() {
         let connection = NetworkConnection::new(
-            SRC_MAC, DST_MAC, SRC_IP, DST_IP, SRC_PORT + idx as u16 + 1, 8080
+            SRC_MAC, DST_MAC, IpAddr::V4(SRC_IP), IpAddr::V4(DST_IP), SRC_PORT + idx as u16 + 1, 8080
         );
         let session = TcpSession::new(connection, 1008080);
 
@@ -696,11 +698,13 @@ fn apply_vlan_to_packets(packets: Vec<Vec<u8>>, session: &TcpSession, vlan_confi
     if let Some(vlan_cfg) = vlan_config {
         packets.into_iter().map(|packet| {
             if vlan_cfg.is_qinq || vlan_cfg.outer_tag.is_some() {
-                // 构建新的VLAN以太网头
+                // 构建新的VLAN以太网头，根据 IP 版本选择正确的以太网类型
+                let ip_version = session.connection.ip_version();
                 let vlan_header = build_vlan_ethernet_header(
                     session.connection.src_mac,
                     session.connection.dst_mac,
                     &vlan_cfg,
+                    ip_version,
                 );
 
                 // 替换原以太网头
@@ -739,4 +743,12 @@ fn record_pcap_generation(output_file: &str) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+/// 格式化 IP 范围用于显示
+fn format_ip_range(range: &IpRange) -> (String, String) {
+    match range {
+        IpRange::V4 { start, end } => (start.to_string(), end.to_string()),
+        IpRange::V6 { start, end } => (start.to_string(), end.to_string()),
+    }
 }

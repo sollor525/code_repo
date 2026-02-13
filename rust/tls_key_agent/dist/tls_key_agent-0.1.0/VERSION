@@ -1,0 +1,8 @@
+Project: tls_key_agent
+Version: 0.1.0
+Build Time: 20251201_210433
+Git Commit: 5d7263c
+Build Mode: Release
+Target OS: Linux
+Target Arch: x86_64
+Rust Version: 1.90.0

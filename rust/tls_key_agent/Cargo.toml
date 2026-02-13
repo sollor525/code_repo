@@ -42,6 +42,7 @@ clap = { version = "4.0", features = ["derive"] }
 # 工具库
 hex = "0.4"
 local-ip = "0.1"
+rand = "0.8"
 
 # C interop
 libc = "0.2"

@@ -69,10 +69,22 @@ fi
 echo "✓ 基础工具检查完成"
 echo
 
-# 设置密钥日志环境变量
+# 配置密钥捕获（适配eBPF架构）
 echo "2. 配置密钥捕获..."
-export SSLKEYLOGFILE="$KEYLOG_FILE"
-echo "✓ SSLKEYLOGFILE 设置为: $SSLKEYLOGFILE"
+echo "注意: 此脚本现在适配eBPF架构的TLS密钥提取"
+echo "eBPF程序将自动捕获TLS会话密钥"
+
+# 检查eBPF程序是否已生成密钥文件
+DEFAULT_KEYLOG_FILE="/tmp/ebpf_tls_keys.log"
+if [ -f "$DEFAULT_KEYLOG_FILE" ]; then
+    echo "✓ 检测到eBPF生成的密钥文件: $DEFAULT_KEYLOG_FILE"
+    cp "$DEFAULT_KEYLOG_FILE" "$KEYLOG_FILE"
+    echo "✓ 已复制eBPF密钥到测试目录"
+else
+    echo "⚠ 未检测到eBPF密钥文件，将使用传统SSLKEYLOGFILE方式"
+    export SSLKEYLOGFILE="$KEYLOG_FILE"
+    echo "✓ SSLKEYLOGFILE 设置为: $SSLKEYLOG_FILE"
+fi
 
 # 开始流量捕获
 echo "3. 捕获TLS流量..."

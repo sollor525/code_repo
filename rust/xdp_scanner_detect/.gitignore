@@ -1,0 +1,57 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# eBPF
+/target/bpfel-unknown-none/
+*.o
+*.bpf.o
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Config
+local.toml
+.env
+
+# Temp
+*.tmp
+*.temp
+/temp/
+/tmp/
+
+# Build artifacts
+dist/
+build/
+
+# Performance profiles
+perf.data*
+*.prof
+
+# Test data
+test_data/
+*.pcap
+
+# Systemd service files
+*.service
+
+# Docker
+.dockerignore

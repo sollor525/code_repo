@@ -79,6 +79,7 @@ pub enum KeyOutputFormat {
 }
 
 /// 统一的密钥输出器
+#[allow(dead_code)]
 pub struct KeyOutputManager {
     format: KeyOutputFormat,
     output_path: Option<String>,

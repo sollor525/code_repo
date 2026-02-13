@@ -1,0 +1,17 @@
+# 高级Web攻击检测规则 - 1000101, 1000102, 1000103
+#
+# 规则1000101: 检测高级API滥用和枚举攻击
+# 规则1000102: 检测新型Web Shell和后门植入
+# 规则1000103: 检测供应链攻击和依赖投毒
+
+# 规则1000101: 高级API滥用和枚举攻击检测
+# 检测针对REST API和GraphQL接口的系统性枚举、数据抓取和敏感信息泄露
+alert http any any -> $HOME_NET any (msg:"高级Web攻击检测 - API枚举和数据抓取"; flow:established,to_server; http.method; content:"GET"; nocase; http.uri; content:"/api/"; nocase; fast_pattern; http.request_header; content:"application/json|application/graphql|application/vnd.api+json"; nocase; distance:0; pcre:"/\/api\/[a-zA-Z0-9_\-]+\/(?:list|all|enum|search|query|explore|discover|dump|export|backup)\b/i"; classtype:web-application-attack; sid:1000101; rev:1;)
+
+# 规则1000102: 新型Web Shell和后门植入检测
+# 检测利用合法文件上传功能植入Web Shell、加密后门和隐蔽管理界面
+alert http any any -> $HOME_NET any (msg:"高级Web攻击检测 - 隐蔽Web Shell植入"; flow:established,to_server; http.method; content:"POST"; nocase; http.uri; content:"/upload|/admin|/editor|/file"; nocase; fast_pattern; http.request_body; content:"eval|base64_decode|assert|create_function|preg_replace|call_user_func|system|exec|shell_exec|passthru|proc_open"; nocase; distance:0; content:"<?php|<%@|<script|<%"; nocase; distance:50; pcre:"/(?:eval\s*\(|base64_decode\s*\(|assert\s*\(|create_function\s*\(|preg_replace.*\/e|system\s*\(|exec\s*\(|shell_exec\s*\(|passthru\s*\(|proc_open\s*\()[\s\S]*?(?:<\?(?:php|=)|<%@|<script|<%)/i"; classtype:web-application-attack; sid:1000102; rev:1;)
+
+# 规则1000103: 供应链攻击和依赖投毒检测
+# 检测恶意依赖包投毒、 compromised CDN资源、恶意脚本注入和供应链攻击
+alert http any any -> $HOME_NET any (msg:"高级Web攻击检测 - 供应链攻击和依赖投毒"; flow:established,to_server; http.uri; content:"/node_modules/|/bower_components/|/vendor/|/wp-content/|/assets/|/static/|/cdn/|/third_party/|/lib/"; nocase; fast_pattern; http.request_header; content:"accept-encoding|user-agent|x-forwarded-for|x-real-ip|via"; nocase; http.request_body; content:"require|import|include|document\\.write|eval|innerHTML|crypto|minify|obfuscate|packer"; nocase; pcre:"/(?:require\s*\(['\"][^'\"]*['\"]|import\s+.*from\s+['\"][^'\"]*['\"]|document\.write\s*\(|eval\s*\(|innerHTML\s*=|crypto\.createHash|minify|obfuscate|packer)[\s\S]*?(?:malicious|backdoor|crypto|steal|keylog|clipboard|redirect|exploit|shell|trojan|rootkit|keylogger|ransomware)/i"; classtype:web-application-attack; sid:1000103; rev:1;)

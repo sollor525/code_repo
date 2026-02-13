@@ -2,14 +2,14 @@
 
 use super::connection::TcpConnection;
 use super::packet::{build_tcp_packet, TcpPacketParams};
-use std::net::Ipv4Addr;
+use std::net::IpAddr;
 
 // 封装TCP三次握手
 pub fn build_tcp_handshake_packets(
     src_mac: [u8; 6],
     dst_mac: [u8; 6],
-    src_ip: Ipv4Addr,
-    dst_ip: Ipv4Addr,
+    src_ip: IpAddr,
+    dst_ip: IpAddr,
     src_port: u16,
     dst_port: u16,
     isn: u32,

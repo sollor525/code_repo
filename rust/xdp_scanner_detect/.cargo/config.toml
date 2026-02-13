@@ -1,0 +1,8 @@
+[build]
+target = "x86_64-unknown-linux-gnu"
+
+[target.bpfel-unknown-none]
+rustflags = [
+    "-C", "link-arg=--btf",
+    "-C", "panic=abort",
+]

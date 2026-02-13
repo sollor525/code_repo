@@ -1,0 +1,64 @@
+[workspace]
+members = [
+    "src",
+    "ebpf",
+]
+default-members = ["src"]
+resolver = "2"
+
+[workspace.dependencies]
+# eBPF framework
+aya = "0.13"
+aya-log = "0.2"
+aya-tool = { git = "https://github.com/aya-rs/aya", branch = "main" }
+
+# Runtime dependencies
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4.0", features = ["derive"] }
+anyhow = "1.0"
+thiserror = "1.0"
+log = "0.4"
+env_logger = "0.10"
+libc = "0.2"
+nix = { version = "0.28", features = ["net", "sched", "user", "feature"] }
+bytes = "1.4"
+network-types = "0.0.6"
+
+# Performance optimization
+crossbeam = "0.8"
+parking_lot = "0.12"
+dashmap = "5.5"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Time and metrics
+time = { version = "0.3", features = ["serde"] }
+metrics = "0.23"
+metrics-exporter-prometheus = "0.13"
+
+# Configuration
+config = "0.14"
+
+# Testing
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1.0"
+
+[profile.dev]
+opt-level = 3
+debug = true
+
+[profile.release]
+opt-level = 3
+debug = false
+panic = "abort"
+codegen-units = 1
+lto = "fat"
+
+[profile.bench]
+opt-level = 3
+debug = false
+codegen-units = 1
+lto = "fat"

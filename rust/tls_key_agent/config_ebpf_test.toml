@@ -1,0 +1,52 @@
+[agent]
+name = "ebpf_tls_agent_test"
+version = "0.1.0"
+log_level = "info"
+buffer_pool_size = 5000
+buffer_size = 8192
+
+[extraction]
+enabled = true
+kernel_version_requirement = "5.0.0"
+capture_client_random = true
+capture_master_secret = true
+capture_session_ticket = true
+process_filters = ["nginx", "apache2", "httpd"]
+
+[transport]
+enabled_transports = ["Udp"]
+
+[transport.udp]
+enabled = true
+server_host = "127.0.0.1"
+server_port = 9999
+batch_size = 100
+batch_timeout_ms = 1000
+compression = true
+reconnect_interval = 5
+max_retries = 3
+timeout = 30
+
+[transport.tcp]
+enabled = false
+server_host = "127.0.0.1"
+server_port = 9998
+connection_timeout = 30
+keep_alive = true
+max_retries = 3
+retry_delay = 1
+reconnect_interval = 5
+timeout = 30
+
+
+[[filters]]
+name = "https_only"
+enabled = true
+five_tuple = { dst_port = 443, protocol = "TCP" }
+priority = 100
+
+[[filters]]
+name = "test_filter"
+enabled = true
+process_name = "nginx"
+priority = 90

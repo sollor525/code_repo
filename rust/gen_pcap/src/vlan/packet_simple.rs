@@ -2,6 +2,8 @@
 //!
 //! 专注于基本VLAN支持，使用现有的数据包构建逻辑
 
+use crate::core::IpVersion;
+
 
 
 /// VLAN标签配置
@@ -164,13 +166,20 @@ pub fn parse_mac_address(mac_str: &str) -> Result<[u8; 6], String> {
     Ok(mac_bytes)
 }
 
-/// 构建VLAN以太网帧头
+/// 构建VLAN以太网帧头（根据 IP 版本自动选择 EtherType）
 pub fn build_vlan_ethernet_header(
     src_mac: [u8; 6],
     dst_mac: [u8; 6],
     vlan_config: &VlanConfig,
+    ip_version: IpVersion,
 ) -> Vec<u8> {
     let mut header = Vec::with_capacity(22); // 最大: 14 + 4 + 4
+
+    // 根据 IP 版本选择最终的以太网类型
+    let final_ethertype = match ip_version {
+        IpVersion::V4 => 0x0800u16,  // IPv4
+        IpVersion::V6 => 0x86DDu16,  // IPv6
+    };
 
     // 以太网头 (14字节)
     header.extend_from_slice(&dst_mac);
@@ -191,15 +200,15 @@ pub fn build_vlan_ethernet_header(
             header.extend_from_slice(&inner_tag.to_tci().to_be_bytes());
         }
 
-        header.extend_from_slice(&0x0800u16.to_be_bytes()); // IPv4 EtherType
+        header.extend_from_slice(&final_ethertype.to_be_bytes());
     } else if let Some(vlan_tag) = &vlan_config.outer_tag {
         // 单层VLAN配置
         header.extend_from_slice(&0x8100u16.to_be_bytes()); // VLAN EtherType
         header.extend_from_slice(&vlan_tag.to_tci().to_be_bytes());
-        header.extend_from_slice(&0x0800u16.to_be_bytes()); // IPv4 EtherType
+        header.extend_from_slice(&final_ethertype.to_be_bytes());
     } else {
         // 无VLAN配置
-        header.extend_from_slice(&0x0800u16.to_be_bytes()); // IPv4 EtherType
+        header.extend_from_slice(&final_ethertype.to_be_bytes());
     }
 
     header

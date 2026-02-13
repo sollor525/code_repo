@@ -7,8 +7,8 @@ use tokio::io::AsyncWriteExt;
 use tokio::time::timeout;
 
 use crate::common::error::{TlsKeyAgentError, Result};
-use crate::transport::{Transport, TransportMessage, TransportStats, TransportType};
-use crate::config::TcpTransportConfig;
+use crate::transport::{Transport, TransportMessage, TransportStats};
+use crate::config::{TcpTransportConfig, TransportType};
 
 #[derive(Debug)]
 pub struct TcpTransport {
@@ -394,8 +394,11 @@ mod tests {
             enabled: true,
             server_host: "127.0.0.1".to_string(),
             server_port: 9999, // 假设没有服务器监听
-            reconnect_interval: 1,
+            connection_timeout: 5,
+            keep_alive: true,
             max_retries: 1,
+            retry_delay: 1,
+            reconnect_interval: 1,
             timeout: 1,
         };
 

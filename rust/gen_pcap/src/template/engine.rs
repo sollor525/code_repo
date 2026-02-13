@@ -3,7 +3,7 @@
 //! 负责根据解析的YAML模板生成实际的网络数据包
 
 use std::collections::HashMap;
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use pnet::packet::tcp::TcpFlags;
 use anyhow::{Result, Context, anyhow};
 use crate::core::{NetworkConnection, ApplicationFlow, ApplicationFlowType};
@@ -73,7 +73,7 @@ impl TemplateEngine {
 
     /// 解析IP地址
     fn resolve_address(&self, config: &Option<super::AddressConfig>,
-                       field: &str, session_name: &str, index: usize) -> Result<Ipv4Addr, TemplateError> {
+                       field: &str, session_name: &str, index: usize) -> Result<IpAddr, TemplateError> {
         if let Some(config) = config {
             if let Some(ip_str) = &config.ip {
                 // 解析IP地址
@@ -344,10 +344,19 @@ impl TemplateEngine {
         Ok(mac)
     }
 
-    /// 解析IP地址
-    fn parse_ip_address(ip_str: &str) -> Result<Ipv4Addr, TemplateError> {
-        ip_str.parse()
-            .map_err(|_| TemplateError::AddressError(format!("无效的IP地址: {}", ip_str)))
+    /// 解析IP地址（支持 IPv4 和 IPv6）
+    fn parse_ip_address(ip_str: &str) -> Result<IpAddr, TemplateError> {
+        // 先尝试解析 IPv4
+        if let Ok(ip_v4) = ip_str.parse::<Ipv4Addr>() {
+            return Ok(IpAddr::V4(ip_v4));
+        }
+
+        // 再尝试解析 IPv6
+        if let Ok(ip_v6) = ip_str.parse::<Ipv6Addr>() {
+            return Ok(IpAddr::V6(ip_v6));
+        }
+
+        Err(TemplateError::AddressError(format!("无效的IP地址: {}", ip_str)))
     }
 
     /// 解析HTTP方法
@@ -384,8 +393,8 @@ impl TemplateEngine {
         Ok(result)
     }
 
-    /// 生成IP地址
-    fn generate_ip_address(session_name: &str, field: &str, index: usize) -> Ipv4Addr {
+    /// 生成IP地址（支持生成 IPv4 和 IPv6）
+    fn generate_ip_address(session_name: &str, field: &str, index: usize) -> IpAddr {
         use rand::Rng;
         let mut rng = rand::thread_rng();
 
@@ -394,14 +403,35 @@ impl TemplateEngine {
         let digest = md5::compute(seed.as_bytes());
         let hash = format!("{:x}", digest);
 
-        // 从哈希值生成IP地址
+        // 从哈希值生成 IP 地址
         let hash_u32 = u32::from_str_radix(&hash[..8], 16).unwrap_or(0);
-        let a = (hash_u32 >> 24) % 224 + 1; // 1-224
-        let b = (hash_u32 >> 16) % 256;
-        let c = (hash_u32 >> 8) % 256;
-        let d = (hash_u32) % 255 + 1; // 确保不为0
 
-        Ipv4Addr::new(a as u8, b as u8, c as u8, d as u8)
+        // 80% 概率生成 IPv4，20% 概率生成 IPv6（向后兼容优先）
+        if hash_u32 % 5 < 4 {
+            // 生成 IPv4 地址
+            let a = (hash_u32 >> 24) % 224 + 1;
+            let b = (hash_u32 >> 16) % 256;
+            let c = (hash_u32 >> 8) % 256;
+            let d = hash_u32 % 255 + 1;
+            IpAddr::V4(Ipv4Addr::new(a as u8, b as u8, c as u8, d as u8))
+        } else {
+            // 生成 IPv6 地址（全局单播地址 2000::/3）
+            let hash_u128 = u128::from_str_radix(&hash[..32.min(hash.len())], 16).unwrap_or(0);
+            let segments = [
+                0x2000 + ((hash_u128 >> 112) % 0x1000) as u16,
+                ((hash_u128 >> 96) % 0xFFFF) as u16,
+                ((hash_u128 >> 80) % 0xFFFF) as u16,
+                ((hash_u128 >> 64) % 0xFFFF) as u16,
+                ((hash_u128 >> 48) % 0xFFFF) as u16,
+                ((hash_u128 >> 32) % 0xFFFF) as u16,
+                ((hash_u128 >> 16) % 0xFFFF) as u16,
+                (hash_u128 % 0xFFFF) as u16,
+            ];
+            IpAddr::V6(Ipv6Addr::new(
+                segments[0], segments[1], segments[2], segments[3],
+                segments[4], segments[5], segments[6], segments[7]
+            ))
+        }
     }
 
     /// 生成端口号

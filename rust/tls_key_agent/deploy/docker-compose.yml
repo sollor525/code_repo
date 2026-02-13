@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  tls-key-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tls-key-agent
+    restart: unless-stopped
+    privileged: true  # eBPF需要特权模式
+    network_mode: host  # 需要访问主机网络进行TLS监控
+    volumes:
+      - ./config:/opt/tls_key_agent/config:ro
+      - ./logs:/opt/tls_key_agent/logs
+      - /sys/kernel/debug:/sys/kernel/debug:ro
+      - /lib/modules:/lib/modules:ro
+    environment:
+      - RUST_LOG=info
+      - CONFIG_FILE=/opt/tls_key_agent/config/config.toml
+    healthcheck:
+      test: ["CMD", "pgrep", "tls_key_agent"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # 可选：Demo服务器
+  demo-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tls-key-agent-demo
+    restart: unless-stopped
+    profiles: ["demo"]  # 只在demo profile中启动
+    ports:
+      - "8081:8081"
+      - "9999:9999"
+    volumes:
+      - ./demo:/opt/tls_key_agent/demo
+    environment:
+      - RUST_LOG=debug
+    command: python3 /opt/tls_key_agent/demo/demo_server.py --config-port 8081 --key-port 9999
+    depends_on:
+      - tls-key-agent
+
+networks:
+  default:
+    driver: bridge

@@ -221,6 +221,9 @@ impl WebScanEngine {
     /// # 返回值
     /// * `Result<WebScanResult>` - 检测结果，包含匹配信息和建议动作
     pub fn process_payload(&self, payload: &[u8]) -> Result<WebScanResult> {
+        // 记录开始时间（用于性能统计）
+        let start_time = std::time::Instant::now();
+
         // 如果引擎未启用，返回结果但记录payload长度
         if !self.enabled {
             return Ok(WebScanResult {
@@ -244,12 +247,14 @@ impl WebScanEngine {
         if !matches!(protocol_result.protocol, Protocol::Http | Protocol::Https | Protocol::Http2) {
             // 如果不是Web流量，返回结果但不进行内容检测
             // 注意：即使协议未知，也应该记录payload的实际长度
-            return Ok(WebScanResult {
+            let result = WebScanResult {
                 protocol: protocol_result.protocol,
                 confidence: protocol_result.confidence,
                 content_length: payload.len() as u32,  // 记录实际payload长度
                 ..Default::default()
-            });
+            };
+            // 时间记录移到FFI层，避免重复记录
+            return Ok(result);
         }
 
         // 第二步：内容转换
@@ -267,12 +272,15 @@ impl WebScanEngine {
                 
                 // 如果没有可打印字符，返回默认结果
                 if ascii_content.is_empty() {
-                    return Ok(WebScanResult {
+                    let result = WebScanResult {
                         protocol: protocol_result.protocol,
                         confidence: protocol_result.confidence,
                         content_length: payload.len() as u32,  // 记录实际payload长度
                         ..Default::default()
-                    });
+                    };
+                    // 记录处理时间
+                    self.stats.record_processing_time(start_time.elapsed());
+                    return Ok(result);
                 }
                 
                 // 使用Box::leak避免生命周期问题
@@ -309,12 +317,14 @@ impl WebScanEngine {
 
         // 如果没有匹配的规则，返回"无匹配"结果
         if matched_rule_id.is_none() {
-            return Ok(WebScanResult {
+            let result = WebScanResult {
                 protocol: protocol_result.protocol,
                 confidence: protocol_result.confidence,
                 content_length: payload.len() as u32,  // 记录内容长度
                 ..Default::default()
-            });
+            };
+            // 时间记录移到FFI层，避免重复记录
+            return Ok(result);
         }
 
         // 获取匹配的规则ID和动作
@@ -375,16 +385,26 @@ impl WebScanEngine {
         }
 
         // 构建并返回检测结果
-        Ok(WebScanResult {
+        // 计算综合置信度：基于协议检测和规则匹配
+        let combined_confidence = std::cmp::min(
+            ((protocol_result.confidence as u16 + 75) / 2) as u8, // 规则匹配贡献75分，与协议检测取平均
+            100
+        );
+
+        let result = WebScanResult {
             is_matched: true,                    // 标记为已匹配
             rule_id,                             // 记录匹配的规则ID
             action,                              // 建议执行的动作
             content_length: payload.len() as u32, // 内容长度
             protocol: protocol_result.protocol,   // 检测到的协议
-            confidence: protocol_result.confidence, // 协议检测置信度
+            confidence: combined_confidence,      // 综合置信度（协议检测+规则匹配）
             direction: protocol_result.direction, // 数据包流向
             status_code: protocol_result.status_code, // HTTP状态码
-        })
+        };
+
+        // 时间记录移到FFI层，避免重复记录
+
+        Ok(result)
     }
 
 
@@ -778,13 +798,19 @@ impl WebScanEngine {
                                 _ => self.stats.increment_packets_alerted(),
                             }
                             
+                            // 计算综合置信度
+                            let combined_confidence = std::cmp::min(
+                                ((protocol_result.confidence as u16 + 80) as u8 / 2), // 规则匹配贡献80分
+                                100
+                            );
+
                             return Ok(WebScanResult {
                                 is_matched: true,
                                 rule_id: rule.id,
                                 action,
                                 content_length: data.len() as u32,
                                 protocol: protocol_result.protocol,
-                                confidence: protocol_result.confidence,
+                                confidence: combined_confidence,
                                 direction: protocol_result.direction,
                                 status_code: protocol_result.status_code,
                             });
@@ -846,14 +872,19 @@ impl WebScanEngine {
             _ => self.stats.increment_packets_alerted(),
         }
 
-        // 构建并返回检测结果
+        // 计算综合置信度
+        let combined_confidence = std::cmp::min(
+            ((protocol_result.confidence as u16 + 85) as u8 / 2), // 规则匹配贡献85分
+            100
+        );
+
         Ok(WebScanResult {
             is_matched: true,
             rule_id,
             action,
             content_length: data.len() as u32,
             protocol: protocol_result.protocol,
-            confidence: protocol_result.confidence,
+            confidence: combined_confidence,
             direction: protocol_result.direction,
             status_code: protocol_result.status_code,
         })
@@ -1768,6 +1799,30 @@ impl WebScanEngine {
         }
 
         false
+    }
+
+    /// 获取当前加载的规则数量
+    ///
+    /// 返回当前引擎中加载的规则总数。这个方法提供了一个公共接口
+    /// 来获取规则管理器中的实际规则数量，用于统计显示。
+    ///
+    /// # 返回值
+    /// * `u32` - 已加载的规则数量
+    pub fn get_loaded_rules_count(&self) -> u32 {
+        let count = self.rule_manager.read().get_all_rules().len() as u32;
+        log::debug!("get_loaded_rules_count: 返回规则数量 {}", count);
+        count
+    }
+
+    /// 记录处理时间（公共接口）
+    ///
+    /// 提供一个公共接口来记录数据包处理时间，用于性能统计。
+    /// 这个方法主要用于FFI层的时间记录。
+    ///
+    /// # 参数
+    /// * `duration` - 处理耗时
+    pub fn record_processing_time(&self, duration: std::time::Duration) {
+        self.stats.record_processing_time(duration);
     }
 }
 

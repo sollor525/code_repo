@@ -41,6 +41,21 @@ pub enum TlsKeyAgentError {
     #[error("IO错误: {0}")]
     Io(#[from] std::io::Error),
 
+    #[error("监控错误: {0}")]
+    Monitoring(String),
+
+    #[error("故障恢复错误: {0}")]
+    Recovery(String),
+
+    #[error("健康检查错误: {0}")]
+    HealthCheck(String),
+
+    #[error("负载均衡错误: {0}")]
+    LoadBalance(String),
+
+    #[error("通用错误: {0}")]
+    Anyhow(#[from] anyhow::Error),
+
     #[error("未知错误: {0}")]
     Unknown(String),
 }

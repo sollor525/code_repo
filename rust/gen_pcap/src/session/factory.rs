@@ -1,6 +1,7 @@
 // 会话工厂
 
 use crate::core::{NetworkConnection, ApplicationFlowType, session::TcpSession};
+use std::net::IpAddr;
 use rand::Rng;
 
 // 会话工厂
@@ -22,7 +23,7 @@ impl SessionFactory {
         Self { default_src_mac: src_mac, default_dst_mac: dst_mac }
     }
 
-    pub fn create_session(&self, src_ip: std::net::Ipv4Addr, dst_ip: std::net::Ipv4Addr,
+    pub fn create_session(&self, src_ip: IpAddr, dst_ip: IpAddr,
                          src_port: u16, dst_port: u16,
                          _application_flow: ApplicationFlowType) -> TcpSession {
         let connection = NetworkConnection {
@@ -40,7 +41,7 @@ impl SessionFactory {
         TcpSession { connection, isn }
     }
 
-    pub fn create_session_with_isn(&self, src_ip: std::net::Ipv4Addr, dst_ip: std::net::Ipv4Addr,
+    pub fn create_session_with_isn(&self, src_ip: IpAddr, dst_ip: IpAddr,
                                  src_port: u16, dst_port: u16,
                                  _application_flow: ApplicationFlowType,
                                  isn: u32) -> TcpSession {

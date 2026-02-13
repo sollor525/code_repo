@@ -1,486 +1,112 @@
-# TLS Key Agent 部署文档
+# TLS密钥Agent部署指南
 
 ## 概述
 
-本文档详细介绍了TLS Key Agent在不同环境下的部署方法，包括单机部署、集群部署、容器化部署和云原生部署方案。TLS Key Agent采用**主动式Hook架构**，提供了灵活的部署选项来适应不同的生产环境需求。
+TLS密钥Agent是一个基于eBPF的高性能TLS密钥监控系统，能够系统级捕获TLS握手过程中的密钥信息，包括Client Random和Master Secret。本文档详细介绍了在不同环境下的部署方法、配置要求和最佳实践。
 
-## 🚀 主动式Hook部署特性
+## 系统要求
 
-### 核心优势
-- **无侵入部署**: 通过LD_PRELOAD方式，无需修改目标应用
-- **独立Hook库**: `libtls_agent_hook.so`可独立部署和使用
-- **高性能**: 直接Hook SSL函数，性能开销最小
-- **灵活配置**: 支持环境变量和配置文件多种配置方式
+### 硬件要求
 
-## 目录
-
-1. [部署架构](#部署架构)
-2. [环境准备](#环境准备)
-3. [单机部署](#单机部署)
-4. [集群部署](#集群部署)
-5. [容器化部署](#容器化部署)
-6. [云原生部署](#云原生部署)
-7. [高可用配置](#高可用配置)
-8. [安全配置](#安全配置)
-9. [监控和日志](#监控和日志)
-10. [运维管理](#运维管理)
-
-## 部署架构
-
-### 推荐架构
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        负载均衡层                           │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │  HAProxy    │  │   Nginx     │  │  Envoy      │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      应用层                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │   Web App   │  │    API      │  │ Background  │         │
-│  │  Services   │  │  Services   │  │   Jobs      │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-                              │ LD_PRELOAD
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  TLS Key Agent                             │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │   Agent 1   │  │   Agent 2   │  │   Agent N   │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    收集层                                   │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │   Kafka     │  │    Redis    │  │  Elastic    │         │
-│  │   Cluster   │  │   Cluster   │  │  Search     │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   分析层                                    │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │    Spark    │  │   Flink     │  │  Grafana    │         │
-│  │ Analytics   │  │ Streaming   │  │ Dashboard   │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 网络架构
-
-```
-Internet
-    │
-    ▼
-┌─────────────┐
-│   Firewall  │
-└─────────────┘
-    │
-    ▼
-┌─────────────┐
-│ DMZ Network │  ← TLS Key Agent部署区
-└─────────────┘
-    │
-    ▼
-┌─────────────┐
-│Internal Net │  ← 应用服务器
-└─────────────┘
-```
-
-## 环境准备
-
-### 系统要求
-
-#### 最低配置
-- **CPU**: 2核心
+#### 最小配置
+- **CPU**: 2核心 2.0GHz
 - **内存**: 4GB RAM
-- **存储**: 20GB可用空间
-- **网络**: 1Gbps网卡
+- **存储**: 10GB 可用空间
+- **网络**: 100Mbps
 
 #### 推荐配置
-- **CPU**: 4核心以上
-- **内存**: 8GB RAM以上
+- **CPU**: 4核心 3.0GHz
+- **内存**: 8GB RAM
+- **存储**: 50GB SSD
+- **网络**: 1Gbps
+
+#### 生产环境配置
+- **CPU**: 8核心 3.0GHz
+- **内存**: 16GB RAM
 - **存储**: 100GB SSD
-- **网络**: 10Gbps网卡
+- **网络**: 10Gbps
 
-#### 软件依赖
+### 软件要求
 
+#### 操作系统
+- **Linux**: Ubuntu 20.04+, CentOS 8+, RHEL 8+, Debian 11+
+- **内核版本**: 5.0+ (推荐 5.10+)
+
+#### 必需组件
+- **Rust**: 1.70.0+
+- **Clang**: 10.0+
+- **LLVM**: 10.0+
+- **eBPF工具**: bpftool, llvm
+
+#### 可选组件
+- **Docker**: 20.10+
+- **Kubernetes**: 1.20+
+- **Prometheus**: 2.30+
+- **Grafana**: 8.0+
+
+### 权限要求
+
+#### 系统权限
+- **CAP_SYS_ADMIN**: 加载eBPF程序
+- **CAP_NET_ADMIN**: 网络监控权限
+- **root权限**: 或等效的sudo权限
+
+#### 文件权限
+- `/proc`: 读取权限
+- `/sys`: 读取权限
+- `/sys/fs/bpf`: 读写权限（eBPF文件系统）
+
+## 安装方式
+
+### 方式1: 二进制安装
+
+#### 下载预编译二进制
 ```bash
-# 基础依赖
-sudo apt update
-sudo apt install -y \
-    build-essential \
-    pkg-config \
-    libssl-dev \
-    libcurl4-openssl-dev \
-    systemd \
-    curl \
-    wget \
-    git
+# 下载最新版本
+wget https://github.com/your-org/tls-key-agent/releases/latest/download/tls-key-agent-linux-x64.tar.gz
 
-# Rust工具链
+# 解压
+tar -xzf tls-key-agent-linux-x64.tar.gz
+cd tls-key-agent
+
+# 安装到系统目录
+sudo cp tls-key-agent /usr/local/bin/
+sudo chmod +x /usr/local/bin/tls-key-agent
+
+# 安装eBPF程序
+sudo cp ebpf/*.o /opt/tls-key-agent/
+sudo chmod 644 /opt/tls-key-agent/*.o
+```
+
+#### 从源码编译
+```bash
+# 克隆代码库
+git clone https://github.com/your-org/tls-key-agent.git
+cd tls-key-agent
+
+# 安装Rust工具链
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.cargo/env
-
-# 网络工具
-sudo apt install -y \
-    netcat-openbsd \
-    telnet \
-    nmap \
-    iproute2
-```
-
-### 网络配置
-
-```bash
-# 检查网络接口
-ip addr show
-
-# 配置防火墙（以ufw为例）
-sudo ufw enable
-sudo ufw allow 22/tcp    # SSH
-sudo ufw allow 8080/tcp  # API端口
-sudo ufw allow 9999/tcp  # TCP传输端口
-sudo ufw allow 9999/udp  # UDP传输端口
-
-# 配置内核参数
-echo 'net.core.rmem_max = 134217728' | sudo tee -a /etc/sysctl.conf
-echo 'net.core.wmem_max = 134217728' | sudo tee -a /etc/sysctl.conf
-echo 'net.ipv4.tcp_rmem = 4096 87380 134217728' | sudo tee -a /etc/sysctl.conf
-echo 'net.ipv4.tcp_wmem = 4096 65536 134217728' | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-```
-
-## 单机部署
-
-### 1. 安装部署
-
-```bash
-#!/bin/bash
-# deploy_single.sh - 单机部署脚本
-
-set -e
-
-# 配置变量
-INSTALL_DIR="/opt/tls_key_agent"
-CONFIG_DIR="/etc/tls_key_agent"
-LOG_DIR="/var/log/tls_key_agent"
-USER="tls_agent"
-
-echo "开始TLS Key Agent单机部署..."
-
-# 创建用户
-sudo useradd -r -s /bin/false -d $INSTALL_DIR $USER || true
-
-# 创建目录
-sudo mkdir -p $INSTALL_DIR $CONFIG_DIR $LOG_DIR
 
 # 编译项目
 cargo build --release
 
-# 安装文件
-sudo cp target/release/tls_key_agent $INSTALL_DIR/
-sudo cp target/release/libopenssl_hook.so $INSTALL_DIR/
-sudo cp target/release/verify_keys $INSTALL_DIR/
-sudo cp config.toml $CONFIG_DIR/
+# 编译eBPF程序
+cd src/ebpf
+make all
 
-# 设置权限
-sudo chown -R $USER:$USER $INSTALL_DIR $CONFIG_DIR $LOG_DIR
-sudo chmod 755 $INSTALL_DIR/tls_key_agent
-sudo chmod 644 $INSTALL_DIR/libopenssl_hook.so
-sudo chmod 644 $CONFIG_DIR/config.toml
-
-# 创建systemd服务
-sudo tee /etc/systemd/system/tls-key-agent.service > /dev/null <<EOF
-[Unit]
-Description=TLS Key Agent
-After=network.target
-Wants=network.target
-
-[Service]
-Type=simple
-User=$USER
-Group=$USER
-WorkingDirectory=$INSTALL_DIR
-ExecStart=$INSTALL_DIR/tls_key_agent --config $CONFIG_DIR/config.toml
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-LimitNOFILE=65536
-
-# 安全设置
-NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=$LOG_DIR $CONFIG_DIR
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# 启动服务
-sudo systemctl daemon-reload
-sudo systemctl enable tls-key-agent
-sudo systemctl start tls-key-agent
-
-echo "TLS Key Agent部署完成！"
-echo "状态检查: sudo systemctl status tls-key-agent"
-echo "日志查看: sudo journalctl -u tls-key-agent -f"
+# 安装
+sudo cp target/release/tls-key-agent /usr/local/bin/
+sudo chmod +x /usr/local/bin/tls-key-agent
+sudo mkdir -p /opt/tls-key-agent
+sudo cp *.o /opt/tls-key-agent/
+sudo chmod 644 /opt/tls-key-agent/*.o
 ```
 
-### 2. 配置优化
+### 方式2: 容器化部署
 
-```toml
-# 生产环境配置 - production.toml
-[agent]
-name = "tls_key_agent_prod"
-log_level = "warn"  # 减少日志输出
-buffer_pool_size = 5000
-buffer_size = 16384
-worker_threads = 4
-
-[extraction]
-enabled = true
-capture_client_random = true
-capture_master_secret = true
-batch_size = 50
-batch_timeout = 100
-
-[transport]
-enabled_transports = ["Tcp", "File"]
-
-[transport.tcp]
-enabled = true
-server_host = "192.168.1.100"
-server_port = 9999
-reconnect_interval = 5
-max_reconnect_attempts = 10
-timeout = 30
-keepalive = true
-
-[transport.file]
-enabled = true
-directory = "/var/log/tls_agent"
-filename_pattern = "tls_keys_{timestamp}.log"
-max_file_size = "1GB"
-max_files = 30
-compression = true
-
-[[filters]]
-name = "production_https"
-enabled = true
-priority = 100
-five_tuple = { dst_port = 443 }
-```
-
-### 3. 监控配置
-
-```yaml
-# prometheus.yml
-global:
-  scrape_interval: 15s
-
-scrape_configs:
-  - job_name: 'tls-key-agent'
-    static_configs:
-      - targets: ['localhost:8080']
-    metrics_path: /metrics
-    scrape_interval: 5s
-```
-
-```bash
-# 启动Prometheus
-docker run -d \
-  --name prometheus \
-  -p 9090:9090 \
-  -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml \
-  prom/prometheus
-
-# 启动Grafana
-docker run -d \
-  --name grafana \
-  -p 3000:3000 \
-  -e "GF_SECURITY_ADMIN_PASSWORD=admin" \
-  grafana/grafana
-```
-
-## 集群部署
-
-### 1. 多节点部署架构
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      负载均衡器                             │
-│                  (HAProxy/Keepalived)                       │
-└─────────────────────────────────────────────────────────────┘
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        ▼                     ▼                     ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Node 1    │    │   Node 2    │    │   Node 3    │
-│ TLS Agent   │    │ TLS Agent   │    │ TLS Agent   │
-│ + Monitor   │    │ + Monitor   │    │ + Monitor   │
-└─────────────┘    └─────────────┘    └─────────────┘
-        │                     │                     │
-        └─────────────────────┼─────────────────────┘
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    密钥收集集群                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │   Kafka     │  │    Redis    │  │  Elastic    │         │
-│  │  Cluster    │  │  Cluster    │  │  Search     │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 2. 集群部署脚本
-
-```bash
-#!/bin/bash
-# deploy_cluster.sh - 集群部署脚本
-
-set -e
-
-# 集群配置
-NODES=(
-    "192.168.1.10:node1"
-    "192.168.1.11:node2"
-    "192.168.1.12:node3"
-)
-INSTALL_DIR="/opt/tls_key_agent"
-CONFIG_DIR="/etc/tls_key_agent"
-USER="tls_agent"
-
-echo "开始TLS Key Agent集群部署..."
-
-# 1. 在所有节点上部署基础环境
-for node in "${NODES[@]}"; do
-    IFS=':' read -r ip hostname <<< "$node"
-    echo "部署节点: $hostname ($ip)"
-
-    # SSH到远程节点执行部署
-    ssh root@$ip <<EOF
-        # 创建用户
-        useradd -r -s /bin/false $USER || true
-
-        # 创建目录
-        mkdir -p $INSTALL_DIR $CONFIG_DIR /var/log/tls_agent
-
-        # 同步文件
-        rsync -avz --delete deploy@$HOSTNAME:/opt/tls_key_agent/ $INSTALL_DIR/
-
-        # 设置权限
-        chown -R $USER:$USER $INSTALL_DIR $CONFIG_DIR /var/log/tls_agent
-
-        # 创建节点特定配置
-        cat > $CONFIG_DIR/config.toml <<EOCONF
-[agent]
-name = "tls_key_agent_$hostname"
-log_level = "info"
-node_id = "$hostname"
-
-[transport.tcp]
-server_host = "192.168.1.100"
-server_port = 9999
-
-[[filters]]
-name = "$hostname_https"
-enabled = true
-priority = 100
-process_name = "nginx"
-EOCONF
-EOF
-done
-
-# 2. 部署负载均衡器
-cat > haproxy.cfg <<EOF
-global
-    daemon
-    maxconn 4096
-
-defaults
-    mode tcp
-    timeout connect 5000ms
-    timeout client 50000ms
-    timeout server 50000ms
-
-frontend tls_agent_frontend
-    bind *:9999
-    default_backend tls_agent_backend
-
-backend tls_agent_backend
-    balance roundrobin
-    option tcp-check
-EOF
-
-# 添加后端服务器
-for node in "${NODES[@]}"; do
-    IFS=':' read -r ip hostname <<< "$node"
-    echo "    server $hostname $ip:9999 check" >> haproxy.cfg
-done
-
-# 3. 启动服务
-for node in "${NODES[@]}"; do
-    IFS=':' read -r ip hostname <<< "$node"
-    ssh root@$ip "systemctl daemon-reload && systemctl enable tls-key-agent && systemctl start tls-key-agent"
-done
-
-echo "集群部署完成！"
-echo "负载均衡器: http://$(hostname -I | awk '{print $1}'):9999"
-```
-
-### 3. 服务发现
-
-```yaml
-# consul-config.yaml
-datacenter: dc1
-data_dir: /opt/consul/data
-log_level: INFO
-server: true
-bootstrap_expect: 3
-retry_join:
-  - "192.168.1.10"
-  - "192.168.1.11"
-  - "192.168.1.12"
-```
-
-```bash
-# 启动Consul集群
-docker run -d \
-  --name consul \
-  --net=host \
-  -v $(pwd)/consul-config.yaml:/consul/config/config.yaml \
-  consul:latest agent -config-dir=/consul/config
-
-# 注册TLS Key Agent服务
-curl -X PUT \
-  -d '{
-    "ID": "tls-key-agent-1",
-    "Name": "tls-key-agent",
-    "Address": "192.168.1.10",
-    "Port": 8080,
-    "Check": {
-      "HTTP": "http://192.168.1.10:8080/health",
-      "Interval": "10s"
-    }
-  }' \
-  http://localhost:8500/v1/agent/service/register
-```
-
-## 容器化部署
-
-### 1. Docker镜像构建
-
+#### Dockerfile
 ```dockerfile
-# Dockerfile
 FROM rust:1.75-slim as builder
 
 # 安装构建依赖
@@ -488,6 +114,9 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
     libssl-dev \
+    clang \
+    llvm \
+    linux-headers-$(uname -r) \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -495,6 +124,9 @@ COPY . .
 
 # 编译项目
 RUN cargo build --release
+
+# 编译eBPF程序
+RUN cd src/ebpf && make all
 
 # 运行时镜像
 FROM debian:bullseye-slim
@@ -510,16 +142,15 @@ RUN apt-get update && apt-get install -y \
 RUN useradd -r -s /bin/false tls_agent
 
 # 创建目录
-RUN mkdir -p /app /etc/tls_key_agent /var/log/tls_agent
+RUN mkdir -p /app /etc/tls_key_agent /var/log/tls_agent /opt/tls-key-agent
 
 # 复制文件
-COPY --from=builder /app/target/release/tls_key_agent /app/
-COPY --from=builder /app/target/release/libopenssl_hook.so /app/
-COPY --from=builder /app/target/release/verify_keys /app/
+COPY --from=builder /app/target/release/tls-key-agent /app/
+COPY --from=builder /app/src/ebpf/*.o /opt/tls-key-agent/
 COPY config.toml /etc/tls_key_agent/
 
 # 设置权限
-RUN chown -R tls_agent:tls_agent /app /etc/tls_key_agent /var/log/tls_agent
+RUN chown -R tls_agent:tls_agent /app /etc/tls_key_agent /var/log/tls_agent /opt/tls-key-agent
 
 # 切换用户
 USER tls_agent
@@ -532,20 +163,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 EXPOSE 8080
 
-CMD ["./tls_key_agent", "--config", "/etc/tls_key_agent/config.toml"]
+CMD ["./tls-key-agent", "--config", "/etc/tls_key_agent/config.toml"]
 ```
 
-```bash
-# 构建镜像
-docker build -t tls-key-agent:latest .
-
-# 推送镜像
-docker tag tls-key-agent:latest registry.example.com/tls-key-agent:latest
-docker push registry.example.com/tls-key-agent:latest
-```
-
-### 2. Docker Compose部署
-
+#### Docker Compose部署
 ```yaml
 # docker-compose.yml
 version: '3.8'
@@ -554,50 +175,19 @@ services:
   tls-key-agent:
     image: tls-key-agent:latest
     container_name: tls-key-agent
-    restart: unless-stopped
-    environment:
-      - RUST_LOG=info
-      - TZ=Asia/Shanghai
+    privileged: true  # 需要特权模式加载eBPF程序
+    pid: host
+    network_mode: host
     volumes:
       - ./config:/etc/tls_key_agent:ro
       - ./logs:/var/log/tls_agent
-      - ./lib:/app/hooks
-    ports:
-      - "8080:8080"
-    networks:
-      - tls_agent_network
-    depends_on:
-      - kafka
-      - redis
-
-  kafka:
-    image: confluentinc/cp-kafka:latest
-    container_name: kafka
+      - /sys/fs/bpf:/sys/fs/bpf
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
     environment:
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    ports:
-      - "9092:9092"
-    networks:
-      - tls_agent_network
-
-  redis:
-    image: redis:alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
-    networks:
-      - tls_agent_network
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    networks:
-      - tls_agent_network
+      - RUST_LOG=info
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:latest
@@ -606,8 +196,6 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    networks:
-      - tls_agent_network
 
   grafana:
     image: grafana/grafana:latest
@@ -616,59 +204,28 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
-    networks:
-      - tls_agent_network
-
-networks:
-  tls_agent_network:
-    driver: bridge
 ```
 
-```bash
-# 启动服务
-docker-compose up -d
+### 方式3: Kubernetes部署
 
-# 查看状态
-docker-compose ps
-
-# 查看日志
-docker-compose logs -f tls-key-agent
-```
-
-### 3. Kubernetes部署
-
+#### namespace.yaml
 ```yaml
-# k8s/namespace.yaml
 apiVersion: v1
 kind: Namespace
 metadata:
   name: tls-key-agent
----
-# k8s/configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: tls-key-agent-config
-  namespace: tls-key-agent
-data:
-  config.toml: |
-    [agent]
-    name = "tls_key_agent_k8s"
-    log_level = "info"
+```
 
-    [transport.tcp]
-    enabled = true
-    server_host = "kafka-service"
-    server_port = 9092
----
-# k8s/deployment.yaml
+#### daemonset.yaml
+```yaml
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: tls-key-agent
   namespace: tls-key-agent
+  labels:
+    app: tls-key-agent
 spec:
-  replicas: 3
   selector:
     matchLabels:
       app: tls-key-agent
@@ -677,504 +234,510 @@ spec:
       labels:
         app: tls-key-agent
     spec:
+      hostPID: true
+      hostNetwork: true
+      tolerations:
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
       containers:
       - name: tls-key-agent
         image: tls-key-agent:latest
         imagePullPolicy: Always
-        env:
-        - name: RUST_LOG
-          value: "info"
-        ports:
-        - containerPort: 8080
-          name: http
+        securityContext:
+          privileged: true
         volumeMounts:
         - name: config
           mountPath: /etc/tls_key_agent
-        - name: logs
-          mountPath: /var/log/tls_agent
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: proc
+          mountPath: /host/proc
+          readOnly: true
+        - name: sys
+          mountPath: /host/sys
+          readOnly: true
+        - name: bpf
+          mountPath: /sys/fs/bpf
+        env:
+        - name: AGENT_CONFIG_FILE
+          value: "/etc/tls_key_agent/agent.toml"
+        - name: RUST_LOG
+          value: "info"
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            cpu: 100m
+            memory: 256Mi
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            cpu: 500m
+            memory: 512Mi
       volumes:
       - name: config
         configMap:
           name: tls-key-agent-config
-      - name: logs
-        emptyDir: {}
----
-# k8s/service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: tls-key-agent-service
-  namespace: tls-key-agent
-spec:
-  selector:
-    app: tls-key-agent
-  ports:
-  - name: http
-    port: 8080
-    targetPort: 8080
-  type: ClusterIP
----
-# k8s/ingress.yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: tls-key-agent-ingress
-  namespace: tls-key-agent
-spec:
-  rules:
-  - host: tls-key-agent.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: tls-key-agent-service
-            port:
-              number: 8080
+      - name: proc
+        hostPath:
+          path: /proc
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: bpf
+        hostPath:
+          path: /sys/fs/bpf
 ```
 
-```bash
-# 部署到Kubernetes
-kubectl apply -f k8s/
+## 配置管理
 
-# 查看部署状态
-kubectl get pods -n tls-key-agent
-
-# 查看服务
-kubectl get svc -n tls-key-agent
-
-# 查看日志
-kubectl logs -f deployment/tls-key-agent -n tls-key-agent
-```
-
-## 云原生部署
-
-### 1. Helm Chart
-
-```yaml
-# Chart.yaml
-apiVersion: v2
-name: tls-key-agent
-description: TLS Key Agent Helm Chart
-type: application
-version: 0.1.0
-appVersion: "0.1.0"
-
-# values.yaml
-replicaCount: 3
-
-image:
-  repository: tls-key-agent
-  pullPolicy: IfNotPresent
-  tag: "latest"
-
-service:
-  type: ClusterIP
-  port: 8080
-
-ingress:
-  enabled: true
-  className: nginx
-  annotations: {}
-  hosts:
-    - host: tls-key-agent.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-  tls: []
-
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 250m
-    memory: 256Mi
-
-autoscaling:
-  enabled: true
-  minReplicas: 2
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 80
-
-config:
-  logLevel: "info"
-  tcpServerHost: "kafka-service"
-  tcpServerPort: 9092
-```
-
-```bash
-# 安装Helm Chart
-helm install tls-key-agent ./tls-key-agent-chart
-
-# 升级
-helm upgrade tls-key-agent ./tls-key-agent-chart
-
-# 卸载
-helm uninstall tls-key-agent
-```
-
-### 2. AWS EKS部署
-
-```yaml
-# eks-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: tls-key-agent
-  namespace: tls-key-agent
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: tls-key-agent
-  template:
-    metadata:
-      labels:
-        app: tls-key-agent
-    spec:
-      serviceAccountName: tls-key-agent
-      containers:
-      - name: tls-key-agent
-        image: tls-key-agent:latest
-        env:
-        - name: RUST_LOG
-          value: "info"
-        - name: AWS_REGION
-          value: "us-west-2"
-        - name: KAFKA_BOOTSTRAP_SERVERS
-          valueFrom:
-            configMapKeyRef:
-              name: kafka-config
-              key: bootstrap.servers
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        volumeMounts:
-        - name: config
-          mountPath: /etc/tls_key_agent
-      volumes:
-      - name: config
-        configMap:
-          name: tls-key-agent-config
-```
-
-```bash
-# 部署到EKS
-kubectl apply -f eks-deployment.yaml
-
-# 配置IAM角色
-aws iam create-role \
-  --role-name tls-key-agent-role \
-  --assume-role-policy-document file://trust-policy.json
-
-aws iam attach-role-policy \
-  --role-name tls-key-agent-role \
-  --policy-arn arn:aws:iam::aws:policy/CloudWatchFullAccess
-```
-
-## 高可用配置
-
-### 1. 主备部署
-
-```bash
-#!/bin/bash
-# deploy_ha.sh - 高可用部署脚本
-
-MASTER_NODE="192.168.1.10"
-BACKUP_NODE="192.168.1.11"
-VIP="192.168.1.100"
-
-# 配置Keepalived
-cat > keepalived.conf <<EOF
-! Configuration File for keepalived
-global_defs {
-    router_id LVS_DEVEL
-}
-
-vrrp_script chk_tls_agent {
-    script "/usr/local/bin/check_tls_agent.sh"
-    interval 2
-    weight -20
-}
-
-vrrp_instance VI_1 {
-    state MASTER
-    interface eth0
-    virtual_router_id 51
-    priority 100
-    advert_int 1
-    authentication {
-        auth_type PASS
-        auth_pass 1111
-    }
-    virtual_ipaddress {
-        $VIP
-    }
-    track_script {
-        chk_tls_agent
-    }
-}
-EOF
-
-# 健康检查脚本
-cat > check_tls_agent.sh <<'EOF'
-#!/bin/bash
-systemctl is-active tls-key-agent >/dev/null 2>&1
-EOF
-
-chmod +x check_tls_agent.sh
-
-# 在主节点部署
-ssh root@$MASTER_NODE <<EOF
-    apt-get install -y keepalived
-    cp keepalived.conf /etc/keepalived/
-    systemctl enable keepalived
-    systemctl start keepalived
-EOF
-
-# 在备节点部署
-sed 's/state MASTER/state BACKUP/' keepalived.conf | \
-sed 's/priority 100/priority 90/' | \
-ssh root@$BACKUP_NODE 'cat > /etc/keepalived/keepalived.conf'
-
-ssh root@$BACKUP_NODE <<EOF
-    apt-get install -y keepalived
-    systemctl enable keepalived
-    systemctl start keepalived
-EOF
-
-echo "高可用部署完成，虚拟IP: $VIP"
-```
-
-### 2. 数据同步
-
-```bash
-#!/bin/bash
-# sync_data.sh - 数据同步脚本
-
-MASTER_DIR="/var/log/tls_agent"
-BACKUP_DIR="/backup/tls_agent"
-SYNC_INTERVAL=60
-
-while true; do
-    rsync -avz --delete \
-        -e "ssh -i /home/tls_agent/.ssh/sync_key" \
-        $MASTER_DIR/ \
-        tls_agent@$BACKUP_NODE:$BACKUP_DIR/
-
-    sleep $SYNC_INTERVAL
-done
-```
-
-## 安全配置
-
-### 1. TLS加密传输
-
+### 基础配置文件 (agent.toml)
 ```toml
-# secure-config.toml
 [agent]
-name = "tls_key_agent_secure"
+name = "tls_key_agent"
+version = "1.0.0"
+log_level = "info"
+buffer_pool_size = 1000
+buffer_size = 4096
 
-[transport.tcp]
+[extraction]
 enabled = true
-server_host = "secure-server.example.com"
-server_port = 9999
+capture_client_random = true
+capture_master_secret = true
+capture_session_ticket = true
+kernel_version_requirement = "5.0"
 
-[transport.tcp.tls]
+[transport.udp]
 enabled = true
-cert_file = "/etc/tls_key_agent/client.crt"
-key_file = "/etc/tls_key_agent/client.key"
-ca_file = "/etc/tls_key_agent/ca.crt"
-verify_hostname = true
+server_host = "127.0.0.1"
+server_port = 9090
+batch_size = 100
+batch_timeout_ms = 50
+compression = false
+reconnect_interval = 5000
+max_retries = 3
+timeout = 3000
 
-[security]
-encryption_enabled = true
-encryption_key_file = "/etc/tls_key_agent/encryption.key"
+[ebpf_ssl_hook]
+enabled = true
+kernel_version_requirement = "5.0"
+clang_path = "/usr/bin/clang"
+uprobe_timeout_ms = 3000
+max_events_per_second = 10000
+
+[injection]
+enabled = true
+default_strategy = "ebpf"
+
+[injection.ebpf]
+enabled = true
+library_detection_enabled = true
+
+[injection.multi_ssl]
+enabled = true
+libraries = ["OpenSSL", "GnuTLS", "NSS", "BoringSSL", "LibreSSL"]
+
+[monitoring]
+enabled = true
+metrics_endpoint = "http://127.0.0.1:9091/metrics"
+health_check_endpoint = "http://127.0.0.1:9091/health"
+
+[resilience]
+enabled = true
+
+[resilience.load_balancer]
+enabled = true
+strategy = "RoundRobin"
+health_check_interval = 30000
+failure_threshold = 3
+recovery_threshold = 2
+
+[resilience.performance_monitor]
+enabled = true
+metrics_retention_period = 3600
+alert_check_interval = 30000
+max_metrics = 100000
+enable_auto_cleanup = true
+
+[resilience.fault_recovery]
+enabled = true
+max_concurrent_recoveries = 5
+default_max_attempts = 3
+default_retry_interval = 30000
+auto_recovery_enabled = true
 ```
 
+### 环境变量配置
 ```bash
-# 生成证书
-openssl req -x509 -newkey rsa:4096 -keyout ca.key -out ca.crt -days 365 -nodes
+# 基础配置
+export AGENT_CONFIG_FILE="/etc/tls-key-agent/agent.toml"
+export RUST_LOG="info"
 
-openssl req -new -newkey rsa:2048 -keyout client.key -out client.csr -nodes
+# eBPF配置
+export EBPF_CLANG_PATH="/usr/bin/clang"
+export EBPF_PROGRAM_TIMEOUT_MS=3000
 
-openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt -days 365
+# 网络配置
+export UDP_SERVER_HOST="127.0.0.1"
+export UDP_SERVER_PORT=9090
+export UDP_BATCH_SIZE=100
+
+# 监控配置
+export METRICS_ENDPOINT="http://127.0.0.1:9091/metrics"
+export HEALTH_CHECK_ENDPOINT="http://127.0.0.1:9091/health"
 ```
 
-### 2. 访问控制
-
+### 命令行参数
 ```bash
-# 配置iptables规则
-iptables -A INPUT -p tcp --dport 8080 -s 192.168.1.0/24 -j ACCEPT
-iptables -A INPUT -p tcp --dport 8080 -j DROP
+tls-key-agent --help
 
-# 配置用户权限
-usermod -L tls_agent  # 锁定用户
-chmod 750 /etc/tls_key_agent
-chmod 640 /etc/tls_key_agent/config.toml
+TLS密钥Agent v1.0.0
+
+USAGE:
+    tls-key-agent [OPTIONS]
+
+OPTIONS:
+    -c, --config <FILE>          配置文件路径 [default: /etc/tls-key-agent/agent.toml]
+    -l, --log-level <LEVEL>     日志级别 [default: info]
+        --log-format <FORMAT>    日志格式 [default: json] [possible values: json, text]
+        --log-file <FILE>        日志文件路径
+        --daemon                 后台运行
+        --pid-file <FILE>        PID文件路径
+        --user <USER>            运行用户
+        --group <GROUP>          运行组
+        --umask <UMASK>          文件权限掩码
+        --work-dir <DIR>         工作目录
+        --max-threads <NUM>      最大线程数
+        --stack-size <SIZE>      线程栈大小
+        --no-syslog              禁用syslog
+        --no-journald            禁用journald
+    -h, --help                  显示帮助信息
+    -V, --version               显示版本信息
+```
+
+## 部署验证
+
+### 健康检查
+```bash
+# 基础健康检查
+curl http://localhost:9091/health
+
+# 详细健康检查
+curl http://localhost:9091/health/detailed
+
+# API健康检查
+curl http://localhost:8080/api/v1/health
+```
+
+### 功能验证
+```bash
+# 检查eBPF程序状态
+sudo bpftool prog show
+
+# 检查eBPF映射
+sudo bpftool map show
+
+# 检查进程状态
+ps aux | grep tls-key-agent
+
+# 检查网络连接
+netstat -tulpn | grep :9090
+```
+
+### 性能验证
+```bash
+# 获取性能指标
+curl http://localhost:8080/api/v1/metrics
+
+# 获取连接统计
+curl http://localhost:8080/api/v1/connections/stats
+
+# 检查系统资源使用
+top -p $(pgrep tls-key-agent)
 ```
 
 ## 监控和日志
 
-### 1. Prometheus监控
+### 日志配置
+```toml
+# 日志配置示例
+[logging]
+level = "info"
+format = "json"
+file = "/var/log/tls-key-agent/agent.log"
+max_size = "100MB"
+max_files = 10
+rotate = "daily"
 
+[logging.outputs]
+console = true
+file = true
+syslog = false
+journald = false
+
+[logging.filters]
+module = "tls_key_agent"
+target = "tls_key_agent::*"
+```
+
+### Prometheus监控
 ```yaml
-# prometheus-config.yaml
+# prometheus.yml
 global:
   scrape_interval: 15s
 
 scrape_configs:
   - job_name: 'tls-key-agent'
-    kubernetes_sd_configs:
-    - role: pod
-    relabel_configs:
-    - source_labels: [__meta_kubernetes_pod_label_app]
-      action: keep
-      regex: tls-key-agent
-    - source_labels: [__meta_kubernetes_pod_ip]
-      target_label: __address__
-      replacement: ${1}:8080
+    static_configs:
+      - targets: ['localhost:9091']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
 ```
 
-### 2. 日志收集
-
-```yaml
-# filebeat.yml
-filebeat.inputs:
-- type: log
-  enabled: true
-  paths:
-    - /var/log/tls_agent/*.log
-  fields:
-    service: tls-key-agent
-  fields_under_root: true
-
-output.elasticsearch:
-  hosts: ["elasticsearch:9200"]
-  index: "tls-key-agent-%{+yyyy.MM.dd}"
+### Grafana仪表板
+```json
+{
+  "dashboard": {
+    "title": "TLS密钥Agent监控",
+    "panels": [
+      {
+        "title": "TLS连接数",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "tls_connections_total",
+            "legendFormat": "总连接数"
+          }
+        ]
+      },
+      {
+        "title": "密钥提取数",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "keys_extracted_total",
+            "legendFormat": "密钥提取数"
+          }
+        ]
+      }
+    ]
+  }
+}
 ```
 
-## 运维管理
+## 故障排除
 
-### 1. 自动化部署脚本
+### 常见问题
 
+#### 1. eBPF程序加载失败
 ```bash
-#!/bin/bash
-# deploy.sh - 统一部署脚本
+# 检查内核版本
+uname -r
 
-set -e
+# 检查eBPF支持
+ls /proc/sys/kernel/unprivileged_bpf_disabled
 
-DEPLOY_TYPE=${1:-single}
-ENVIRONMENT=${2:-production}
+# 启用eBPF
+echo 0 | sudo tee /proc/sys/kernel/unprivileged_bpf_disabled
 
-case $DEPLOY_TYPE in
-    "single")
-        ./scripts/deploy_single.sh $ENVIRONMENT
-        ;;
-    "cluster")
-        ./scripts/deploy_cluster.sh $ENVIRONMENT
-        ;;
-    "docker")
-        ./scripts/deploy_docker.sh $ENVIRONMENT
-        ;;
-    "k8s")
-        ./scripts/deploy_k8s.sh $ENVIRONMENT
-        ;;
-    *)
-        echo "Usage: $0 [single|cluster|docker|k8s] [development|staging|production]"
-        exit 1
-        ;;
-esac
-
-echo "部署完成！"
+# 检查文件系统挂载
+mount | grep bpf
+sudo mount -t bpf bpf /sys/fs/bpf/
 ```
 
-### 2. 备份和恢复
-
+#### 2. 权限不足
 ```bash
+# 添加CAP_SYS_ADMIN权限
+sudo setcap cap_sys_admin+ep /usr/local/bin/tls-key-agent
+
+# 或使用sudo运行
+sudo tls-key-agent --config /etc/tls-key-agent/agent.toml
+```
+
+#### 3. 网络连接问题
+```bash
+# 检查端口占用
+sudo netstat -tulpn | grep :9090
+
+# 检查防火墙设置
+sudo ufw status
+sudo iptables -L
+
+# 检查路由表
+ip route show
+```
+
+#### 4. 内存使用过高
+```bash
+# 检查内存使用
+free -h
+ps aux | grep tls-key-agent
+
+# 调整配置
+vim /etc/tls-key-agent/agent.toml
+
+# 减少缓冲池大小
+buffer_pool_size = 500
+buffer_size = 2048
+```
+
+### 日志分析
+```bash
+# 查看应用日志
+tail -f /var/log/tls-key-agent/agent.log
+
+# 查看系统日志
+journalctl -u tls-key-agent -f
+
+# 查看内核日志
+dmesg | grep -i bpf
+
+# 使用grep过滤关键信息
+grep -i "error\|warning" /var/log/tls-key-agent/agent.log
+```
+
+### 性能调优
+```bash
+# 调整系统参数
+echo 'net.core.rmem_max = 134217728' | sudo tee -a /etc/sysctl.conf
+echo 'net.core.wmem_max = 134217728' | sudo tee -a /etc/sysctl.conf
+echo 'net.ipv4.tcp_rmem = 4096 87380 134217728' | sudo tee -a /etc/sysctl.conf
+echo 'net.ipv4.tcp_wmem = 4096 65536 134217728' | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
+# 调整eBPF参数
+echo 'net.core.bpf_jit_enable = 1' | sudo tee -a /etc/sysctl.conf
+```
+
+## 安全最佳实践
+
+### 1. 运行安全
+```bash
+# 使用专用用户运行
+sudo useradd -r -s /bin/false tls-key-agent
+sudo chown -R tls-key-agent:tls-key-agent /etc/tls-key-agent
+sudo chmod 750 /etc/tls-key-agent
+
+# 设置文件权限
+sudo chmod 640 /etc/tls-key-agent/agent.toml
+sudo chmod 750 /var/log/tls-key-agent
+```
+
+### 2. 网络安全
+```bash
+# 配置防火墙规则
+sudo ufw allow from 192.168.1.0/24 to any port 9090
+sudo ufw allow from 10.0.0.0/8 to any port 9091
+
+# 使用TLS加密传输
+# 在配置中启用传输加密
+[transport.udp]
+enable_encryption = true
+encryption_key = "your-32-byte-encryption-key-here"
+```
+
+### 3. 数据安全
+```bash
+# 配置日志轮转
+sudo vim /etc/logrotate.d/tls-key-agent
+
+# 定期清理旧日志
+find /var/log/tls-key-agent -name "*.log" -mtime +30 -delete
+
+# 加密敏感配置文件
+sudo gpg --symmetric --cipher-algo AES256 /etc/tls-key-agent/agent.toml
+```
+
+## 升级和维护
+
+### 滚动升级
+```bash
+# 1. 备份配置
+sudo cp /etc/tls-key-agent/agent.toml /etc/tls-key-agent/agent.toml.backup
+
+# 2. 停止服务
+sudo systemctl stop tls-key-agent
+
+# 3. 更新二进制
+sudo cp tls-key-agent /usr/local/bin/tls-key-agent.new
+sudo mv /usr/local/bin/tls-key-agent /usr/local/bin/tls-key-agent.old
+sudo mv /usr/local/bin/tls-key-agent.new /usr/local/bin/tls-key-agent
+
+# 4. 更新eBPF程序
+sudo cp *.o /opt/tls-key-agent/
+
+# 5. 验证配置
+tls-key-agent --config /etc/tls-key-agent/agent.toml --check
+
+# 6. 启动服务
+sudo systemctl start tls-key-agent
+
+# 7. 验证运行
+curl http://localhost:8080/api/v1/health
+```
+
+### 定期维护
+```bash
+# 每日维护脚本
 #!/bin/bash
-# backup.sh - 备份脚本
+# 检查服务状态
+systemctl is-active tls-key-agent
 
-BACKUP_DIR="/backup/tls_key_agent/$(date +%Y%m%d_%H%M%S)"
-CONFIG_DIR="/etc/tls_key_agent"
-LOG_DIR="/var/log/tls_agent"
+# 清理旧日志
+find /var/log/tls-key-agent -name "*.log" -mtime +7 -delete
 
-mkdir -p $BACKUP_DIR
+# 检查磁盘空间
+df -h /var/log/tls-key-agent
 
 # 备份配置
-tar -czf $BACKUP_DIR/config.tar.gz $CONFIG_DIR/
-
-# 备份日志
-tar -czf $BACKUP_DIR/logs.tar.gz $LOG_DIR/
-
-# 备份数据库（如果使用）
-mysqldump -u root -p tls_agent > $BACKUP_DIR/database.sql
-
-# 清理旧备份
-find /backup/tls_key_agent -type d -mtime +7 -exec rm -rf {} \;
-
-echo "备份完成: $BACKUP_DIR"
+cp /etc/tls-key-agent/agent.toml /backup/tls-key-agent-$(date +%Y%m%d).toml
 ```
 
-### 3. 升级维护
+## 生产环境部署清单
 
-```bash
-#!/bin/bash
-# upgrade.sh - 升级脚本
+### 部署前检查清单
+- [ ] 内核版本 >= 5.0
+- [ ] 安装了必要的开发工具
+- [ ] 配置了正确的系统权限
+- [ ] 准备了配置文件
+- [ ] 设置了监控和日志
+- [ ] 验证了网络连接
 
-VERSION=${1:-latest}
+### 部署后验证清单
+- [ ] 服务正常启动
+- [ ] eBPF程序正确加载
+- [ ] 网络端口正常监听
+- [ ] 健康检查通过
+- [ ] 监控指标正常
+- [ ] 日志输出正常
 
-echo "开始升级到版本: $VERSION"
+### 运维监控清单
+- [ ] 系统资源使用率监控
+- [ ] eBPF程序状态监控
+- [ ] 网络连接状态监控
+- [ ] 错误日志监控
+- [ ] 性能指标趋势分析
 
-# 备份当前版本
-./scripts/backup.sh
+## 版本更新历史
 
-# 下载新版本
-wget https://releases.example.com/tls-key-agent-$VERSION.tar.gz
+### v1.0.0 (2025-12-01) - 架构清理和优化
 
-# 停止服务
-systemctl stop tls-key-agent
+**部署改进：**
+- ✅ **零警告部署**: 修复所有编译警告，完美生产级部署
+- ✅ **简化架构**: 移除LD_PRELOAD相关组件，专注eBPF架构
+- ✅ **部署简化**: 清理过时文件和配置，减少部署复杂度
+- ✅ **文档更新**: 所有部署文档同步更新到eBPF架构
 
-# 替换二进制文件
-cp tls-key-agent-$VERSION/tls_key_agent /opt/tls_key_agent/
-cp tls-key-agent-$VERSION/libopenssl_hook.so /opt/tls_key_agent/
+**清理内容：**
+- 移除examples目录中的旧版部署示例
+- 清理根目录测试脚本，避免部署混淆
+- 删除过时的LD_PRELOAD Hook库依赖
+- 统一配置文件格式，简化配置管理
 
-# 启动服务
-systemctl start tls-key-agent
+**部署优势：**
+- 更小的部署包体积（减少25+文件）
+- 更快的编译和部署速度
+- 更清晰的部署文档和配置
+- 更稳定的运行时环境
 
-# 验证升级
-sleep 10
-./scripts/health_check.sh
+### v0.2.0 (2025-11-05) - 主动式Hook重构
 
-echo "升级完成！"
-```
+### v0.1.0 (2023-11-04) - 初始版本
 
----
-
-*部署文档版本: v0.1.0*
-*最后更新: 2023-11-04*
+通过以上部署指南，您可以在不同环境中成功部署TLS密钥Agent，并确保其稳定、安全、高效地运行。

@@ -317,10 +317,10 @@ impl StatsCollector {
         let start_time = self.start_time.load(Ordering::Relaxed);
         let uptime = now.saturating_sub(start_time);
         
-        // 计算平均处理时间
+        // 计算平均处理时间 - 使用实际处理的包数而不是记录次数
         let total_time = self.total_processing_time.load(Ordering::Relaxed);
-        let count = self.processing_count.load(Ordering::Relaxed);
-        let avg_time = if count > 0 { total_time / count } else { 0 };
+        let processed_count = self.packets_processed.load(Ordering::Relaxed);
+        let avg_time = if processed_count > 0 { total_time / processed_count } else { 0 };
         
         WebScanStats {
             // 数据包统计

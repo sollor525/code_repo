@@ -1,0 +1,127 @@
+# xdp-scanner-detect 配置文件
+# 基于 eBPF/XDP 的高性能 TCP 会话处理和扫描器检测系统
+
+# 网络接口配置
+[interface]
+# 网络接口名称（需要手动指定）
+name = "eth0"
+# XDP 运行模式: skb, native, hw
+xdp_mode = "skb"
+
+# 会话管理配置
+[session]
+# 最大并发会话数
+max_sessions = 1000000
+# 会话超时时间（秒）
+timeout_sec = 15
+# 会话最大持续时间（秒）
+max_duration_sec = 120
+# 会话清理间隔（秒）
+cleanup_interval_sec = 10
+
+[session.tcp]
+# 启用 TCP 重组
+enable_reassembly = true
+# 最大重组缓冲区大小（字节）
+max_reassembly_bytes = 1048576
+# 乱序包缓存数量
+max_out_of_order = 100
+# 启用窗口缩放跟踪
+track_window_scale = true
+
+# 扫描器检测配置
+[scanner]
+# 扫描检测时间窗口（秒）
+time_window_sec = 60
+# 扫描检测阈值
+scan_threshold = 10
+
+[scanner.port_scan]
+# 端口扫描阈值
+threshold = 5
+# 端口扫描范围
+[[scanner.port_scan.port_ranges]]
+start = 1
+end = 1024
+
+[[scanner.port_scan.port_ranges]]
+start = 8000
+end = 8999
+
+# 启用 TCP 标志检测
+enable_flag_detection = true
+
+[scanner.syn_flood]
+# SYN 包速率阈值（每秒）
+syn_rate_threshold = 1000
+# 半连接数阈值
+half_connection_threshold = 10000
+# 检测时间窗口（秒）
+time_window_sec = 10
+
+# 启用白名单
+enable_whitelist = true
+# 白名单 IP 列表
+whitelist_ips = ["127.0.0.1"]
+
+# 性能优化配置
+[performance]
+# 工作线程数量（0 表示自动检测）
+worker_threads = 0
+# CPU 亲和性设置（可选）
+cpu_affinity = []
+
+[performance.memory]
+# 内存映射区域大小（字节）
+mmap_size = 67108864
+# 内存预分配数量
+prealloc_count = 1000
+# 启用 HugePage
+enable_hugepages = true
+
+[performance.batch]
+# 批量处理大小
+batch_size = 32
+# 批量处理超时（微秒）
+batch_timeout_us = 100
+# 启用批量提交
+enable_batch_commit = true
+
+# 日志配置
+[logging]
+# 日志级别: trace, debug, info, warn, error
+level = "info"
+# 日志文件路径（可选，默认输出到控制台）
+# file_path = "/var/log/xdp-scanner-detect.log"
+# 日志文件最大大小（字节）
+max_file_size = 104857600
+# 日志文件保留数量
+max_files = 10
+# 启用结构化日志
+enable_structured = true
+
+# 监控配置（可选）
+[monitoring]
+# 启用 Prometheus 指标
+enable_prometheus = true
+# Prometheus 监听地址
+prometheus_addr = "0.0.0.0:9090"
+# 指标收集间隔（秒）
+metrics_interval_sec = 10
+# 启用性能分析
+enable_profiling = false
+# 性能数据保留时间（秒）
+profile_retention_sec = 3600
+
+# 调试配置（仅用于开发）
+[debug]
+# 启用调试模式
+enable_debug = false
+# 详细日志
+verbose_logging = false
+# 启用性能分析
+enable_perf_analysis = false
+# 转储数据包到文件
+dump_packets = false
+# 转储文件路径
+# dump_file_path = "/tmp/xdp-scanner-detect-dump.pcap"

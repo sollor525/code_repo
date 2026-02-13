@@ -6,14 +6,20 @@ use crate::common::session::TlsSession;
 use crate::config::{TransportConfig, TransportType};
 
 pub mod tcp_transport;
-pub mod file_transport;
+pub mod udp_transport;
+// 注意：file_transport模块在UDP架构中不再需要
 pub mod transport_manager;
+pub mod enhanced_udp_manager;
 pub mod key_output;
 
 pub use tcp_transport::*;
-pub use file_transport::*;
+pub use udp_transport::*;
 pub use transport_manager::*;
+pub use enhanced_udp_manager::*;
 pub use key_output::*;
+
+// 为兼容性导出TransportManager作为UdpTransportManager的别名
+pub use transport_manager::UdpTransportManager as TransportManager;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransportMessage {
@@ -27,6 +33,7 @@ pub enum MessageType {
     TlsKey,
     Heartbeat,
     ConfigUpdate,
+    Batch,
 }
 
 impl TransportMessage {
@@ -95,49 +102,50 @@ pub struct TransportStats {
 #[derive(Debug, Clone)]
 pub enum TransportEnum {
     Tcp(Arc<TcpTransport>),
-    File(Arc<FileTransport>),
+    Udp(Arc<UdpTransport>),
+    // 注意：在新架构中，文件传输已被UDP批量传输替代
 }
 
 impl TransportEnum {
     pub async fn start(&self) -> Result<()> {
         match self {
             TransportEnum::Tcp(transport) => transport.start().await,
-            TransportEnum::File(transport) => transport.start().await,
+            TransportEnum::Udp(transport) => transport.start().await,
         }
     }
 
     pub async fn stop(&self) -> Result<()> {
         match self {
             TransportEnum::Tcp(transport) => transport.stop().await,
-            TransportEnum::File(transport) => transport.stop().await,
+            TransportEnum::Udp(transport) => transport.stop().await,
         }
     }
 
     pub async fn send_message(&self, message: &TransportMessage) -> Result<()> {
         match self {
             TransportEnum::Tcp(transport) => transport.send_message(message).await,
-            TransportEnum::File(transport) => transport.send_message(message).await,
+            TransportEnum::Udp(transport) => transport.send_message(message).await,
         }
     }
 
     pub async fn is_connected(&self) -> bool {
         match self {
             TransportEnum::Tcp(transport) => transport.is_connected().await,
-            TransportEnum::File(transport) => transport.is_connected().await,
+            TransportEnum::Udp(transport) => transport.is_connected().await,
         }
     }
 
     pub fn get_transport_type(&self) -> TransportType {
         match self {
             TransportEnum::Tcp(_) => TransportType::Tcp,
-            TransportEnum::File(_) => TransportType::File,
+            TransportEnum::Udp(_) => TransportType::Udp,
         }
     }
 
     pub async fn get_stats(&self) -> TransportStats {
         match self {
             TransportEnum::Tcp(transport) => transport.get_stats().await,
-            TransportEnum::File(transport) => transport.get_stats().await,
+            TransportEnum::Udp(transport) => transport.get_stats().await,
         }
     }
 }
@@ -152,10 +160,10 @@ pub struct DefaultTransportFactory;
 impl TransportFactory for DefaultTransportFactory {
     fn create_transport(&self, config: &TransportConfig) -> Result<TransportEnum> {
         // 根据配置创建相应的传输器
-        if config.enabled_transports.contains(&TransportType::Tcp) && config.tcp.enabled {
+        if config.enabled_transports.contains(&TransportType::Udp) && config.udp.enabled {
+            Ok(TransportEnum::Udp(Arc::new(UdpTransport::new(&config.udp)?)))
+        } else if config.enabled_transports.contains(&TransportType::Tcp) && config.tcp.enabled {
             Ok(TransportEnum::Tcp(Arc::new(TcpTransport::new(&config.tcp)?)))
-        } else if config.enabled_transports.contains(&TransportType::File) && config.file.enabled {
-            Ok(TransportEnum::File(Arc::new(FileTransport::new(&config.file)?)))
         } else {
             Err(TlsKeyAgentError::Transport("没有启用的传输方式".to_string()))
         }

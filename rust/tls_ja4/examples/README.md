@@ -1,70 +1,262 @@
-# TLS JA4/JA3 Examples
+# TLS JA4/JA3 C API 使用示例
 
-这个目录包含了TLS JA4/JA3指纹提取库的使用示例。
+本目录包含了TLS JA4/JA3指纹提取库的C语言接口使用示例，展示了从基础功能到高级集成的完整用法。
 
-## 文件说明
+## 📁 文件结构
 
-### Rust示例
+```
+examples/
+├── c_api_basic_example.c      # 基础C API使用示例
+├── c_api_advanced_example.c   # 高级C API使用示例（多线程、性能优化）
+├── c_api_vpp_integration.c    # VPP集成示例
+├── Makefile                   # 示例构建脚本
+├── C_API_EXAMPLES.md         # 详细文档
+└── README.md                 # 本文件
+```
 
-#### `test_new_c_api.rs`
-- **用途**: 演示C API的基本使用方法
-- **功能**: 
-  - 测试完整IP数据包处理（包含IP头+TCP头+TLS载荷）
-  - 测试TLS数据包检测
-  - 测试Client Hello检测
-  - 演示完整的分析流程和指纹计算
-- **运行**: `cargo run --example test_new_c_api`
-- **输出示例**: 
-  ```
-  Is TLS packet: -2
-  Is Client Hello: -3
-  ✅ Success!
-  JA4: t120d20h0_0_37effddb63e8_0
-  JA3: af236ae680d7741a172c340dbd5ca7dacff8e684d303b57a60c2ca142ef9a017
-  ```
+## 🚀 快速开始
 
-#### `test_segmented_tls.rs`
-- **用途**: 演示真正的分段TLS处理功能
-- **功能**:
-  - 模拟TLS Client Hello被分割成3个TCP分段
-  - 演示分段缓存和重组机制
-  - 展示完整的指纹计算流程
-  - 演示上下文管理和错误处理
-- **运行**: `cargo run --example test_segmented_tls`
-- **输出示例**:
-  ```
-  📦 Processing Segment 1 (90 bytes)...
-  📦 Segment 1 cached, waiting for more data...
-  📦 Processing Segment 2 (44 bytes)...
-  📦 Segment 2 cached, waiting for more data...
-  📦 Processing Segment 3 (66 bytes)...
-  ✅ Complete TLS Client Hello assembled from segments!
-  JA4: t120d20h0_0_37effddb63e8_0
-  JA3: af236ae680d7741a172c340dbd5ca7dacff8e684d303b57a60c2ca142ef9a017
-  ```
-- **特点**: 真实展示VPP环境中可能遇到的分段TLS处理场景
+### 1. 构建Rust库
 
-### C示例
+```bash
+# 在项目根目录构建发布版本
+cd ..
+cargo build --release
+```
 
-#### `vpp_integration_example.c`
-- **用途**: 完整的VPP集成示例
-- **功能**:
-  - 展示如何在VPP节点中集成TLS指纹提取
-  - 演示IP包构建和分析
-  - 展示便捷函数的使用
-  - **新增**: 真正的分段TLS处理演示
-  - 提供完整的VPP集成指南
-- **编译**: 需要链接libtls_ja4库
-- **演示内容**:
-  - Method 1: 简单TLS检测和分析
-  - Method 2: 支持分段的处理
-  - **Method 3: 真正的分段TLS处理** (新增)
-- **特点**:
-  - 线程安全设计
-  - 零拷贝原则
-  - 高性能处理
-  - 支持分段TLS处理
-  - 真实的分段重组演示
+### 2. 构建C示例
+
+```bash
+# 构建所有示例
+make all
+
+# 或者单独构建
+make c_api_basic_example
+make c_api_advanced_example
+make c_api_vpp_integration
+```
+
+### 3. 运行示例
+
+```bash
+# 运行基础示例
+make run-basic
+
+# 运行高级示例
+make run-advanced
+
+# 运行VPP集成示例
+make run-vpp
+```
+
+## 📚 示例说明
+
+### 1. 基础C API示例 (`c_api_basic_example.c`)
+
+**适用场景**: 高性能应用、生产环境、多线程处理
+
+**主要功能**:
+- 🚀 多线程并行处理
+- 📊 性能基准测试
+- 💾 内存管理优化
+- 🔧 缓存配置调优
+- 📈 性能监控统计
+
+**运行结果示例**:
+```
+📈 === 多线程 性能统计 ===
+  总处理时间: 0.95 ms
+  处理数据包数: 1000
+  JA3成功数: 1000 (100.0%)
+  JA4成功数: 1000 (100.0%)
+  处理速度: 1052632 包/秒
+  平均处理时间: 0.95 微秒/包
+
+🔄 === 性能对比分析 ===
+  多线程加速比: 1.46x
+  并行效率: 36.4%
+```
+
+### 3. VPP集成示例 (`c_api_vpp_integration.c`)
+
+**适用场景**: VPP网络功能虚拟化、高速数据包处理
+
+**主要功能**:
+- 🔗 VPP节点集成
+- 🧵 多Worker线程支持
+- 📦 批量数据包处理
+- 📊 实时性能监控
+- 🎯 流表管理
+
+**运行结果示例**:
+```
+🚀 === VPP节点处理演示 ===
+📝 注册节点: tls-ja4-extractor (索引: 0)
+✅ 总共处理了 100 个有效的TLS数据包
+
+📊 === TLS JA4节点统计信息 ===
+  Worker ID: 0
+  运行时间: 0.01 秒
+  处理数据包: 100
+  提取指纹: 100
+  错误数量: 0
+  成功率: 100.00%
+  处理速度: 9091 包/秒
+```
+
+## 🛠️ 构建选项
+
+### 调试版本
+
+```bash
+make debug
+```
+
+**特点**:
+- 包含调试符号
+- 禁用优化
+- 启用断言检查
+
+### 发布版本
+
+```bash
+make release
+```
+
+**特点**:
+- 优化性能
+- 禁用调试信息
+- 适合生产环境
+
+### 代码检查
+
+```bash
+# 语法检查
+make check
+
+# 内存检查（需要valgrind）
+make memcheck-basic
+
+# 性能分析（需要perf）
+make perf-basic
+```
+
+## 📊 性能基准
+
+在Intel i7-8700K (6 cores, 12 threads)上的测试结果：
+
+| 场景 | 数据包数 | 线程数 | 处理时间 | 吞吐量 | 成功率 |
+|------|----------|--------|----------|--------|--------|
+| 单线程 | 200 | 1 | 0.28ms | 722,022 pps | 100.0% |
+| 多线程 | 1000 | 4 | 0.95ms | 1,052,632 pps | 100.0% |
+| VPP节点 | 100 | 1 | 11ms | 9,091 pps | 100.0% |
+
+## 🔧 配置说明
+
+### TLS上下文管理
+
+```c
+// 初始化上下文
+TlsJa4Context* ctx = tls_init();
+
+// 计算JA3指纹
+TlsJa3Result ja3_result = {0};
+int ret = tls_calculate_ja3(tls_payload, payload_len, &ja3_result);
+
+// 计算JA4指纹
+TlsJa4Result ja4_result = {0};
+ret = tls_calculate_ja4(tls_payload, payload_len, &ja4_result);
+
+// 清理上下文
+tls_cleanup(ctx);
+```
+
+### 错误处理
+
+```c
+switch (ret) {
+    case TLS_JA4_SUCCESS:
+        // 处理成功结果
+        break;
+    case TLS_JA4_NOT_TLS:
+        printf("数据不是TLS报文\n");
+        break;
+    case TLS_JA4_NOT_CLIENT_HELLO:
+        printf("TLS报文不是Client Hello\n");
+        break;
+    default:
+        printf("未知错误: %d\n", ret);
+        break;
+}
+```
+
+## 💡 最佳实践
+
+### 1. 多线程设计
+- ✅ 每个线程使用独立的TLS上下文
+- ✅ 避免共享可变状态
+- ✅ 合理设置线程数（通常为CPU核心数）
+
+### 2. 内存管理
+- ✅ 及时清理TLS上下文
+- ✅ 根据应用场景配置缓存大小
+- ✅ 定期清理超时缓存
+
+### 3. 性能优化
+- ✅ 批量处理数据包
+- ✅ 预检查TLS类型
+- ✅ 避免频繁的内存分配
+
+## 🚨 注意事项
+
+1. **当前版本限制**:
+   - 暂不支持缓存管理函数
+   - 数据库匹配功能为简化版本
+
+2. **兼容性**:
+   - 支持Linux系统
+   - 需要GCC编译器
+   - 需要pthread库
+
+3. **依赖关系**:
+   - 需要先构建Rust库
+   - 确保libtls_ja4.so在可找到的路径中
+
+## 📖 更多信息
+
+- **详细文档**: 查看 [C_API_EXAMPLES.md](C_API_EXAMPLES.md)
+- **API参考**: 查看 [../include/tls_ja4.h](../include/tls_ja4.h)
+- **构建系统**: 查看 [Makefile](Makefile)
+
+## 🤝 贡献
+
+欢迎提交Issue和Pull Request来改进这些示例！
+
+### 开发环境设置
+
+```bash
+# 安装依赖
+sudo apt-get install build-essential valgrind
+
+# 克隆项目
+git clone <repository-url>
+cd tls_ja4
+
+# 构建和测试
+cargo build --release
+make all
+make run-all
+```
+
+## 📄 许可证
+
+本项目遵循MIT或Apache-2.0双重许可证。
+
+---
+
+**🎉 现在就开始使用TLS JA4/JA3 C API吧！**
+
+如有问题，请查看 [C_API_EXAMPLES.md](C_API_EXAMPLES.md) 或提交Issue获取帮助。
 
 ## 使用说明
 

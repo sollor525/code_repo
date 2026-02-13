@@ -1,0 +1,100 @@
+# TLS Key Agent Demo配置文件 - 用于与服务端demo配合使用
+
+[agent]
+name = "tls_key_agent_demo"
+version = "0.1.0"
+log_level = "debug"
+buffer_pool_size = 1000
+buffer_size = 8192
+
+[extraction]
+enabled = true
+kernel_version_requirement = "5.0.0"
+capture_client_random = true
+capture_master_secret = true
+capture_session_ticket = true
+process_filters = ["nginx", "apache2", "httpd", "curl", "firefox", "chrome", "wget"]
+
+[transport]
+enabled_transports = ["Udp"]
+max_retries = 3
+timeout = 30
+
+[transport.udp]
+enabled = true
+server_host = "127.0.0.1"
+server_port = 9999
+batch_size = 50
+batch_timeout_ms = 500
+compression = true
+reconnect_interval = 5
+max_retries = 3
+timeout = 30
+
+[transport.tcp]
+enabled = false
+server_host = "127.0.0.1"
+server_port = 9998
+connection_timeout = 30
+keep_alive = true
+retry_delay = 1
+reconnect_interval = 5
+max_retries = 10
+timeout = 10
+
+[transport.remote_config]
+enabled = true
+server_url = "http://127.0.0.1:8080/config"
+config_update_interval = 30
+config_retry_attempts = 3
+connection_timeout = 30
+
+[ebpf_ssl_hook]
+enabled = true
+kernel_version_requirement = "5.0.0"
+clang_path = "/usr/bin/clang"
+bpftool_path = "/usr/bin/bpftool"
+auto_compile = true
+uprobe_timeout_ms = 3000
+
+[injection]
+auto_inject = true
+hook_library = null
+process_discovery_interval = 30
+
+# Demo过滤器 - 捕获更多流量用于演示
+[[filters]]
+name = "https_traffic"
+enabled = true
+five_tuple = { dst_port = 443 }
+process_name = null
+pid = null
+source_ip_filter = null
+priority = 100
+
+[[filters]]
+name = "http_traffic"
+enabled = true
+five_tuple = { dst_port = 80 }
+process_name = null
+pid = null
+source_ip_filter = null
+priority = 90
+
+[[filters]]
+name = "smtp_tls"
+enabled = true
+five_tuple = { dst_port = 587, protocol = "TCP" }
+process_name = null
+pid = null
+source_ip_filter = null
+priority = 80
+
+[[filters]]
+name = "all_ssl_ports"
+enabled = true
+five_tuple = { dst_port = [443, 8443, 993, 995, 465, 636] }
+process_name = null
+pid = null
+source_ip_filter = null
+priority = 70

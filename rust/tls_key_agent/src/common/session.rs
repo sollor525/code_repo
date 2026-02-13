@@ -21,7 +21,7 @@ pub struct FiveTuple {
     pub protocol: Protocol,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Protocol {
     TCP,
     UDP,

@@ -230,6 +230,7 @@ impl Default for ProcessDetector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tracing::warn;
 
     #[tokio::test]
     async fn test_process_detector_creation() {

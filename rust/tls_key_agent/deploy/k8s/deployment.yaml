@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: tls-key-agent
+  namespace: default
+  labels:
+    app: tls-key-agent
+    component: security
+spec:
+  selector:
+    matchLabels:
+      app: tls-key-agent
+  template:
+    metadata:
+      labels:
+        app: tls-key-agent
+        component: security
+    spec:
+      hostPID: true  # 需要访问主机PID命名空间
+      hostNetwork: true  # 需要访问主机网络
+      serviceAccountName: tls-key-agent
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: tls-key-agent
+        image: tls-key-agent:latest
+        imagePullPolicy: Always
+        securityContext:
+          privileged: true  # eBPF需要特权模式
+          capabilities:
+            add:
+            - SYS_ADMIN
+            - SYS_RESOURCE
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        env:
+        - name: RUST_LOG
+          value: "info"
+        - name: CONFIG_FILE
+          value: "/opt/tls_key_agent/config/config.toml"
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: config
+          mountPath: /opt/tls_key_agent/config
+          readOnly: true
+        - name: logs
+          mountPath: /opt/tls_key_agent/logs
+        - name: sys-debug
+          mountPath: /sys/kernel/debug
+          readOnly: true
+        - name: lib-modules
+          mountPath: /lib/modules
+          readOnly: true
+        - name: proc
+          mountPath: /proc
+          readOnly: true
+        livenessProbe:
+          exec:
+            command:
+            - pgrep
+            - tls_key_agent
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - pgrep
+            - tls_key_agent
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: config
+        configMap:
+          name: tls-key-agent-config
+      - name: logs
+        hostPath:
+          path: /var/log/tls-key-agent
+          type: DirectoryOrCreate
+      - name: sys-debug
+        hostPath:
+          path: /sys/kernel/debug
+          type: Directory
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+          type: Directory
+      - name: proc
+        hostPath:
+          path: /proc
+          type: Directory
+      terminationGracePeriodSeconds: 30

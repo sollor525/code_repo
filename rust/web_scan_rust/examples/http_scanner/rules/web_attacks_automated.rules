@@ -328,3 +328,68 @@ alert http any any -> any any (msg:"HTTP WebDAV Attack: LOCK method detected"; p
 alert http any any -> any any (msg:"HTTP WebDAV Attack: TRACK request detected"; content:"TRACK"; http.method; nocase; sid:9010009; rev:1;)
 alert http any any -> any any (msg:"HTTP Method Attack: PATCH request detected"; content:"PATCH"; http.method; nocase; sid:9010010; rev:1;)
 
+# ===================================
+# 基于v_1_7_18.PCAP实际攻击流量的补充检测规则
+# 分析时间: 2025-11-28
+# 攻击源: 实际web扫描器流量
+# ===================================
+
+# === Webshell后门检测增强 ===
+alert http any any -> any any (msg:"WEB_ATTACK Webshell R57 Shell Variant"; content:"r57"; nocase; http.uri; content:".php"; http.uri; sid:9010020; rev:1;)
+alert http any any -> any any (msg:"WEB_ATTACK Webshell C99 Shell Variant"; content:"c99"; nocase; http.uri; content:".php"; http.uri; sid:9010021; rev:1;)
+alert http any any -> any any (msg:"WEB_ATTACK PHP Backdoor Detection"; content:"backdoor"; nocase; http.uri; content:".php"; http.uri; sid:9010022; rev:1;)
+alert http any any -> any any (msg:"WEB_ATTACK Simple PHP Shell"; content:"shell.php"; nocase; http.uri; sid:9010023; rev:1;)
+alert http any any -> any any (msg:"WEB_COMMAND Command Shell ASP"; content:"cmdasp.asp"; nocase; http.uri; sid:9010024; rev:1;)
+alert http any any -> any any (msg:"WEB_ATTACK ASPX Spy Backdoor"; content:"aspxspy.aspx"; nocase; http.uri; sid:9010025; rev:1;)
+alert http any any -> any any (msg:"WEB_ATTACK PHP Admin Interface"; content:"webadmin.php"; nocase; http.uri; sid:9010026; rev:1;)
+
+# === 更多Webshell变体检测 ===
+alert http any any -> any any (msg:"WEB_ATTACK PHP Backdoor - nstview"; content:"nstview.php"; nocase; http.uri; sid:9010027; rev:1;)
+alert http any any -> any any (msg:"WEB_ATTACK PHP Backdoor - zehir"; content:"zehir.php"; nocase; http.uri; sid:9010028; rev:1;)
+alert http any any -> any any (msg:"WEB_ATTACK PHP Backdoor - rst"; content:"rst.php"; nocase; http.uri; sid:9010029; rev:1;)
+alert http any any -> any any (msg:"WEB_ATTACK PHP Backdoor - lol"; content:"lol.php"; nocase; http.uri; sid:9010030; rev:1;)
+alert http any any -> any any (msg:"WEB_ATTACK PHP Backdoor - c-h"; content:"c-h.v2.php"; nocase; http.uri; sid:9010031; rev:1;)
+
+# === Nacos配置攻击检测 ===
+alert http any any -> any any (msg:"WEB_ATTACK Nacos Data Removal API Access"; content:"/nacos/v1/cs/ops/data/removal"; http.uri; sid:9010032; rev:1;)
+alert http any any -> any any (msg:"WEB_ATTACK Nacos Configuration API"; content:"/nacos/v1/"; http.uri; nocase; sid:9010033; rev:1;)
+
+# === 模板注入攻击检测 ===
+alert http any any -> any any (msg:"WEB_ATTACK Template Injection Pattern 1"; content:"$%7B9898*323%7D"; nocase; http.uri; sid:9010034; rev:1;)
+alert http any any -> any any (msg:"WEB_ATTACK Template Injection Pattern 2"; content:"9898*323"; nocase; http.uri; sid:9010035; rev:1;)
+
+# === 文件泄露攻击增强 ===
+alert http any any -> any any (msg:"WEB_CONFIG File Leak - Vagrantfile"; content:"Vagrantfile"; http.uri; sid:9010036; rev:1;)
+alert http any any -> any any (msg:"WEB_CONFIG File Leak - htaccess"; content:".htaccess"; http.uri; sid:9010037; rev:1;)
+alert http any any -> any any (msg:"WEB_CONFIG File Leak - windows config"; content:"win.ini"; http.uri; sid:9010038; rev:1;)
+
+# === 敏感文件扩展名检测增强 ===
+alert http any any -> any any (msg:"WEB_SENSITIVE Backup File Access"; content:".backup"; nocase; http.uri; sid:9010039; rev:1;)
+alert http any any -> any any (msg:"WEB_SENSITIVE Old File Access"; content:".old"; nocase; http.uri; sid:9010040; rev:1;)
+alert http any any -> any any (msg:"WEB_SENSITIVE Save File Access"; content:".save"; nocase; http.uri; sid:9010041; rev:1;)
+alert http any any -> any any (msg:"WEB_SENSITIVE BAK File Access"; content:".bak"; nocase; http.uri; sid:9010042; rev:1;)
+alert http any any -> any any (msg:"WEB_SENSITIVE 7z Archive Access"; content:".7z"; nocase; http.uri; sid:9010043; rev:1;)
+
+# === 路径遍历绕过技术检测 ===
+alert http any any -> any any (msg:"WEB_BYPASS UTF-8 Path Traversal"; content:"%C0%AE"; nocase; http.uri; sid:9010044; rev:1;)
+alert http any any -> any any (msg:"WEB_BYPASS Double Encoding Path Traversal"; content:"%252e"; nocase; http.uri; sid:9010045; rev:1;)
+alert http any any -> any any (msg:"WEB_BYPASS Backslash Path Traversal"; content:"%5C.."; nocase; http.uri; sid:9010046; rev:1;)
+
+# === 开发框架检测模式 ===
+alert http any any -> any any (msg:"WEB_RECON TinyMCE Component Scan"; content:"tinymce"; nocase; http.uri; sid:9010047; rev:1;)
+alert http any any -> any any (msg:"WEB_RECON Dreamweaver Script Detection"; content:"_mmServerScripts"; nocase; http.uri; sid:9010048; rev:1;)
+
+# === PHP敏感脚本检测 ===
+alert http any any -> any any (msg:"WEB_PHP APC Admin Interface"; content:"apc.php"; nocase; http.uri; sid:9010049; rev:1;)
+alert http any any -> any any (msg:"WEB_PHP Info Script"; content:"info.php"; nocase; http.uri; sid:9010050; rev:1;)
+
+# === 备份压缩文件检测 ===
+alert http any any -> any any (msg:"WEB_SENSITIVE Database Backup ZIP"; content:"db.zip"; nocase; http.uri; sid:9010051; rev:1;)
+alert http any any -> any any (msg:"WEB_SENSITIVE Database Backup TAR"; content:"db.tar.gz"; nocase; http.uri; sid:9010052; rev:1;)
+alert http any any -> any any (msg:"WEB_SENSITIVE Database Backup RAR"; content:"db.rar"; nocase; http.uri; sid:9010053; rev:1;)
+alert http any any -> any any (msg:"WEB_SENSITIVE Site Backup Access"; content:"backup-srm"; nocase; http.uri; sid:9010054; rev:1;)
+
+# === 配置文件泄露检测 ===
+alert http any any -> any any (msg:"WEB_CONFIG Java Web Config Leak"; content:"WEB-INF"; nocase; http.uri; sid:9010055; rev:1;)
+alert http any any -> any any (msg:"WEB_CONFIG JBoss Web Config"; content:"jboss-web.xml"; nocase; http.uri; sid:9010056; rev:1;)
+

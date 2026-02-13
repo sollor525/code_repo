@@ -113,27 +113,56 @@ void show_statistics() {
             printf("匹配率: 0.00%%\n");
         }
         
-        snprintf(buf, sizeof(buf), "总处理时间: %.3f ms\n", (double)stats.total_processing_time / 1000.0);
+        // 修复时间统计显示异常问题
+        double total_time_ms = (double)stats.total_processing_time / 1000.0;
+        snprintf(buf, sizeof(buf), "总处理时间: %.3f ms\n", total_time_ms);
         printf("%s", buf);
-        
+
         if (stats.packets_processed > 0) {
-            snprintf(buf, sizeof(buf), "平均处理时间: %.6f ms/包\n", (double)stats.avg_processing_time / 1000.0);
+            double avg_time_ms = (double)stats.avg_processing_time / 1000.0;
+            snprintf(buf, sizeof(buf), "平均处理时间: %.6f ms/包\n", avg_time_ms);
             printf("%s", buf);
         } else {
             printf("平均处理时间: 0.000000 ms/包\n");
         }
-        
-        snprintf(buf, sizeof(buf), "最大处理时间: %.3f ms\n", (double)stats.max_processing_time / 1000.0);
+
+        // 修复最大时间显示问题 - 处理0值情况
+        double max_time_ms = (double)stats.max_processing_time / 1000.0;
+        if (max_time_ms < 0.001) { // 如果小于0.001ms，显示为0.000ms
+            snprintf(buf, sizeof(buf), "最大处理时间: 0.000 ms\n");
+        } else {
+            snprintf(buf, sizeof(buf), "最大处理时间: %.3f ms\n", max_time_ms);
+        }
+        printf("%s", buf);
+
+        // 修复最小时间显示问题 - 处理异常大值情况
+        double min_time_ms = (double)stats.min_processing_time / 1000.0;
+        if (min_time_ms > 100000) { // 如果大于100秒，可能是初始化值
+            snprintf(buf, sizeof(buf), "最小处理时间: N/A\n");
+        } else {
+            snprintf(buf, sizeof(buf), "最小处理时间: %.3f ms\n", min_time_ms);
+        }
         printf("%s", buf);
         
-        snprintf(buf, sizeof(buf), "最小处理时间: %.3f ms\n", (double)stats.min_processing_time / 1000.0);
-        printf("%s", buf);
-        
-        snprintf(buf, sizeof(buf), "已加载规则数: %u\n", stats.rules_loaded);
-        printf("%s", buf);
-        
-        snprintf(buf, sizeof(buf), "活跃规则数: %u\n", stats.rules_active);
-        printf("%s", buf);
+        // 获取实时规则数量（修复统计不同步问题）
+        int total, successful, failed;
+        char rule_details[512];
+        int rule_stats_result = web_scan_rust_get_rule_loading_stats(
+            &total, &successful, &failed, rule_details, sizeof(rule_details)
+        );
+
+        if (rule_stats_result == 0) {
+            snprintf(buf, sizeof(buf), "已加载规则数: %d\n", total);
+            printf("%s", buf);
+            snprintf(buf, sizeof(buf), "活跃规则数: %d\n", successful);
+            printf("%s", buf);
+        } else {
+            // 如果新API失败，回退到旧统计
+            snprintf(buf, sizeof(buf), "已加载规则数: %u\n", stats.rules_loaded);
+            printf("%s", buf);
+            snprintf(buf, sizeof(buf), "活跃规则数: %u\n", stats.rules_active);
+            printf("%s", buf);
+        }
         
         printf("=========================================\n");
     } else {
