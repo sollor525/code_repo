@@ -1,9 +1,9 @@
-//! 基于 Rayon 的并行处理模块
+//! 基于 Rayon 的按流并行分析
 //!
-//! Rayon 提供了数据并行处理能力，可以轻松地将迭代操作并行化
-//! 无需手动管理线程，使用起来更简单高效
+//! 按 `FlowKey` 把数据包分组，不同流并行处理、同一流内报文按时间有序，
+//! 每条流由独立的 `StreamManager` 处理，因此处理阶段完全无锁。
 
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -11,12 +11,10 @@ use indicatif::{ProgressBar, ProgressStyle};
 use crate::stream::{StreamManager, StreamManagerConfig};
 use crate::types::PacketInfo;
 use crate::types::flow::FlowKey;
+use crate::types::stream::TcpStream;
 
 /// Rayon 并行处理器
 pub struct RayonProcessor {
-    /// 线程安全的流管理器
-    stream_manager: Arc<Mutex<StreamManager>>,
-    /// 并行配置
     config: RayonConfig,
 }
 
@@ -25,11 +23,9 @@ pub struct RayonProcessor {
 pub struct RayonConfig {
     /// 流管理器配置
     pub stream_config: StreamManagerConfig,
-    /// 批处理大小
-    pub batch_size: usize,
     /// 是否启用进度条
     pub enable_progress: bool,
-    /// 线程池大小（None 表示使用默认）
+    /// 线程池大小（None 表示使用默认，即 CPU 核心数）
     pub thread_pool_size: Option<usize>,
 }
 
@@ -37,7 +33,6 @@ impl Default for RayonConfig {
     fn default() -> Self {
         Self {
             stream_config: StreamManagerConfig::default(),
-            batch_size: 1000,
             enable_progress: true,
             thread_pool_size: None,
         }
@@ -54,9 +49,7 @@ pub struct RayonResult {
     /// 总处理时间
     pub processing_time: Duration,
     /// 所有流的列表
-    pub streams: Vec<crate::types::stream::TcpStream>,
-    /// 解析错误的数据包数
-    pub parse_errors: u64,
+    pub streams: Vec<TcpStream>,
 }
 
 impl RayonResult {
@@ -83,131 +76,22 @@ impl RayonResult {
 impl RayonProcessor {
     /// 创建新的 Rayon 处理器
     pub fn new(config: RayonConfig) -> Self {
-        // 设置线程池配置
+        // 全局线程池只能初始化一次，重复设置会返回 Err，忽略即可
         if let Some(pool_size) = config.thread_pool_size {
-            rayon::ThreadPoolBuilder::new()
+            let _ = rayon::ThreadPoolBuilder::new()
                 .num_threads(pool_size)
-                .build_global()
-                .unwrap();
+                .build_global();
         }
-
-        let stream_manager = Arc::new(Mutex::new(StreamManager::new(
-            config.stream_config.clone()
-        )));
-
-        Self {
-            stream_manager,
-            config,
-        }
+        Self { config }
     }
 
-    /// 并行处理数据包批次
-    pub fn process_packets_parallel(&self, packets: Vec<PacketInfo>) -> Result<RayonResult, Box<dyn std::error::Error>> {
-        let start_time = Instant::now();
-        let total_packets = packets.len() as u64;
-
-        // 创建进度条
-        let progress = if self.config.enable_progress {
-            let pb = ProgressBar::new(total_packets);
-            pb.set_style(
-                ProgressStyle::default_bar()
-                    .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")
-                    .unwrap()
-                    .progress_chars("#>-")
-            );
-            Some(pb)
-        } else {
-            None
-        };
-
-        // 按批次分割数据包
-        let batches: Vec<_> = packets
-            .chunks(self.config.batch_size)
-            .map(|chunk| chunk.to_vec())
-            .collect();
-
-        // 使用 Rayon 并行处理批次
-        let _batch_count = batches.len();
-
-        // 使用 Mutex 保护计数器
-        let processed_counter = Mutex::new(0u64);
-        let error_counter = Mutex::new(0u64);
-
-        batches.into_par_iter()
-            .for_each(|batch| {
-                // 在本地线程中处理批次
-                let local_processed = batch.len() as u64;
-                let local_errors = 0u64; // 这里可以添加错误处理逻辑
-
-                // 获取流管理器的锁
-                {
-                    let mut manager = self.stream_manager.lock().unwrap();
-
-                    // 批量处理数据包
-                    for packet in batch {
-                        manager.process_packet(&packet);
-                    }
-                }
-
-                // 更新计数器
-                {
-                    let mut processed = processed_counter.lock().unwrap();
-                    *processed += local_processed;
-
-                    let mut errors = error_counter.lock().unwrap();
-                    *errors += local_errors;
-                }
-
-                // 更新进度条
-                if let Some(ref pb) = progress {
-                    pb.inc(local_processed);
-                }
-            });
-
-        // 获取最终计数
-        let (processed_packets, parse_errors) = {
-            (*processed_counter.lock().unwrap(), *error_counter.lock().unwrap())
-        };
-
-        // 完成进度条
-        if let Some(pb) = progress {
-            pb.finish_with_message("处理完成");
-        }
-
-        let processing_time = start_time.elapsed();
-
-        // 获取所有流
-        let streams: Vec<crate::types::stream::TcpStream> = {
-            let manager = self.stream_manager.lock().unwrap();
-            manager.get_all_streams().cloned().collect()
-        };
-
-        let stream_count = streams.len();
-
-        Ok(RayonResult {
-            packet_count: processed_packets,
-            stream_count,
-            processing_time,
-            streams,
-            parse_errors,
-        })
-    }
-
-    /// 使用 Rayon 的并行迭代器处理单个数据包
-    pub fn process_packets_iter<'a, I>(&self, packets: I) -> Result<RayonResult, Box<dyn std::error::Error>>
-    where
-        I: IntoIterator<Item = &'a PacketInfo> + Send + 'a,
-        <I as IntoIterator>::IntoIter: ExactSizeIterator + Send,
-    {
-        let packets: Vec<_> = packets.into_iter().cloned().collect();
-        self.process_packets_parallel(packets)
-    }
-
-    /// 按流键并行处理数据包（保持同一线程处理同一个流）
-    pub fn process_packets_by_flow(&self, packets: Vec<PacketInfo>) -> Result<RayonResult, Box<dyn std::error::Error>> {
+    /// 按流分组并行分析
+    ///
+    /// 不同流并行、同一流内报文按时间戳有序由单一线程处理。
+    /// 由于各流互不相交，每条流用独立的 `StreamManager`，处理阶段无需任何锁。
+    pub fn process_packets_by_flow(&self, packets: Vec<PacketInfo>) -> RayonResult {
         // 按流键分组
-        let mut flow_map: std::collections::HashMap<FlowKey, Vec<PacketInfo>> = std::collections::HashMap::new();
-
+        let mut flow_map: HashMap<FlowKey, Vec<PacketInfo>> = HashMap::new();
         for packet in packets {
             let flow_key = FlowKey::new(
                 packet.src_ip,
@@ -216,105 +100,50 @@ impl RayonProcessor {
                 packet.dst_port,
                 packet.protocol,
             );
-            flow_map.entry(flow_key).or_insert_with(Vec::new).push(packet);
+            flow_map.entry(flow_key).or_default().push(packet);
         }
 
         let start_time = Instant::now();
         let total_packets: u64 = flow_map.values().map(|v| v.len() as u64).sum();
 
-        // 创建进度条
         let progress = if self.config.enable_progress {
             let pb = ProgressBar::new(total_packets);
             pb.set_style(
                 ProgressStyle::default_bar()
                     .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")
                     .unwrap()
-                    .progress_chars("#>-")
+                    .progress_chars("#>-"),
             );
             Some(pb)
         } else {
             None
         };
 
-        // 并行处理每个流
-        let processed_counter = Mutex::new(0u64);
-
-        flow_map.into_par_iter()
-            .for_each(|(_flow_key, mut packets)| {
-                // 按时间排序每个流的数据包
+        // 每条流独立处理，结果汇总
+        let streams: Vec<TcpStream> = flow_map
+            .into_par_iter()
+            .flat_map_iter(|(_flow_key, mut packets)| {
                 packets.sort_by_key(|p| p.timestamp);
-
-                // 获取流管理器的锁
-                {
-                    let mut manager = self.stream_manager.lock().unwrap();
-
-                    // 处理整个流
-                    for packet in packets {
-                        manager.process_packet(&packet);
-
-                        // 更新进度
-                        let mut processed = processed_counter.lock().unwrap();
-                        *processed += 1;
-
-                        if let Some(ref pb) = progress {
-                            pb.inc(1);
-                        }
-                    }
+                let mut manager = StreamManager::new(self.config.stream_config.clone());
+                for packet in &packets {
+                    manager.process_packet(packet);
                 }
-            });
+                if let Some(pb) = &progress {
+                    pb.inc(packets.len() as u64);
+                }
+                manager.into_streams()
+            })
+            .collect();
 
         if let Some(pb) = progress {
             pb.finish_with_message("处理完成");
         }
 
-        let processing_time = start_time.elapsed();
-
-        // 获取所有流
-        let streams: Vec<crate::types::stream::TcpStream> = {
-            let manager = self.stream_manager.lock().unwrap();
-            manager.get_all_streams().cloned().collect()
-        };
-
-        let stream_count = streams.len();
-
-        Ok(RayonResult {
+        RayonResult {
             packet_count: total_packets,
-            stream_count,
-            processing_time,
+            stream_count: streams.len(),
+            processing_time: start_time.elapsed(),
             streams,
-            parse_errors: 0,
-        })
-    }
-
-    /// 获取流管理器的引用（用于获取结果）
-    pub fn stream_manager(&self) -> &Arc<Mutex<StreamManager>> {
-        &self.stream_manager
-    }
-
-    /// 并行清理过期流
-    pub fn cleanup_expired_streams_parallel(&self) {
-        let manager = self.stream_manager.lock().unwrap();
-        // 在锁内完成清理
-        // 由于清理是只读操作，可以在锁外并行处理
-        drop(manager);
-
-        // 注意：由于 Rust 的借用检查器限制，这里需要获取锁
-        let mut manager = self.stream_manager.lock().unwrap();
-        manager.cleanup_expired_streams();
-    }
-
-    /// 并行统计流信息
-    pub fn compute_statistics_parallel(&self) -> Vec<(FlowKey, crate::types::flow::FlowStats)> {
-        let manager = self.stream_manager.lock().unwrap();
-        let streams: Vec<_> = manager.get_all_streams().cloned().collect();
-        drop(manager);
-
-        // 使用 Rayon 并行计算统计
-        streams.into_par_iter()
-            .map(|stream| {
-                let stats = stream.stats.clone();
-                (stream.flow_key.clone(), stats)
-            })
-            .collect()
+        }
     }
 }

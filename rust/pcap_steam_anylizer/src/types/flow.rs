@@ -273,11 +273,14 @@ impl FlowStats {
         self.packet_count += 1;
         self.byte_count += bytes as u64;
 
-        // 更新时间戳
-        if self.first_packet_time.is_none() {
+        // 更新时间戳：first 取最早、last 取最晚，
+        // 即使 PCAP 中报文乱序也能保证 last >= first
+        if self.first_packet_time.map_or(true, |f| timestamp < f) {
             self.first_packet_time = Some(timestamp);
         }
-        self.last_packet_time = Some(timestamp);
+        if self.last_packet_time.map_or(true, |l| timestamp > l) {
+            self.last_packet_time = Some(timestamp);
+        }
 
         // 更新大小统计
         let bytes_u32 = bytes as u32;
@@ -310,7 +313,8 @@ impl FlowStats {
     /// 获取流持续时间（微秒）
     pub fn duration(&self) -> Option<u64> {
         match (self.first_packet_time, self.last_packet_time) {
-            (Some(first), Some(last)) => Some(last - first),
+            // 使用 saturating_sub 防止报文乱序（last < first）时下溢 panic
+            (Some(first), Some(last)) => Some(last.saturating_sub(first)),
             _ => None,
         }
     }
@@ -508,5 +512,46 @@ impl fmt::Display for FlowLabel {
             Self::Malicious => write!(f, "Malicious"),
             Self::Other(name) => write!(f, "{}", name),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::{IpAddr, Ipv4Addr};
+
+    fn ip(a: u8, b: u8, c: u8, d: u8) -> IpAddr {
+        IpAddr::V4(Ipv4Addr::new(a, b, c, d))
+    }
+
+    /// BUG-8：报文乱序（last < first）时 duration 不应 panic，且非负。
+    #[test]
+    fn test_flowstats_duration_handles_out_of_order() {
+        let mut stats = FlowStats::new();
+        stats.update(10, FlowDirection::ClientToServer, 5000);
+        stats.update(10, FlowDirection::ServerToClient, 3000); // 时间戳更早
+
+        // first 取最早、last 取最晚
+        assert_eq!(stats.first_packet_time, Some(3000));
+        assert_eq!(stats.last_packet_time, Some(5000));
+        assert_eq!(stats.duration(), Some(2000));
+        assert_eq!(stats.packet_count, 2);
+    }
+
+    /// 同一连接的双向报文经 FlowKey 归一化后应相等，且方向判定正确。
+    #[test]
+    fn test_flowkey_bidirectional_normalization() {
+        let client = ip(192, 168, 1, 100);
+        let server = ip(10, 0, 0, 1);
+
+        let forward = FlowKey::new(client, server, 40000, 80, 6);
+        let backward = FlowKey::new(server, client, 80, 40000, 6);
+
+        // 双向报文应映射到同一个键
+        assert_eq!(forward, backward);
+
+        // 方向判定：客户端（发起方）-> 服务器
+        assert_eq!(forward.get_direction(&client, 40000), FlowDirection::ClientToServer);
+        assert_eq!(forward.get_direction(&server, 80), FlowDirection::ServerToClient);
     }
 }

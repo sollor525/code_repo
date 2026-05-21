@@ -58,27 +58,24 @@ impl PacketParser {
         }
     }
 
-    /// 创建默认解析器（不验证校验和，不解析负载）
-    #[deprecated(note = "use PacketParser::default() instead")]
-    pub fn default_legacy() -> Self {
-        Self::new(false, false, 1)  // 默认以太网
-    }
-
     /// 解析数据包
     ///
-    /// # 参数
-    /// * `packet` - 要解析的数据包
-    ///
-    /// # 返回值
-    /// 返回解析后的数据包或错误
-    pub fn parse(&self, packet: Packet) -> Result<Packet, ParseError> {
-        let data_clone = packet.data.clone();
+    /// 解析时把原始字节移出再借用，避免逐包克隆整个缓冲区。
+    pub fn parse(&self, mut packet: Packet) -> Result<Packet, ParseError> {
+        let data = std::mem::take(&mut packet.data);
+        self.parse_inner(&data, packet).map(|mut parsed| {
+            parsed.data = data;
+            parsed
+        })
+    }
 
+    /// 在借用的原始字节上解析各层协议
+    fn parse_inner(&self, data: &[u8], packet: Packet) -> Result<Packet, ParseError> {
         // 根据链路层类型选择解析策略
         match self.linktype {
             // 标准以太网
             1 => {
-                match SlicedPacket::from_ethernet(&data_clone) {
+                match SlicedPacket::from_ethernet(data) {
                     Ok(sliced) => {
                         let mut parsed_packet = packet;
 
@@ -112,10 +109,10 @@ impl PacketParser {
                 // 对于链路层类型65535，某些情况下实际数据仍然是标准以太网帧
                 // 先尝试作为以太网帧解析
                 #[allow(clippy::single_match)]
-                if self.linktype == 65535 && data_clone.len() >= 14 {
+                if self.linktype == 65535 && data.len() >= 14 {
                     // 检查是否是以太网帧（0x0800表示IPv4）
-                    if data_clone[12] == 0x08 && data_clone[13] == 0x00 {
-                        match SlicedPacket::from_ethernet(&data_clone) {
+                    if data[12] == 0x08 && data[13] == 0x00 {
+                        match SlicedPacket::from_ethernet(data) {
                             Ok(sliced) => {
                                 let mut parsed_packet = packet;
 
@@ -147,15 +144,13 @@ impl PacketParser {
                 }
 
                 // 如果不是以太网帧，尝试作为Raw IP解析
-                let ip_data = if self.linktype == 65535 && data_clone.len() > 16 {
+                let ip_data = if self.linktype == 65535 && data.len() > 16 {
                     // Linux cooked capture (SLL) 头部格式：
                     // 跳过SLL头部（通常是16字节）
-                    &data_clone[16..]
-                } else if self.linktype == 101 {
-                    // Raw IP，直接使用数据
-                    &data_clone
+                    &data[16..]
                 } else {
-                    &data_clone
+                    // Raw IP，直接使用数据
+                    data
                 };
 
                 match SlicedPacket::from_ip(ip_data) {
@@ -190,20 +185,14 @@ impl PacketParser {
 
         // 最后尝试：如果所有特定方法都失败，尝试通用的Raw IP解析
         // 尝试找到 IP 数据包的开始
-        let ip_data = if data_clone.len() >= 4 {
-            // IPv4 以 0x45 开始
-            if data_clone[0] == 0x45 {
-                &data_clone
-            } else {
-                // 尝试搜索IPv4头
-                if let Some(ip_start) = data_clone.iter().position(|&b| b == 0x45) {
-                    &data_clone[ip_start..]
-                } else {
-                    &data_clone
-                }
+        let ip_data = if data.len() >= 4 && data[0] != 0x45 {
+            // 不是以 0x45 开头，尝试搜索IPv4头
+            match data.iter().position(|&b| b == 0x45) {
+                Some(ip_start) => &data[ip_start..],
+                None => data,
             }
         } else {
-            &data_clone
+            data
         };
 
         match SlicedPacket::from_ip(ip_data) {
@@ -333,6 +322,9 @@ impl PacketParser {
             InternetSlice::Ipv4(header, _extensions) => {
                 packet.src_ip = Some(IpAddr::V4(Ipv4Addr::from(header.source())));
                 packet.dst_ip = Some(IpAddr::V4(Ipv4Addr::from(header.destination())));
+                // 提取TTL与identification（用于识别NPatch注入报文签名）
+                packet.ip_ttl = Some(header.ttl());
+                packet.ip_id = Some(header.identification());
                 packet.protocols.push(Protocol::Ipv4);
 
                 // 验证校验和（如果需要）

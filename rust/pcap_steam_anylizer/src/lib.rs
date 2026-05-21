@@ -7,7 +7,6 @@ pub mod types;
 pub mod stream;
 pub mod output;
 pub mod protocol;
-pub mod parallel;
 pub mod rayon_parallel;
 pub mod time_limit;
 

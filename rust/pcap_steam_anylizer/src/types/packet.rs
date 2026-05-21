@@ -126,6 +126,10 @@ pub struct Packet {
     pub tcp_flags: Option<TcpFlags>,
     /// TCP窗口大小（如果是TCP包）
     pub tcp_window: Option<u16>,
+    /// IPv4 TTL（仅IPv4，用于识别NPatch注入报文的TTL签名）
+    pub ip_ttl: Option<u8>,
+    /// IPv4 identification（仅IPv4，用于识别NPatch hijack报文的0x6688签名）
+    pub ip_id: Option<u16>,
 }
 
 /// TCP标志位
@@ -204,11 +208,6 @@ impl TcpFlags {
         self.syn && self.ack
     }
 
-    /// 检查是否是ACK包（非SYN-ACK）
-    pub fn is_ack_only(&self) -> bool {
-        self.ack && !self.syn
-    }
-
     /// 检查是否是FIN包
     pub fn is_fin(&self) -> bool {
         self.fin
@@ -218,11 +217,32 @@ impl TcpFlags {
     pub fn is_rst(&self) -> bool {
         self.rst
     }
+
+    /// 检查是否是携带数据的 PSH/ACK 包（NPatch hijack 报文的形态）
+    pub fn is_psh_ack(&self) -> bool {
+        self.psh && self.ack && !self.syn && !self.rst
+    }
 }
 
 impl Default for TcpFlags {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// 把 TCP 标志位数值描述成可读字符串，如 "RST|ACK"、"PSH|ACK"
+pub fn describe_tcp_flags(flags: u8) -> String {
+    let mut parts = Vec::new();
+    if flags & 0x02 != 0 { parts.push("SYN"); }
+    if flags & 0x10 != 0 { parts.push("ACK"); }
+    if flags & 0x08 != 0 { parts.push("PSH"); }
+    if flags & 0x01 != 0 { parts.push("FIN"); }
+    if flags & 0x04 != 0 { parts.push("RST"); }
+    if flags & 0x20 != 0 { parts.push("URG"); }
+    if parts.is_empty() {
+        format!("0x{:02X}", flags)
+    } else {
+        parts.join("|")
     }
 }
 
@@ -244,6 +264,8 @@ impl Packet {
             tcp_ack: None,
             tcp_flags: None,
             tcp_window: None,
+            ip_ttl: None,
+            ip_id: None,
         }
     }
 
@@ -315,49 +337,86 @@ impl Packet {
     }
 
     /// 获取负载（去掉所有头部后的数据）
+    ///
+    /// 按 IP 版本读取真实的 IHL / IPv6 payload length，所有减法用 `checked_sub`，
+    /// 因此面对截断或损坏的报文不会下溢 panic。
+    ///
+    /// 注意：此函数假定二层为 14 字节以太网帧，不处理 VLAN/SLL 等场景。
     pub fn payload(&self) -> Option<&[u8]> {
-        if self.is_tcp() {
-            // 需要正确计算TCP头长度（包含选项）
-            let ip_header_size = if self.is_ipv4() { 20 } else { 40 };
-            let ethernet_header_size = 14;
+        const ETH_LEN: usize = 14;
 
-            // 从IP头中获取总长度
-            let total_length = if self.data.len() >= ethernet_header_size + ip_header_size + 2 {
-                // IP总长度字段在偏移ethernet_header_size + 2字节处
-                ((self.data[ethernet_header_size + 2] as u16) << 8) |
-                (self.data[ethernet_header_size + 3] as u16)
-            } else {
-                0
-            };
+        // 至少要能读到 IP 版本字节
+        if self.data.len() < ETH_LEN + 1 {
+            return None;
+        }
 
-            // 从TCP头中获取头长度（以4字节为单位）
-            let tcp_header_offset = ethernet_header_size + ip_header_size;
-            let tcp_header_size = if self.data.len() > tcp_header_offset + 12 {
-                // TCP头长度字段的高4位在偏移12字节处
-                let tcp_header_len_field = self.data[tcp_header_offset + 12];
-                ((tcp_header_len_field >> 4) & 0x0F) as usize * 4
-            } else {
-                20 // 默认20字节
-            };
+        let ip_start = ETH_LEN;
+        let version = (self.data[ip_start] >> 4) & 0x0F;
 
-            let header_size = ethernet_header_size + ip_header_size + tcp_header_size;
-            let payload_size = total_length as usize - ip_header_size - tcp_header_size;
-
-            if payload_size > 0 && self.data.len() >= header_size + payload_size {
-                Some(&self.data[header_size..header_size + payload_size])
-            } else {
-                None
+        // 解析 IP 层，得到：IP 头长度、IP 载荷长度（L4 头+数据）、L4 协议号
+        let (ip_header_len, ip_payload_len, l4_proto) = match version {
+            4 => {
+                if self.data.len() < ip_start + 20 {
+                    return None;
+                }
+                let ihl = ((self.data[ip_start] & 0x0F) as usize) * 4;
+                if ihl < 20 {
+                    return None; // IHL 不合法
+                }
+                let total_len = u16::from_be_bytes([
+                    self.data[ip_start + 2],
+                    self.data[ip_start + 3],
+                ]) as usize;
+                // total_len 包含 IP 头；减去后即为 IP 载荷长度
+                let payload_len = total_len.checked_sub(ihl)?;
+                (ihl, payload_len, self.data[ip_start + 9])
             }
-        } else if self.is_udp() {
-            // 简单实现：去掉以太网头 + IP头 + UDP头(8)
-            let header_size = if self.is_ipv4() { 42 } else { 62 };
-            if self.data.len() > header_size {
-                Some(&self.data[header_size..])
-            } else {
-                None
+            6 => {
+                if self.data.len() < ip_start + 40 {
+                    return None;
+                }
+                // IPv6 的 "payload length" 字段就是 IP 载荷长度，不含 40 字节固定头
+                let payload_len = u16::from_be_bytes([
+                    self.data[ip_start + 4],
+                    self.data[ip_start + 5],
+                ]) as usize;
+                (40, payload_len, self.data[ip_start + 6])
             }
-        } else {
-            None
+            _ => return None,
+        };
+
+        let l4_start = ip_start + ip_header_len;
+
+        match l4_proto {
+            // TCP
+            6 => {
+                if self.data.len() < l4_start + 13 {
+                    return None;
+                }
+                // TCP 数据偏移（高 4 位，单位 4 字节）
+                let data_offset = ((self.data[l4_start + 12] >> 4) & 0x0F) as usize * 4;
+                if data_offset < 20 {
+                    return None;
+                }
+                let payload_size = ip_payload_len.checked_sub(data_offset)?;
+                let payload_start = l4_start + data_offset;
+                if payload_size > 0 && self.data.len() >= payload_start + payload_size {
+                    Some(&self.data[payload_start..payload_start + payload_size])
+                } else {
+                    None
+                }
+            }
+            // UDP（固定 8 字节头）
+            17 => {
+                let payload_size = ip_payload_len.checked_sub(8)?;
+                let payload_start = l4_start + 8;
+                if payload_size > 0 && self.data.len() >= payload_start + payload_size {
+                    Some(&self.data[payload_start..payload_start + payload_size])
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 
@@ -478,6 +537,77 @@ impl Default for Packet {
             tcp_ack: None,
             tcp_flags: None,
             tcp_window: None,
+            ip_ttl: None,
+            ip_id: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tcp_flags_roundtrip() {
+        for byte in 0u8..=255 {
+            let flags = TcpFlags::from_byte(byte);
+            assert_eq!(flags.to_byte(), byte, "from_byte/to_byte 应可逆");
+        }
+    }
+
+    #[test]
+    fn test_tcp_flags_helpers() {
+        let syn = TcpFlags::from_byte(0x02);
+        assert!(syn.is_syn() && !syn.is_syn_ack());
+
+        let syn_ack = TcpFlags::from_byte(0x12);
+        assert!(syn_ack.is_syn_ack() && !syn_ack.is_syn());
+
+        let rst = TcpFlags::from_byte(0x04);
+        assert!(rst.is_rst());
+    }
+
+    /// BUG-9：payload() 在 total_length 小于头部长度（截断/损坏）时不应 panic。
+    #[test]
+    fn test_payload_no_panic_on_truncated_total_length() {
+        let mut data = vec![0u8; 54];
+        // 以太网 EtherType = IPv4
+        data[12] = 0x08;
+        data[13] = 0x00;
+        // IPv4：version=4, IHL=5
+        data[14] = 0x45;
+        // total_length 被故意写成 20（比 IP头+TCP头 还小），原实现会下溢 panic
+        data[16] = 0x00;
+        data[17] = 20;
+        // protocol = TCP
+        data[14 + 9] = 6;
+        // TCP data offset = 5
+        data[14 + 20 + 12] = 0x50;
+
+        let pkt = Packet::new(PacketHeader::new(0, 0, 54, 54), data);
+        // 关键：不 panic（返回 None 即可）
+        assert!(pkt.payload().is_none());
+    }
+
+    /// BUG-9：payload() 对带 IP 选项（IHL>5）的 IPv4 报文应按真实 IHL 计算。
+    #[test]
+    fn test_payload_respects_ip_header_length() {
+        // 以太网(14) + IPv4头(24，含4字节选项) + TCP头(20) + 负载(5)
+        let payload = b"hello";
+        let ip_header_len = 24usize;
+        let total_len = (ip_header_len + 20 + payload.len()) as u16;
+        let mut data = vec![0u8; 14 + ip_header_len + 20 + payload.len()];
+
+        data[12] = 0x08;
+        data[13] = 0x00;
+        data[14] = 0x46; // version=4, IHL=6 -> 24 字节
+        data[16..18].copy_from_slice(&total_len.to_be_bytes());
+        data[14 + 9] = 6; // TCP
+        data[14 + ip_header_len + 12] = 0x50; // TCP data offset = 5
+        let pstart = 14 + ip_header_len + 20;
+        data[pstart..pstart + payload.len()].copy_from_slice(payload);
+
+        let pkt = Packet::new(PacketHeader::new(0, 0, data.len() as u32, data.len() as u32), data);
+        assert_eq!(pkt.payload(), Some(&payload[..]));
     }
 }

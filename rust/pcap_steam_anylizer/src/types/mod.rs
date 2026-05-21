@@ -17,6 +17,5 @@ pub use flow::{
 };
 pub use stream::{
     TcpStream, TcpState, TcpHandshake, TcpClose, ConnectionInfo,
-    StreamEvent, StreamEventRecord,
 };
 

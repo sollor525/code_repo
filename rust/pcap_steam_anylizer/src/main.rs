@@ -5,17 +5,14 @@
 use clap::Parser;
 use std::fs::File;
 use std::io::{self, Write};
-use std::path::Path;
 use std::process;
-use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use pcap_steam_anylizer::{
     pcap::{PcapReader, PcapError, PacketParser, create_pcap_writer},
-    stream::{StreamManager, StreamManagerConfig},
+    stream::StreamManagerConfig,
     output::{FlowFormatter, OutputFormat, SortField, SortOrder, FlowFilter},
-    types::{PacketInfo, flow::FlowKey},
-    parallel::{ParallelProcessor, ParallelConfig, stream_manager::OutputArgs},
+    types::{PacketInfo, flow::FlowKey, stream::{BlockingMode, TcpStream}, packet::describe_tcp_flags},
     rayon_parallel::{RayonProcessor, RayonConfig},
 };
 
@@ -52,8 +49,9 @@ PCAP流分析器是一个专业的网络流量分析工具，能够：
   # 只显示完整建立的连接
   pcap_analyzer input.pcap --complete -v
 
- # 检测SYN包后窗口大小为888的RST-ACK报文
- pcap_analyzer input.pcap --syn-rst-888
+  # 验证 NPatch 阻断是否成功
+  pcap_analyzer input.pcap --verify-ack-block
+  pcap_analyzer input.pcap --one-way-blocking
 "
 )]
 struct Args {
@@ -187,69 +185,40 @@ struct Args {
     )]
     max_bytes: Option<u64>,
 
-    /// 检测SYN包后窗口大小为888的RST-ACK报文
-    #[arg(
-        long = "syn-rst-888",
-        help = "检测SYN包后窗口大小为888的RST-ACK报文"
-    )]
-    syn_rst_888: bool,
-
-    /// 检测三次握手ACK报文后窗口大小为888的RST报文
-    #[arg(
-        long = "handshake-ack-rst-888",
-        help = "检测三次握手完成后的ACK报文后窗口大小为888的RST报文"
-    )]
-    handshake_ack_rst_888: bool,
-
-    /// 检测单向阻断是否成功
+    /// 验证单向阻断是否成功（通用）
     #[arg(
         long = "one-way-blocking",
-        help = "检测单向阻断是否成功（在服务器返回数据包前，向客户端发送window size 888或RST包）"
+        help = "验证单向阻断是否成功：服务器返回有效数据前，NPatch 是否已注入 RST 或 hijack 报文"
     )]
     one_way_blocking: bool,
 
-    /// 启用并行处理
+    /// 验证 NPatch ACK 阻断是否成功
     #[arg(
-        long = "parallel",
-        help = "启用多线程并行处理（手动线程管理）"
+        long = "verify-ack-block",
+        help = "验证 NPatch ACK 阻断：三次握手完成后是否注入 RST(窗口888)"
     )]
-    parallel: bool,
+    verify_ack_block: bool,
 
-    /// 启用 Rayon 并行处理（默认已启用）
+    /// 验证 NPatch SYN 阻断是否成功
     #[arg(
-        long = "rayon",
-        help = "启用 Rayon 数据并行处理（默认选项）"
+        long = "verify-syn-block",
+        help = "验证 NPatch SYN 阻断：三次握手完成前是否注入 RST(窗口888)"
     )]
-    rayon: bool,
+    verify_syn_block: bool,
 
-    /// 禁用并行处理（使用单线程）
+    /// 验证 NPatch Hijack 劫持是否成功
     #[arg(
-        long = "single-thread",
-        help = "禁用并行处理，使用单线程模式"
+        long = "verify-hijack",
+        help = "验证 NPatch Hijack 劫持：是否注入伪造响应 PSH/ACK(窗口888)"
     )]
-    single_thread: bool,
+    verify_hijack: bool,
 
-    /// 工作线程数量（并行模式）
+    /// 验证 NPatch Web 扫描防护是否成功
     #[arg(
-        long = "workers",
-        help = "并行处理的工作线程数量（默认为CPU核心数）"
+        long = "verify-web-scan",
+        help = "验证 NPatch Web 扫描防护：web 流是否被注入 RST 或 hijack 报文"
     )]
-    workers: Option<usize>,
-
-    /// 批处理大小（并行模式）
-    #[arg(
-        long = "batch-size",
-        default_value = "1000",
-        help = "并行处理的批处理大小"
-    )]
-    batch_size: usize,
-
-    /// 按流分组处理（仅限 Rayon 模式）
-    #[arg(
-        long = "rayon-group-by-flow",
-        help = "按流分组进行并行处理（保持同一线程处理同一个流）"
-    )]
-    rayon_group_by_flow: bool,
+    verify_web_scan: bool,
 }
 
 /// 应用程序错误类型
@@ -266,223 +235,125 @@ enum AppError {
 
     #[error("处理过程中发生错误: {0}")]
     Processing(String),
+}
 
-    #[error("Rayon并行处理错误: {0}")]
-    RayonError(#[from] Box<dyn std::error::Error>),
+/// 把阻断验证相关开关解析为单一的 `BlockingMode`
+///
+/// 返回 `(mode, count)`：`count` 为被开启的开关数量，用于校验互斥。
+fn resolve_verify_mode(args: &Args) -> (Option<BlockingMode>, usize) {
+    let mut mode = None;
+    let mut count = 0;
+    if args.verify_ack_block {
+        mode = Some(BlockingMode::Ack);
+        count += 1;
+    }
+    if args.verify_syn_block {
+        mode = Some(BlockingMode::Syn);
+        count += 1;
+    }
+    if args.verify_hijack {
+        mode = Some(BlockingMode::Hijack);
+        count += 1;
+    }
+    if args.verify_web_scan {
+        mode = Some(BlockingMode::WebScan);
+        count += 1;
+    }
+    if args.one_way_blocking {
+        mode = Some(BlockingMode::OneWay);
+        count += 1;
+    }
+    (mode, count)
 }
 
 /// 应用程序主逻辑
 struct App {
     args: Args,
-    stream_manager: Arc<Mutex<StreamManager>>,
 }
 
 impl App {
     /// 创建新的应用程序实例
-    fn new(args: Args) -> Result<Self, AppError> {
-        // 配置流管理器
-        let config = StreamManagerConfig {
-            stream_timeout: std::time::Duration::from_secs(300),
-            max_streams: 100000,
-            enable_event_logging: args.verbose,
-            max_events_per_stream: if args.verbose { 1000 } else { 100 },
-            cleanup_interval: std::time::Duration::from_secs(60),
-            syn_rst_888: args.syn_rst_888,
-            handshake_ack_rst_888: args.handshake_ack_rst_888,
-            one_way_blocking: args.one_way_blocking,
-        };
-
-        let stream_manager = Arc::new(Mutex::new(StreamManager::new(config)));
-
-        Ok(Self {
-            args,
-            stream_manager,
-        })
+    fn new(args: Args) -> Self {
+        Self { args }
     }
 
-    /// 运行应用程序
+    /// 运行应用程序：读取并解析 PCAP，按流并行分析，输出结果
+    ///
+    /// 始终采用「按流分组的多线程」处理：不同流并行、同一流内报文按时间有序，
+    /// 从而保证流分析结果的正确性与确定性。
     fn run(&self) -> Result<(), AppError> {
-        // 验证输入文件
         self.validate_input()?;
 
-        // 如果用户明确要求单线程模式
-        if self.args.single_thread {
-            return self.run_single_thread();
-        }
+        let verify_mode = resolve_verify_mode(&self.args).0;
 
-        // 如果用户显式指定了旧的并行模式，则使用旧模式
-        if self.args.parallel {
-            return self.run_parallel();
-        }
+        // 构造流管理器配置
+        let stream_config = StreamManagerConfig {
+            verify_blocking: verify_mode,
+            ..StreamManagerConfig::default()
+        };
+        let rayon_config = RayonConfig {
+            stream_config,
+            enable_progress: !self.args.no_progress,
+            ..RayonConfig::default()
+        };
+        let processor = RayonProcessor::new(rayon_config);
 
-        // 默认使用 Rayon 处理
-        return self.run_rayon();
-    }
+        // 读取并解析所有数据包
+        eprintln!("正在读取和解析 PCAP 文件...");
+        let start_time = Instant::now();
 
-    /// 单线程处理PCAP文件
-    fn run_single_thread(&self) -> Result<(), AppError> {
-        // 创建PCAP读取器
         #[allow(unused_mut)]
         let mut pcap_reader = PcapReader::open(&self.args.input)?;
-
-        // 输出文件信息
-        if self.args.verbose {
-            eprintln!("正在分析文件: {}", self.args.input);
-            eprintln!("PCAP版本: {}.{}",
-                pcap_reader.global_header().major_version,
-                pcap_reader.global_header().minor_version
-            );
-            eprintln!("链路层类型: {}", pcap_reader.global_header().linktype);
-            eprintln!("捕获长度: {}", pcap_reader.global_header().snaplen);
-            eprintln!("处理模式: 单线程");
-        }
-
-        // 处理数据包
-        let start_time = Instant::now();
-        let packet_count = self.process_packets(&mut pcap_reader)?;
-        let processing_time = start_time.elapsed();
-
-        // 输出RST-888检测结果（如果启用）
-        if self.args.syn_rst_888 {
-            self.output_syn_rst_888_detection_results(&self.stream_manager)?;
-            // RST-888 检测模式下不输出会话详情，直接返回
-            return Ok(());
-        }
-
-        if self.args.handshake_ack_rst_888 {
-            self.output_handshake_ack_rst_888_detection_results(&self.stream_manager)?;
-            // RST-888 检测模式下不输出会话详情，直接返回
-            return Ok(());
-        }
-
-        if self.args.one_way_blocking {
-            self.output_one_way_blocking_detection_results(&self.stream_manager)?;
-            // 单向阻断检测模式下不输出会话详情，直接返回
-            return Ok(());
-        }
-
-        // 输出结果
-        self.output_results(&self.stream_manager, packet_count, processing_time)?;
-
-        Ok(())
-    }
-
-    /// 验证输入文件
-    fn validate_input(&self) -> Result<(), AppError> {
-        if !Path::new(&self.args.input).exists() {
-            return Err(AppError::InvalidArgument(
-                format!("输入文件不存在: {}", self.args.input)
-            ));
-        }
-
-        // 验证协议参数
-        if let Some(ref protocol) = self.args.protocol {
-            if !["tcp", "udp", "icmp"].contains(&protocol.as_str()) {
-                return Err(AppError::InvalidArgument(
-                    format!("无效的协议: {}", protocol)
-                ));
-            }
-        }
-
-        Ok(())
-    }
-
-    /// 处理PCAP数据包
-    fn process_packets(&self, pcap_reader: &mut PcapReader) -> Result<u64, AppError> {
-        use indicatif::{ProgressBar, ProgressStyle};
-
         let linktype = pcap_reader.global_header().linktype;
-        let mut packet_count = 0u64;
+        let parser = PacketParser::new(false, false, linktype);
 
-        // 创建进度条
-        let progress = if !self.args.no_progress {
-            // 基于数据包数量的进度条
-            let progress = ProgressBar::new_spinner();
-
-            progress.set_style(
-                ProgressStyle::default_bar()
-                    .template("{spinner:.green} [{elapsed_precise}] 处理中: {pos} 个数据包")
-                    .unwrap()
-            );
-
-            Some(progress)
-        } else {
-            None
-        };
-
-        // 迭代处理数据包
+        let mut packets = Vec::new();
+        let mut parse_errors = 0u64;
         for packet_result in pcap_reader {
             match packet_result {
-                Ok(packet) => {
-                    // 先解析数据包
-                    let parser = PacketParser::new(false, false, linktype);
-                    let parsed_packet = match parser.parse(packet) {
-                        Ok(p) => p,
-                        Err(e) => {
-                            if self.args.verbose {
-                                eprintln!("解析数据包失败: {}", e);
-                            }
-                            continue;
-                        }
-                    };
-
-                    // 转换为PacketInfo
-                    let packet_info: PacketInfo = parsed_packet.into();
-
-                    // 更新流管理器
-                    {
-                        let mut manager = self.stream_manager.lock().unwrap();
-                        manager.process_packet(&packet_info);
-                    }
-
-                    packet_count += 1;
-
-                    // 更新进度条
-                    if let Some(ref p) = progress {
-                        p.set_position(packet_count);
-                        if packet_count % 1000 == 0 {
-                            p.set_message(format!("已处理 {} 个数据包", packet_count));
-                        }
-                    }
-                }
-                Err(e) => {
-                    if self.args.verbose {
-                        eprintln!("警告: 处理数据包时出错: {}", e);
-                    }
-                }
+                Ok(packet) => match parser.parse(packet) {
+                    Ok(parsed) => packets.push(PacketInfo::from(parsed)),
+                    Err(_) => parse_errors += 1,
+                },
+                Err(_) => parse_errors += 1,
             }
         }
+        let read_time = start_time.elapsed();
+        if parse_errors > 0 {
+            eprintln!("读取阶段解析错误: {}", parse_errors);
+        }
+        eprintln!("读取完成: {} 个数据包，耗时 {:?}", packets.len(), read_time);
 
-        if let Some(p) = progress {
-            p.finish_with_message("数据处理完成");
+        // 始终按流分组并行处理：保证每条流内报文有序，分析结果正确
+        eprintln!("开始按流并行分析...");
+        let result = processor.process_packets_by_flow(packets);
+
+        if self.args.verbose {
+            eprintln!("\n=== 处理统计 ===");
+            eprintln!("数据包总数: {}", result.packet_count);
+            eprintln!("识别的流数: {}", result.stream_count);
+            eprintln!("处理时间: {:?}", result.processing_time);
+            eprintln!("总耗时: {:?}", start_time.elapsed());
         }
 
-        Ok(packet_count)
-    }
+        // NPatch 阻断验证模式：输出验证报告后直接返回
+        if let Some(mode) = verify_mode {
+            self.output_blocking_verification_results(&result.streams, mode)?;
+            return Ok(());
+        }
 
-    /// 输出结果
-    fn output_results(
-        &self,
-        stream_manager: &Arc<Mutex<StreamManager>>,
-        packet_count: u64,
-        processing_time: std::time::Duration,
-    ) -> Result<(), AppError> {
-        // 创建输出写入器
-        let mut writer: Box<dyn Write> = if let Some(ref output_path) = self.args.output {
-            Box::new(File::create(output_path)?)
-        } else {
-            Box::new(io::stdout())
-        };
+        // 常规流分析输出
+        let mut filtered_streams = result.streams;
+        filtered_streams.retain(|s| s.stats.packet_count > 0);
+        filtered_streams.sort_by(|a, b| b.stats.packet_count.cmp(&a.stats.packet_count));
 
-        // 解析输出格式
-        let format = match self.args.format.as_str() {
-            "table" => OutputFormat::Table,
+        let output_format = match self.args.format.as_str() {
             "json" => OutputFormat::Json,
             "csv" => OutputFormat::Csv,
             _ => OutputFormat::Table,
         };
+        let mut formatter = FlowFormatter::new(output_format);
 
-        // 解析排序字段
         let sort_field = match self.args.sort.as_str() {
             "flow_id" => SortField::FlowId,
             "src_ip" => SortField::SrcIp,
@@ -496,415 +367,6 @@ impl App {
             "first_packet_time" => SortField::FirstPacketTime,
             "last_packet_time" => SortField::LastPacketTime,
             "state" => SortField::State,
-            _ => SortField::FlowId,
-        };
-
-        let sort_order = if self.args.descending {
-            SortOrder::Descending
-        } else {
-            SortOrder::Ascending
-        };
-
-        // 创建过滤器
-        let mut filter = FlowFilter::new();
-
-        // 协议过滤
-        if let Some(ref protocol) = self.args.protocol {
-            let protocol_num = match protocol.as_str() {
-                "tcp" => 6,
-                "udp" => 17,
-                "icmp" => 1,
-                _ => 6,
-            };
-            filter = filter.protocol(protocol_num);
-        }
-
-        // IP和端口过滤
-        if let Some(ref ip) = self.args.src_ip {
-            filter = filter.src_ip(ip.clone());
-        }
-        if let Some(ref ip) = self.args.dst_ip {
-            filter = filter.dst_ip(ip.clone());
-        }
-        if let Some(port) = self.args.src_port {
-            filter = filter.src_port(port);
-        }
-        if let Some(port) = self.args.dst_port {
-            filter = filter.dst_port(port);
-        }
-
-        // 数据包和字节过滤
-        if let Some(min) = self.args.min_packets {
-            filter = filter.packet_range(min, self.args.max_packets.unwrap_or(u64::MAX));
-        }
-        if let Some(min) = self.args.min_bytes {
-            filter = filter.byte_range(min, self.args.max_bytes.unwrap_or(u64::MAX));
-        }
-
-        // 完整流过滤
-        if self.args.complete {
-            filter = filter.complete_only(true);
-        }
-
-        // 创建格式化器
-        let formatter = FlowFormatter::new(format)
-            .sort_by(sort_field)
-            .sort_order(sort_order)
-            .filter(filter)
-            .verbose(self.args.verbose);
-
-        // 在锁内完成所有流操作
-        {
-            let manager = stream_manager.lock().unwrap();
-
-            // 如果启用了RST-888检测，输出不符合条件的会话信息
-            if self.args.syn_rst_888 {
-                self.output_syn_rst_888_detection_results(&stream_manager)?;
-
-                // 不需要继续执行其他输出
-                return Ok(());
-            }
-
-            // 如果启用了三次握手ACK后的RST-888检测，输出不符合条件的会话信息
-            if self.args.handshake_ack_rst_888 {
-                self.output_handshake_ack_rst_888_detection_results(&stream_manager)?;
-
-                // 不需要继续执行其他输出
-                return Ok(());
-            }
-
-            if self.args.verbose {
-                let stream_count = manager.get_all_streams().count();
-                eprintln!("\n处理完成:");
-                eprintln!("  总数据包数: {}", packet_count);
-                eprintln!("  识别的流数: {}", stream_count);
-                eprintln!("  处理时间: {:?}", processing_time);
-            }
-
-            // 收集流的引用
-            let stream_refs: Vec<&pcap_steam_anylizer::TcpStream> =
-                manager.get_all_streams().collect();
-
-            // 格式化并输出
-            let output = formatter.format_streams(&stream_refs)?;
-            writer.write_all(output.as_bytes())?;
-        }
-
-        Ok(())
-    }
-
-    /// 输出SYN-RST-888检测结果
-    fn output_syn_rst_888_detection_results(&self, manager: &Arc<Mutex<StreamManager>>) -> Result<(), AppError> {
-        eprintln!("\nRST-888检测结果:");
-        eprintln!("查找SYN包后窗口大小为888的RST-ACK报文...\n");
-
-        let mut total_streams = 0;
-        let mut streams_with_rst_888 = 0;
-        let mut streams_without_rst_888 = 0;
-
-        // 创建输出写入器
-        let mut writer: Box<dyn Write> = if let Some(ref output_path) = self.args.output {
-            Box::new(File::create(output_path)?)
-        } else {
-            Box::new(io::stdout())
-        };
-
-        // 写入标题
-        writeln!(writer, "# RST-888检测结果报告")?;
-        writeln!(writer, "# 以下会话在SYN包后没有收到窗口大小为888的RST-ACK报文")?;
-        writeln!(writer, "")?;
-
-        for stream in manager.lock().unwrap().get_all_streams() {
-            total_streams += 1;
-
-            // 只检查TCP流
-            if stream.flow_key.protocol() != 6 {
-                continue;
-            }
-
-            // 检查是否有数据包（意味着有活动）
-            if stream.stats.packet_count == 0 {
-                continue;
-            }
-
-            // 检查是否收到了SYN包
-            if stream.connection.handshake.client_syn {
-                // 检查是否在SYN包后直接收到了窗口大小为888的RST-ACK报文
-                if stream.has_immediate_rst_888_after_syn {
-                    streams_with_rst_888 += 1;
-                } else {
-                    streams_without_rst_888 += 1;
-
-                    // 输出不符合要求的会话信息
-                    writeln!(writer, "会话ID: {}", stream.flow_key.to_string())?;
-                    writeln!(writer, "  客户端: {}:{}", stream.flow_key.src_ip(), stream.flow_key.src_port())?;
-                    writeln!(writer, "  服务器: {}:{}", stream.flow_key.dst_ip(), stream.flow_key.dst_port())?;
-                    writeln!(writer, "  状态: {}", stream.state.as_str())?;
-                    writeln!(writer, "  数据包数: {}", stream.stats.packet_count)?;
-                    writeln!(writer, "  字节数: {}", stream.stats.byte_count)?;
-
-                    // 显示SYN包后的数据包数
-                    writeln!(writer, "  SYN包后的数据包数: {}", stream.packets_since_syn)?;
-
-                    // 显示连接持续时间
-                    if let Some(duration) = stream.connection.duration_seconds() {
-                        writeln!(writer, "  持续时间: {:.3} 秒", duration)?;
-                    }
-
-                    // 显示握手状态
-                    if stream.connection.handshake.is_complete() {
-                        writeln!(writer, "  握手: 完成")?;
-                    } else {
-                        writeln!(writer, "  握手: 未完成")?;
-                    }
-
-                    // 显示关闭状态
-                    if stream.connection.close.is_complete() {
-                        writeln!(writer, "  关闭: 已关闭")?;
-                        if stream.connection.close.reset {
-                            writeln!(writer, "  关闭方式: RST")?;
-                        }
-                    } else {
-                        writeln!(writer, "  关闭: 未关闭")?;
-                    }
-
-                    writeln!(writer, "")?;
-                }
-            }
-        }
-
-        // 写入统计信息
-        writeln!(writer, "# 统计摘要:")?;
-        writeln!(writer, "# 总TCP流数: {}", total_streams)?;
-        writeln!(writer, "# 有RST-888报文的流数: {}", streams_with_rst_888)?;
-        writeln!(writer, "# 无RST-888报文的流数: {}", streams_without_rst_888)?;
-
-        if self.args.verbose {
-            eprintln!("\n统计摘要:");
-            eprintln!("  总TCP流数: {}", total_streams);
-            eprintln!("  有RST-888报文的流数: {}", streams_with_rst_888);
-            eprintln!("  无RST-888报文的流数: {}", streams_without_rst_888);
-        }
-
-        // 导出不符合要求的会话的数据包到PCAP文件
-        if streams_without_rst_888 > 0 {
-            self.export_non_rst888_packets_to_pcap(manager, "syn_rst_888_non_compliant.pcap")?;
-        }
-
-        Ok(())
-    }
-
-    /// 输出三次握手ACK后的RST-888检测结果
-    fn output_handshake_ack_rst_888_detection_results(&self, manager: &Arc<Mutex<StreamManager>>) -> Result<(), AppError> {
-        eprintln!("\n三次握手ACK后RST-888检测结果:");
-        eprintln!("查找三次握手完成后的ACK报文后窗口大小为888的RST报文...\n");
-
-        let mut total_streams = 0;
-        let mut streams_with_rst_888 = 0;
-        let mut streams_without_rst_888 = 0;
-
-        // 创建输出写入器
-        let mut writer: Box<dyn Write> = if let Some(ref output_path) = self.args.output {
-            Box::new(File::create(output_path)?)
-        } else {
-            Box::new(io::stdout())
-        };
-
-        // 写入标题
-        writeln!(writer, "# 三次握手ACK后RST-888检测结果报告")?;
-        writeln!(writer, "# 以下会话在三次握手完成后的ACK报文后没有收到窗口大小为888的RST报文")?;
-        writeln!(writer, "")?;
-
-        for stream in manager.lock().unwrap().get_all_streams() {
-            // 只检查TCP流
-            if stream.flow_key.protocol() != 6 {
-                continue;
-            }
-
-            // 检查是否有数据包
-            if stream.stats.packet_count == 0 {
-                continue;
-            }
-
-            // 检查是否有完整的三次握手
-            if !stream.connection.handshake.is_complete() {
-                continue;
-            }
-
-            total_streams += 1;
-
-            if stream.has_rst_888_after_handshake_ack {
-                streams_with_rst_888 += 1;
-            } else {
-                streams_without_rst_888 += 1;
-
-                // 输出不符合要求的会话信息
-                writeln!(writer, "会话ID: {}", stream.flow_key.to_string())?;
-                writeln!(writer, "  客户端: {}:{}", stream.flow_key.src_ip(), stream.flow_key.src_port())?;
-                writeln!(writer, "  服务器: {}:{}", stream.flow_key.dst_ip(), stream.flow_key.dst_port())?;
-                writeln!(writer, "  状态: {}", stream.state.as_str())?;
-                writeln!(writer, "  数据包数: {}", stream.stats.packet_count)?;
-                writeln!(writer, "  字节数: {}", stream.stats.byte_count)?;
-
-                // 显示三次握手ACK后的数据包数
-                writeln!(writer, "  三次握手ACK后的数据包数: {}", stream.packets_since_handshake_ack)?;
-
-                // 显示连接持续时间
-                if let Some(duration) = stream.connection.duration_seconds() {
-                    writeln!(writer, "  持续时间: {:.3} 秒", duration)?;
-                }
-
-                // 显示握手状态
-                if stream.connection.handshake.is_complete() {
-                    writeln!(writer, "  握手: 完成")?;
-                } else {
-                    writeln!(writer, "  握手: 未完成")?;
-                }
-
-                // 显示关闭状态
-                if stream.connection.close.is_complete() {
-                    writeln!(writer, "  关闭: 已关闭")?;
-                    if stream.connection.close.reset {
-                        writeln!(writer, "  关闭方式: RST")?;
-                    }
-                } else {
-                    writeln!(writer, "  关闭: 未关闭")?;
-                }
-
-                writeln!(writer, "")?;
-            }
-        }
-
-        // 写入统计信息
-        writeln!(writer, "# 统计摘要:")?;
-        writeln!(writer, "# 总TCP流数: {}", total_streams)?;
-        writeln!(writer, "# 三次握手完成且有RST-888报文的流数: {}", streams_with_rst_888)?;
-        writeln!(writer, "# 三次握手完成且无RST-888报文的流数: {}", streams_without_rst_888)?;
-
-        if self.args.verbose {
-            eprintln!("\n统计摘要:");
-            eprintln!("  总TCP流数: {}", total_streams);
-            eprintln!("  三次握手完成且有RST-888报文的流数: {}", streams_with_rst_888);
-            eprintln!("  三次握手完成且无RST-888报文的流数: {}", streams_without_rst_888);
-        }
-
-        // 导出不符合要求的会话的数据包到PCAP文件
-        if streams_without_rst_888 > 0 {
-            self.export_handshake_ack_non_rst888_packets_to_pcap(manager, "handshake_ack_rst_888_non_compliant.pcap")?;
-        }
-
-        Ok(())
-    }
-
-    /// 并行处理PCAP文件
-    fn run_parallel(&self) -> Result<(), AppError> {
-        // 验证输入文件
-        self.validate_input()?;
-
-        // 输出文件信息
-        if self.args.verbose {
-            eprintln!("正在并行分析文件: {}", self.args.input);
-            eprintln!("工作线程数: {:?}",
-                self.args.workers.unwrap_or_else(|| num_cpus::get()));
-            eprintln!("批处理大小: {}", self.args.batch_size);
-        }
-
-        // 配置流管理器
-        let stream_config = StreamManagerConfig {
-            stream_timeout: std::time::Duration::from_secs(300),
-            max_streams: 100000,
-            enable_event_logging: false, // 并行模式下关闭事件日志以提高性能
-            max_events_per_stream: 0,
-            cleanup_interval: std::time::Duration::from_secs(60),
-            syn_rst_888: self.args.syn_rst_888,
-            handshake_ack_rst_888: self.args.handshake_ack_rst_888,
-            one_way_blocking: self.args.one_way_blocking,
-        };
-
-        // 配置并行处理器
-        let parallel_config = ParallelConfig {
-            num_workers: self.args.workers,
-            stream_config,
-            batch_size: self.args.batch_size,
-            enable_progress: !self.args.no_progress,
-        };
-
-        // 创建并行处理器
-        let mut processor = ParallelProcessor::new(parallel_config);
-
-        // 处理PCAP文件
-        let _start_time = Instant::now();
-        let result = processor.process_file(&self.args.input)
-            .map_err(|e| AppError::Processing(format!("并行处理失败: {}", e)))?;
-
-        // 输出统计信息
-        if self.args.verbose {
-            eprintln!("\n=== 并行处理统计 ===");
-            eprintln!("数据包总数: {}", result.packet_count);
-            eprintln!("识别的流数: {}", result.stream_count);
-            eprintln!("解析错误数: {}", result.parse_errors);
-            eprintln!("处理时间: {:?}", result.processing_time);
-            eprintln!("处理速度: {:.2} 包/秒", result.packets_per_second());
-        }
-
-        // 处理 RST-888 检测结果
-        if self.args.syn_rst_888 {
-            // 从并行处理器获取流管理器
-            let manager = processor.stream_manager();
-            let _streams = manager.get_all_streams();
-
-            // 创建输出参数
-            let output_args = OutputArgs {
-                output: self.args.output.clone(),
-                verbose: self.args.verbose,
-            };
-
-            manager.output_syn_rst_888_detection_results(&output_args)?;
-            // RST-888 检测模式下不输出会话详情，直接返回
-            return Ok(());
-        }
-
-        if self.args.handshake_ack_rst_888 {
-            // 从并行处理器获取流管理器
-            let manager = processor.stream_manager();
-            let _streams = manager.get_all_streams();
-
-            // 创建输出参数
-            let output_args = OutputArgs {
-                output: self.args.output.clone(),
-                verbose: self.args.verbose,
-            };
-
-            manager.output_handshake_ack_rst_888_detection_results(&output_args)?;
-            // RST-888 检测模式下不输出会话详情，直接返回
-            return Ok(());
-        }
-
-        // 过滤流
-        let filtered_streams = result.streams;
-
-        // 输出结果
-        let output_format = match self.args.format.as_str() {
-            "json" => OutputFormat::Json,
-            "csv" => OutputFormat::Csv,
-            _ => OutputFormat::Table,
-        };
-        let mut formatter = FlowFormatter::new(output_format);
-
-        // 设置排序
-        let sort_field = match self.args.sort.as_str() {
-            "flow_id" => SortField::FlowId,
-            "src_ip" => SortField::SrcIp,
-            "src_port" => SortField::SrcPort,
-            "dst_ip" => SortField::DstIp,
-            "dst_port" => SortField::DstPort,
-            "protocol" => SortField::Protocol,
-            "packet_count" => SortField::PacketCount,
-            "byte_count" => SortField::ByteCount,
-            "duration" => SortField::Duration,
-            "first_packet" => SortField::FirstPacketTime,
-            "last_packet" => SortField::LastPacketTime,
-            "state" => SortField::State,
             _ => return Err(AppError::Processing(format!("无效的排序字段: {}", self.args.sort))),
         };
         formatter = formatter.sort_by(sort_field);
@@ -916,459 +378,99 @@ impl App {
         };
         formatter = formatter.sort_order(sort_order);
 
-        // 设置过滤器
-        let mut filter = FlowFilter::new();
+        // 构造并应用过滤器
+        formatter = formatter.filter(self.build_filter()?);
 
-        if let Some(ref protocol) = self.args.protocol {
-            filter = filter.protocol(protocol.parse().map_err(|e|
-                AppError::Processing(format!("无效的协议: {}", e)))?);
+        // 输出
+        let formatted_output =
+            formatter.format_streams(&filtered_streams.iter().collect::<Vec<_>>())?;
+        match &self.args.output {
+            Some(output_path) => std::fs::write(output_path, formatted_output)?,
+            None => print!("{}", formatted_output),
         }
 
+        Ok(())
+    }
+
+    /// 根据命令行的过滤相关参数构造流过滤器
+    ///
+    /// 该过滤器在常规分析输出与 NPatch 阻断验证两种模式下都会被应用，
+    /// 因此过滤参数（如 --min-packets、--src-ip 等）可与 --one-way-blocking
+    /// 等验证开关组合使用。
+    fn build_filter(&self) -> Result<FlowFilter, AppError> {
+        let mut filter = FlowFilter::new();
+        if let Some(ref protocol) = self.args.protocol {
+            filter = filter.protocol(protocol.parse().map_err(|e| {
+                AppError::Processing(format!("无效的协议: {}", e))
+            })?);
+        }
         if let Some(ref src_ip) = self.args.src_ip {
             filter = filter.src_ip(src_ip.clone());
         }
-
         if let Some(ref dst_ip) = self.args.dst_ip {
             filter = filter.dst_ip(dst_ip.clone());
         }
-
         if let Some(src_port) = self.args.src_port {
             filter = filter.src_port(src_port);
         }
-
         if let Some(dst_port) = self.args.dst_port {
             filter = filter.dst_port(dst_port);
         }
-
         if let Some(min_packets) = self.args.min_packets {
-            if let Some(max_packets) = self.args.max_packets {
-                filter = filter.packet_range(min_packets, max_packets);
-            } else {
-                filter = filter.packet_range(min_packets, u64::MAX);
-            }
+            filter = filter.packet_range(min_packets, self.args.max_packets.unwrap_or(u64::MAX));
         } else if let Some(max_packets) = self.args.max_packets {
             filter = filter.packet_range(0, max_packets);
         }
-
         if let Some(min_bytes) = self.args.min_bytes {
-            if let Some(max_bytes) = self.args.max_bytes {
-                filter = filter.byte_range(min_bytes, max_bytes);
-            } else {
-                filter = filter.byte_range(min_bytes, u64::MAX);
-            }
+            filter = filter.byte_range(min_bytes, self.args.max_bytes.unwrap_or(u64::MAX));
         } else if let Some(max_bytes) = self.args.max_bytes {
             filter = filter.byte_range(0, max_bytes);
         }
-
         if self.args.complete {
             filter = filter.complete_only(true);
         }
-
-        formatter = formatter.filter(filter);
-
-        // 输出
-        let formatted_output = formatter.format_streams(&filtered_streams.iter().collect::<Vec<_>>())?;
-
-        match &self.args.output {
-            Some(output_path) => {
-                std::fs::write(output_path, formatted_output)?;
-            }
-            None => {
-                print!("{}", formatted_output);
-            }
-        }
-
-        // 输出RST-888检测结果（如果启用）
-        if self.args.syn_rst_888 {
-            // 需要从ThreadSafeStreamManager获取结果
-            let streams = processor.stream_manager().get_all_streams();
-            let total_streams = streams.len();
-            let streams_with_rst = streams.iter()
-                .filter(|s| s.flow_key.protocol() == 6 && s.has_rst_888_after_syn)
-                .count();
-
-            eprintln!("\nSYN后RST-888检测结果:");
-            eprintln!("总TCP流数: {}", total_streams);
-            eprintln!("检测到SYN后RST-888的流数: {}", streams_with_rst);
-        }
-
-        if self.args.handshake_ack_rst_888 {
-            let streams = processor.stream_manager().get_all_streams();
-            let total_streams = streams.len();
-            let streams_with_rst = streams.iter()
-                .filter(|s| s.flow_key.protocol() == 6 && s.has_rst_888_after_handshake_ack)
-                .count();
-
-            eprintln!("\n三次握手ACK后RST-888检测结果:");
-            eprintln!("总TCP流数: {}", total_streams);
-            eprintln!("检测到三次握手ACK后RST-888的流数: {}", streams_with_rst);
-        }
-
-        Ok(())
+        Ok(filter)
     }
 
-    /// 使用 Rayon 并行处理PCAP文件
-    fn run_rayon(&self) -> Result<(), AppError> {
-        // 创建 Rayon 配置
-        let stream_config = StreamManagerConfig {
-            stream_timeout: std::time::Duration::from_secs(300),
-            max_streams: 100000,
-            enable_event_logging: self.args.verbose,
-            max_events_per_stream: if self.args.verbose { 1000 } else { 100 },
-            cleanup_interval: std::time::Duration::from_secs(60),
-            syn_rst_888: self.args.syn_rst_888,
-            handshake_ack_rst_888: self.args.handshake_ack_rst_888,
-            one_way_blocking: self.args.one_way_blocking,
-        };
-
-        let rayon_config = RayonConfig {
-            stream_config,
-            batch_size: self.args.batch_size,
-            enable_progress: !self.args.no_progress,
-            thread_pool_size: self.args.workers,
-        };
-
-        // 创建 Rayon 处理器
-        let processor = RayonProcessor::new(rayon_config);
-
-        // 读取和解析所有数据包
-        eprintln!("正在读取和解析 PCAP 文件...");
-        if self.args.verbose {
-            eprintln!("处理模式: Rayon 并行处理");
-            if self.args.rayon_group_by_flow {
-                eprintln!("分组方式: 按流分组");
-            } else {
-                eprintln!("分组方式: 批次并行");
-            }
-        }
-        let start_time = Instant::now();
-
-        #[allow(unused_mut)]
-        let mut pcap_reader = PcapReader::open(&self.args.input)?;
-        let linktype = pcap_reader.global_header().linktype;
-        let parser = PacketParser::new(false, false, linktype);
-
-        let mut packets = Vec::new();
-        let mut parse_errors = 0u64; // 记录解析错误，用于统计
-
-        // 使用迭代器收集所有数据包
-        for packet_result in pcap_reader {
-            match packet_result {
-                Ok(packet) => {
-                    match parser.parse(packet) {
-                        Ok(parsed_packet) => {
-                            let packet_info: PacketInfo = parsed_packet.into();
-                            packets.push(packet_info);
-                        }
-                        Err(_) => {
-                            parse_errors += 1;
-                        }
-                    }
-                }
-                Err(_) => {
-                    parse_errors += 1;
-                }
-            }
-        }
-
-        let read_time = start_time.elapsed();
-        if parse_errors > 0 {
-            eprintln!("读取阶段解析错误: {}", parse_errors);
-        }
-        eprintln!("读取完成: {} 个数据包，耗时 {:?}", packets.len(), read_time);
-
-        // 使用 Rayon 并行处理
-        eprintln!("开始 Rayon 并行处理...");
-        // 对于TCP流分析，特别是RST-888检测和单向阻断检测，必须保证数据包按流分组处理
-        // 否则会出现非确定性的结果
-        let result = if self.args.rayon_group_by_flow || self.args.syn_rst_888 || self.args.handshake_ack_rst_888 || self.args.one_way_blocking {
-            // 当检测RST-888、单向阻断或指定按流分组时，使用流分组模式确保一致性
-            if !self.args.rayon_group_by_flow && (self.args.syn_rst_888 || self.args.handshake_ack_rst_888 || self.args.one_way_blocking) {
-                eprintln!("注意：为特殊检测启用按流分组模式以确保结果一致性");
-            }
-            processor.process_packets_by_flow(packets)?
-        } else {
-            // 非流分组模式，用于一般统计分析
-            processor.process_packets_parallel(packets)?
-        };
-
-        // 输出统计信息
-        if self.args.verbose {
-            eprintln!("\n=== 处理统计 ===");
-            eprintln!("数据包总数: {}", result.packet_count);
-            eprintln!("识别的流数: {}", result.stream_count);
-            eprintln!("解析错误数: {}", result.parse_errors);
-            eprintln!("处理时间: {:?}", result.processing_time);
-            eprintln!("读取时间: {:?}", read_time);
-            eprintln!("总耗时: {:?}", start_time.elapsed());
-            eprintln!("处理速度: {:.2} 包/秒", result.packets_per_second());
-            eprintln!("平均处理时间: {:.2} 微秒/包", result.avg_packet_time_us());
-        }
-
-        // 处理 RST-888 检测结果
-        if self.args.syn_rst_888 {
-            self.output_syn_rst_888_detection_results(processor.stream_manager())?;
-            // RST-888 检测模式下不输出会话详情，直接返回
-            return Ok(());
-        }
-
-        if self.args.handshake_ack_rst_888 {
-            self.output_handshake_ack_rst_888_detection_results(processor.stream_manager())?;
-            // RST-888 检测模式下不输出会话详情，直接返回
-            return Ok(());
-        }
-
-        if self.args.one_way_blocking {
-            self.output_one_way_blocking_detection_results(processor.stream_manager())?;
-            // 单向阻断检测模式下不输出会话详情，直接返回
-            return Ok(());
-        }
-
-        // 过滤和排序流
-        let mut filtered_streams = result.streams;
-
-        // 只保留有数据包的流
-        filtered_streams.retain(|s| s.stats.packet_count > 0);
-
-        // 按数据包数量排序
-        filtered_streams.sort_by(|a, b| b.stats.packet_count.cmp(&a.stats.packet_count));
-
-        // 输出结果
-        let output_format = match self.args.format.as_str() {
-            "json" => OutputFormat::Json,
-            "csv" => OutputFormat::Csv,
-            _ => OutputFormat::Table,
-        };
-        let mut formatter = FlowFormatter::new(output_format);
-
-        // 设置排序
-        let sort_field = match self.args.sort.as_str() {
-            "flow_id" => SortField::FlowId,
-            "src_ip" => SortField::SrcIp,
-            "src_port" => SortField::SrcPort,
-            "dst_ip" => SortField::DstIp,
-            "dst_port" => SortField::DstPort,
-            "protocol" => SortField::Protocol,
-            "packet_count" => SortField::PacketCount,
-            "byte_count" => SortField::ByteCount,
-            "duration" => SortField::Duration,
-            "first_packet" => SortField::FirstPacketTime,
-            "last_packet" => SortField::LastPacketTime,
-            "state" => SortField::State,
-            _ => return Err(AppError::Processing(format!("无效的排序字段: {}", self.args.sort))),
-        };
-        formatter = formatter.sort_by(sort_field);
-
-        let sort_order = if self.args.descending {
-            SortOrder::Descending
-        } else {
-            SortOrder::Ascending
-        };
-        formatter = formatter.sort_order(sort_order);
-
-        // 设置过滤器
-        let mut filter = FlowFilter::new();
-
+    /// 校验命令行参数（输入文件的存在性交由 PcapReader::open 报错）
+    fn validate_input(&self) -> Result<(), AppError> {
+        // 验证协议参数
         if let Some(ref protocol) = self.args.protocol {
-            filter = filter.protocol(protocol.parse().map_err(|e|
-                AppError::Processing(format!("无效的协议: {}", e)))?);
-        }
-
-        if let Some(ref src_ip) = self.args.src_ip {
-            filter = filter.src_ip(src_ip.clone());
-        }
-
-        if let Some(ref dst_ip) = self.args.dst_ip {
-            filter = filter.dst_ip(dst_ip.clone());
-        }
-
-        if let Some(src_port) = self.args.src_port {
-            filter = filter.src_port(src_port);
-        }
-
-        if let Some(dst_port) = self.args.dst_port {
-            filter = filter.dst_port(dst_port);
-        }
-
-        if let Some(min_packets) = self.args.min_packets {
-            if let Some(max_packets) = self.args.max_packets {
-                filter = filter.packet_range(min_packets, max_packets);
-            } else {
-                filter = filter.packet_range(min_packets, u64::MAX);
+            if !["tcp", "udp", "icmp"].contains(&protocol.as_str()) {
+                return Err(AppError::InvalidArgument(
+                    format!("无效的协议: {}", protocol)
+                ));
             }
-        } else if let Some(max_packets) = self.args.max_packets {
-            filter = filter.packet_range(0, max_packets);
         }
 
-        if let Some(min_bytes) = self.args.min_bytes {
-            if let Some(max_bytes) = self.args.max_bytes {
-                filter = filter.byte_range(min_bytes, max_bytes);
-            } else {
-                filter = filter.byte_range(min_bytes, u64::MAX);
-            }
-        } else if let Some(max_bytes) = self.args.max_bytes {
-            filter = filter.byte_range(0, max_bytes);
-        }
-
-        if self.args.complete {
-            filter = filter.complete_only(true);
-        }
-
-        formatter = formatter.filter(filter);
-
-        // 输出
-        let formatted_output = formatter.format_streams(&filtered_streams.iter().collect::<Vec<_>>())?;
-
-        match &self.args.output {
-            Some(output_path) => {
-                std::fs::write(output_path, formatted_output)?;
-            }
-            None => {
-                print!("{}", formatted_output);
-            }
+        // 校验阻断验证开关互斥（一次只能验证一种模式）
+        let (_, verify_count) = resolve_verify_mode(&self.args);
+        if verify_count > 1 {
+            return Err(AppError::InvalidArgument(
+                "--one-way-blocking / --verify-ack-block / --verify-syn-block / \
+                 --verify-hijack / --verify-web-scan 只能指定其中一个".to_string()
+            ));
         }
 
         Ok(())
     }
 
-    /// 导出不符合SYN-RST-888要求的会话的数据包到PCAP文件
-    fn export_non_rst888_packets_to_pcap(&self, manager: &Arc<Mutex<StreamManager>>, output_path: &str) -> Result<(), AppError> {
-        use std::collections::HashSet;
+    /// 输出 NPatch 阻断验证结果
+    fn output_blocking_verification_results(
+        &self,
+        streams: &[TcpStream],
+        mode: BlockingMode,
+    ) -> Result<(), AppError> {
+        eprintln!("\nNPatch 阻断验证 — 模式: {}", mode.name_cn());
+        eprintln!("判定标准: {}\n", mode.description());
 
-        // 收集不符合要求的流的键
-        let mut non_compliant_flows = HashSet::new();
-        {
-            let manager = manager.lock().unwrap();
-            for stream in manager.get_all_streams() {
-                if stream.flow_key.protocol() == 6 && stream.stats.packet_count > 0 {
-                    if stream.connection.handshake.client_syn && !stream.has_immediate_rst_888_after_syn {
-                        non_compliant_flows.insert(stream.flow_key.clone());
-                    }
-                }
-            }
-        }
+        // 命令行过滤参数（--min-packets、--src-ip 等）同样适用于验证模式
+        let filter = self.build_filter()?;
 
-        if non_compliant_flows.is_empty() {
-            return Ok(());
-        }
-
-        eprintln!("\n正在导出 {} 个不符合SYN-RST-888要求的会话的数据包到: {}",
-                  non_compliant_flows.len(), output_path);
-
-        // 重新读取原始PCAP文件，只导出符合要求的流的数据包
-        #[allow(unused_mut)]
-        let mut pcap_reader = PcapReader::open(&self.args.input)?;
-        let linktype = pcap_reader.global_header().linktype;
-        let parser = PacketParser::new(false, false, linktype);
-
-        // 对于 65535 链路层类型，在导出时使用 1（Ethernet）
-        // 因为即使原始数据是 SLL 格式，数据内容本身仍然是以太网帧
-        let export_linktype = if linktype == 65535 { 1 } else { linktype };
-        let mut writer = create_pcap_writer(output_path, export_linktype)?;
-        let mut exported_packets = 0;
-
-        for packet_result in pcap_reader {
-            match packet_result {
-                Ok(raw_packet) => {
-                    match parser.parse(raw_packet) {
-                        Ok(packet) => {
-                            // 检查这个数据包是否属于不符合要求的流
-                            if let (Some(src_ip), Some(dst_ip), Some(src_port), Some(dst_port)) =
-                                (packet.src_ip, packet.dst_ip, packet.src_port, packet.dst_port) {
-                                let flow_key = FlowKey::new(
-                                    src_ip, dst_ip, src_port, dst_port, 6
-                                );
-                                if non_compliant_flows.contains(&flow_key) {
-                                    writer.write_packet(&packet)?;
-                                    exported_packets += 1;
-                                }
-                            }
-                        }
-                        Err(_) => continue,
-                    }
-                }
-                Err(_) => continue,
-            }
-        }
-
-        writer.flush()?;
-        eprintln!("成功导出 {} 个数据包", exported_packets);
-        Ok(())
-    }
-
-    /// 导出不符合三次握手ACK-RST-888要求的会话的数据包到PCAP文件
-    fn export_handshake_ack_non_rst888_packets_to_pcap(&self, manager: &Arc<Mutex<StreamManager>>, output_path: &str) -> Result<(), AppError> {
-        use std::collections::HashSet;
-
-        // 收集不符合要求的流的键
-        let mut non_compliant_flows = HashSet::new();
-        {
-            let manager = manager.lock().unwrap();
-            for stream in manager.get_all_streams() {
-                if stream.flow_key.protocol() == 6 && stream.stats.packet_count > 0 {
-                    if stream.connection.handshake.is_complete() && !stream.has_rst_888_after_handshake_ack {
-                        non_compliant_flows.insert(stream.flow_key.clone());
-                    }
-                }
-            }
-        }
-
-        if non_compliant_flows.is_empty() {
-            return Ok(());
-        }
-
-        eprintln!("\n正在导出 {} 个不符合三次握手ACK-RST-888要求的会话的数据包到: {}",
-                  non_compliant_flows.len(), output_path);
-
-        // 重新读取原始PCAP文件，只导出符合要求的流的数据包
-        #[allow(unused_mut)]
-        let mut pcap_reader = PcapReader::open(&self.args.input)?;
-        let linktype = pcap_reader.global_header().linktype;
-        let parser = PacketParser::new(false, false, linktype);
-
-        // 对于 65535 链路层类型，在导出时使用 1（Ethernet）
-        // 因为即使原始数据是 SLL 格式，数据内容本身仍然是以太网帧
-        let export_linktype = if linktype == 65535 { 1 } else { linktype };
-        let mut writer = create_pcap_writer(output_path, export_linktype)?;
-        let mut exported_packets = 0;
-
-        for packet_result in pcap_reader {
-            match packet_result {
-                Ok(raw_packet) => {
-                    match parser.parse(raw_packet) {
-                        Ok(packet) => {
-                            // 检查这个数据包是否属于不符合要求的流
-                            if let (Some(src_ip), Some(dst_ip), Some(src_port), Some(dst_port)) =
-                                (packet.src_ip, packet.dst_ip, packet.src_port, packet.dst_port) {
-                                let flow_key = FlowKey::new(
-                                    src_ip, dst_ip, src_port, dst_port, 6
-                                );
-                                if non_compliant_flows.contains(&flow_key) {
-                                    writer.write_packet(&packet)?;
-                                    exported_packets += 1;
-                                }
-                            }
-                        }
-                        Err(_) => continue,
-                    }
-                }
-                Err(_) => continue,
-            }
-        }
-
-        writer.flush()?;
-        eprintln!("成功导出 {} 个数据包", exported_packets);
-        Ok(())
-    }
-
-    /// 输出单向阻断检测结果
-    fn output_one_way_blocking_detection_results(&self, manager: &Arc<Mutex<StreamManager>>) -> Result<(), AppError> {
-        eprintln!("\n单向阻断检测结果:");
-        eprintln!("查找在服务器返回数据包前，向客户端发送window size 888或RST包的连接...\n");
-
-        let mut total_streams = 0;
-        let mut streams_with_blocking = 0;
-        let mut streams_without_blocking = 0;
+        let mut total = 0;
+        let mut blocked = 0;
+        // 未阻断流的键集合，复用于后续 PCAP 导出
+        let mut not_blocked_flows = std::collections::HashSet::new();
 
         // 创建输出写入器
         let mut writer: Box<dyn Write> = if let Some(ref output_path) = self.args.output {
@@ -1377,151 +479,127 @@ impl App {
             Box::new(io::stdout())
         };
 
-        // 写入标题
-        writeln!(writer, "# 单向阻断检测结果报告")?;
-        writeln!(writer, "# 以下会话未成功实现单向阻断（在服务器返回数据前未发送window size 888或RST包）")?;
+        writeln!(writer, "# NPatch 阻断验证报告 — 模式: {}", mode.name_cn())?;
+        writeln!(writer, "# 判定标准: {}", mode.description())?;
         writeln!(writer, "")?;
 
-        for stream in manager.lock().unwrap().get_all_streams() {
-            // 只检查TCP流
-            if stream.flow_key.protocol() != 6 {
+        for stream in streams {
+            // 只统计属于本模式验证范围、且匹配命令行过滤条件的流
+            if !stream.verification_in_scope(mode) || !filter.matches(stream) {
                 continue;
             }
+            total += 1;
+            let v = &stream.verification;
 
-            // 检查是否有数据包
-            if stream.stats.packet_count == 0 {
-                continue;
-            }
-
-            // 检查是否有完整的三次握手
-            if !stream.connection.handshake.is_complete() {
-                continue;
-            }
-
-            total_streams += 1;
-
-            // 判断是否有单向阻断
-            if stream.has_one_way_blocking {
-                streams_with_blocking += 1;
+            writeln!(writer, "流ID: {}", stream.flow_key)?;
+            if v.blocked {
+                blocked += 1;
+                writeln!(writer, "  阻断结果: 已阻断 ✓")?;
             } else {
-                streams_without_blocking += 1;
-
-                // 输出无单向阻断的流信息
-                writeln!(writer, "流ID: {}", stream.flow_key)?;
-                writeln!(writer, "  客户端: {}:{}", stream.client_ip(), stream.client_port())?;
-                writeln!(writer, "  服务器: {}:{}", stream.server_ip(), stream.server_port())?;
-                writeln!(writer, "  单向阻断: 未成功")?;
-                writeln!(writer, "  状态: {}", stream.state.as_str())?;
-                writeln!(writer, "  数据包数: {}", stream.stats.packet_count)?;
-                writeln!(writer, "  字节数: {}", stream.stats.byte_count)?;
-
-                // 显示连接持续时间
-                if let Some(duration) = stream.connection.duration_seconds() {
-                    writeln!(writer, "  持续时间: {:.3} 秒", duration)?;
-                }
-
-                // 显示握手状态
-                if stream.connection.handshake.is_complete() {
-                    writeln!(writer, "  握手: 完成")?;
-                } else {
-                    writeln!(writer, "  握手: 未完成")?;
-                }
-
-                // 显示客户端和服务器是否发送了数据
-                if let Some(client_data_time) = stream.client_first_data_time {
-                    writeln!(writer, "  客户端首次发送数据: 是（时间戳: {}）", client_data_time)?;
-                } else {
-                    writeln!(writer, "  客户端首次发送数据: 否")?;
-                }
-
-                if let Some(server_data_time) = stream.server_first_data_time {
-                    writeln!(writer, "  服务器首次发送数据: 是（时间戳: {}）", server_data_time)?;
-                } else {
-                    writeln!(writer, "  服务器首次发送数据: 否")?;
-                }
-
-                writeln!(writer, "")?;
+                not_blocked_flows.insert(stream.flow_key.clone());
+                writeln!(writer, "  阻断结果: 未阻断 ✗")?;
             }
+            writeln!(writer, "  判定原因: {}", v.reason)?;
+            if let Some(conf) = v.confidence {
+                writeln!(writer, "  可信度: {}", conf.name_cn())?;
+            }
+            if v.blocked {
+                let flag_str = v
+                    .matched_flags
+                    .map(describe_tcp_flags)
+                    .unwrap_or_else(|| "-".to_string());
+                writeln!(
+                    writer,
+                    "  阻断报文: 标志位={} 窗口={} TTL={} IP-ID={} 方向={} 负载={}字节",
+                    flag_str,
+                    v.matched_window.map(|w| w.to_string()).unwrap_or_else(|| "-".to_string()),
+                    v.matched_ttl.map(|t| t.to_string()).unwrap_or_else(|| "-".to_string()),
+                    v.matched_ip_id
+                        .map(|i| format!("0x{:04X}", i))
+                        .unwrap_or_else(|| "-".to_string()),
+                    match v.matched_to_client {
+                        Some(true) => "朝向客户端",
+                        Some(false) => "朝向服务器",
+                        None => "-",
+                    },
+                    v.matched_payload_len
+                        .map(|n| n.to_string())
+                        .unwrap_or_else(|| "-".to_string()),
+                )?;
+                if let Some(ts) = v.matched_timestamp {
+                    writeln!(writer, "  阻断报文时间戳: {}", ts)?;
+                }
+            }
+            writeln!(
+                writer,
+                "  握手: {}",
+                if stream.connection.handshake.is_complete() { "完成" } else { "未完成" }
+            )?;
+            writeln!(writer, "  状态: {}", stream.state.as_str())?;
+            writeln!(
+                writer,
+                "  数据包数: {}  字节数: {}",
+                stream.stats.packet_count, stream.stats.byte_count
+            )?;
+            writeln!(writer, "")?;
         }
 
-        // 输出统计信息
+        let not_blocked = not_blocked_flows.len();
         writeln!(writer, "# 统计摘要:")?;
-        writeln!(writer, "# 总TCP流数: {}", total_streams)?;
-        writeln!(writer, "# 成功单向阻断的流数: {}", streams_with_blocking)?;
-        writeln!(writer, "# 未成功单向阻断的流数: {}", streams_without_blocking)?;
+        writeln!(writer, "# 待验证流数: {}", total)?;
+        writeln!(writer, "# 已成功阻断: {}", blocked)?;
+        writeln!(writer, "# 未成功阻断: {}", not_blocked)?;
 
-        // 导出到PCAP文件
-        if streams_without_blocking > 0 {
-            let output_path = "one_way_blocking_non_compliant.pcap";
-            self.export_one_way_blocking_non_compliant_packets_to_pcap(manager, output_path)?;
-            eprintln!("\n正在导出 {} 个未成功单向阻断的会话的数据包到: {}", streams_without_blocking, output_path);
+        if self.args.verbose {
+            eprintln!("\n统计摘要:");
+            eprintln!("  待验证流数: {}", total);
+            eprintln!("  已成功阻断: {}", blocked);
+            eprintln!("  未成功阻断: {}", not_blocked);
+        }
+
+        // 导出未阻断的流到 PCAP 文件
+        if !not_blocked_flows.is_empty() {
+            let output_path = format!("npatch_verify_{}_not_blocked.pcap", mode.slug());
+            self.export_not_blocked_packets_to_pcap(&not_blocked_flows, &output_path)?;
+            eprintln!("\n已导出 {} 个未阻断会话的数据包到: {}", not_blocked, output_path);
         }
 
         Ok(())
     }
 
-    /// 导出未成功单向阻断的会话的数据包
-    fn export_one_way_blocking_non_compliant_packets_to_pcap(&self, manager: &Arc<Mutex<StreamManager>>, output_path: &str) -> Result<(), AppError> {
-        // 收集需要导出的流的键值
-        let mut non_compliant_flows = std::collections::HashSet::new();
-        for stream in manager.lock().unwrap().get_all_streams() {
-            if stream.flow_key.protocol() == 6 &&
-               stream.stats.packet_count > 0 &&
-               stream.connection.handshake.is_complete() &&
-               !stream.has_one_way_blocking {
-                non_compliant_flows.insert(stream.flow_key.clone());
-            }
-        }
-
-        if non_compliant_flows.is_empty() {
-            return Ok(());
-        }
-
-        // 重新读取原始PCAP文件
-        #[allow(unused_mut)]
-        let mut pcap_reader = PcapReader::open(&self.args.input)?;
+    /// 把未被成功阻断的会话的数据包导出到 PCAP 文件
+    fn export_not_blocked_packets_to_pcap(
+        &self,
+        not_blocked_flows: &std::collections::HashSet<FlowKey>,
+        output_path: &str,
+    ) -> Result<(), AppError> {
+        // 重新读取原始 PCAP，导出未阻断流的全部报文
+        let pcap_reader = PcapReader::open(&self.args.input)?;
         let linktype = pcap_reader.global_header().linktype;
         let parser = PacketParser::new(false, false, linktype);
 
-        // 对于 65535 链路层类型，在导出时使用 1（Ethernet）
-        // 因为即使原始数据是 SLL 格式，数据内容本身仍然是以太网帧
+        // 65535 链路层在导出时统一用 1（Ethernet）
         let export_linktype = if linktype == 65535 { 1 } else { linktype };
         let mut writer = create_pcap_writer(output_path, export_linktype)?;
         let mut exported_packets = 0;
 
         for packet_result in pcap_reader {
-            match packet_result {
-                Ok(raw_packet) => {
-                    match parser.parse(raw_packet.clone()) {
-                        Ok(packet) => {
-                            // 检查这个数据包是否属于不符合要求的流
-                            if let (Some(src_ip), Some(dst_ip), Some(src_port), Some(dst_port)) =
-                                (packet.src_ip, packet.dst_ip, packet.src_port, packet.dst_port) {
-                                let flow_key = FlowKey::new(
-                                    src_ip, dst_ip, src_port, dst_port, 6
-                                );
-
-                                if non_compliant_flows.contains(&flow_key) {
-                                    // 写入原始数据包
-                                    if let Err(e) = writer.write_packet(&raw_packet) {
-                                        eprintln!("写入数据包时出错: {}", e);
-                                    } else {
-                                        exported_packets += 1;
-                                    }
-                                }
-                            }
-                        }
-                        Err(_) => {
-                            // 解析错误，跳过
-                        }
-                    }
-                }
-                Err(_) => {
-                    // 读取错误，跳过
+            let Ok(raw_packet) = packet_result else { continue };
+            // 解析以获得五元组；parse 不修改原始字节，解析后的报文可直接写出
+            let Ok(packet) = parser.parse(raw_packet) else { continue };
+            if let (Some(src_ip), Some(dst_ip), Some(src_port), Some(dst_port)) =
+                (packet.src_ip, packet.dst_ip, packet.src_port, packet.dst_port)
+            {
+                let flow_key = FlowKey::new(src_ip, dst_ip, src_port, dst_port, 6);
+                if not_blocked_flows.contains(&flow_key)
+                    && writer.write_packet(&packet).is_ok()
+                {
+                    exported_packets += 1;
                 }
             }
         }
 
+        writer.flush()?;
         eprintln!("成功导出 {} 个数据包", exported_packets);
         Ok(())
     }
@@ -1536,16 +614,9 @@ fn main() {
     let args = Args::parse();
 
     // 创建并运行应用程序
-    match App::new(args) {
-        Ok(app) => {
-            if let Err(e) = app.run() {
-                eprintln!("错误: {}", e);
-                process::exit(1);
-            }
-        }
-        Err(e) => {
-            eprintln!("错误: {}", e);
-            process::exit(1);
-        }
+    let app = App::new(args);
+    if let Err(e) = app.run() {
+        eprintln!("错误: {}", e);
+        process::exit(1);
     }
 }

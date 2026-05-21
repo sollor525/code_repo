@@ -3,7 +3,7 @@
 //! 用于将数据包写入PCAP文件
 
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::{self, BufWriter, Write};
 use byteorder::{WriteBytesExt, LittleEndian};
 use crate::types::Packet;
 
@@ -55,13 +55,15 @@ pub struct PcapPacketHeader {
 
 /// PCAP文件写入器
 pub struct PcapWriter {
-    file: File,
+    file: BufWriter<File>,
 }
 
 impl PcapWriter {
     /// 创建新的PCAP写入器
     pub fn new(file: File, network: u32) -> io::Result<Self> {
-        let mut writer = Self { file };
+        let mut writer = Self {
+            file: BufWriter::new(file),
+        };
 
         // 写入全局头部
         let header = PcapGlobalHeader {

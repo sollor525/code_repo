@@ -2,7 +2,6 @@
 //!
 //! 提供多种格式的流信息输出功能，包括文本表格和JSON格式
 
-use std::collections::HashMap;
 use std::io::{self, Write};
 use std::time::Duration;
 use serde::{Deserialize, Serialize};
@@ -567,24 +566,16 @@ struct JsonStream {
     stats: JsonStats,
     /// 连接信息
     connection: JsonConnection,
-    /// 元数据
-    metadata: HashMap<String, String>,
 }
 
 impl From<&TcpStream> for JsonStream {
     fn from(stream: &TcpStream) -> Self {
-        let mut metadata = HashMap::new();
-        for (k, v) in &stream.metadata {
-            metadata.insert(k.clone(), v.clone());
-        }
-
         Self {
             flow_id: stream.flow_key.to_string(),
             five_tuple: JsonFiveTuple::from(&stream.flow_key),
             state: stream.state.as_str().to_string(),
             stats: JsonStats::from(&stream.stats),
             connection: JsonConnection::from(&stream.connection),
-            metadata,
         }
     }
 }

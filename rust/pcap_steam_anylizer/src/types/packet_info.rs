@@ -1,12 +1,13 @@
 //! 数据包信息结构
 //!
-//! 用于流重组的简化数据包信息
+//! 流分析使用的精简数据包信息
 
 use std::net::IpAddr;
 
 /// 数据包信息
 ///
-/// 用于流重组的简化数据包信息，包含必要的字段
+/// 流分析只需要包头字段与负载长度，不保留负载字节本身，
+/// 以避免逐包的堆分配与拷贝。
 #[derive(Debug, Clone)]
 pub struct PacketInfo {
     /// 时间戳（微秒）
@@ -21,8 +22,8 @@ pub struct PacketInfo {
     pub dst_port: u16,
     /// 协议类型
     pub protocol: u8,
-    /// 负载数据
-    pub payload: Vec<u8>,
+    /// 传输层负载长度（字节）
+    pub payload_len: usize,
     /// TCP序列号
     pub tcp_seq: Option<u32>,
     /// TCP确认号
@@ -31,6 +32,10 @@ pub struct PacketInfo {
     pub tcp_flags: Option<u8>,
     /// TCP窗口大小
     pub tcp_window: Option<u16>,
+    /// IPv4 TTL（用于识别NPatch注入报文的TTL签名）
+    pub ip_ttl: Option<u8>,
+    /// IPv4 identification（用于识别NPatch hijack报文的签名）
+    pub ip_id: Option<u16>,
 }
 
 impl From<crate::types::packet::Packet> for PacketInfo {
@@ -42,11 +47,13 @@ impl From<crate::types::packet::Packet> for PacketInfo {
             src_port: packet.src_port.unwrap_or(0),
             dst_port: packet.dst_port.unwrap_or(0),
             protocol: packet.protocol(),
-            payload: packet.payload().unwrap_or(&[]).to_vec(),
+            payload_len: packet.payload().map_or(0, |p| p.len()),
             tcp_seq: packet.tcp_seq,
             tcp_ack: packet.tcp_ack,
             tcp_flags: packet.tcp_flags.map(|f| f.to_byte()),
             tcp_window: packet.tcp_window,
+            ip_ttl: packet.ip_ttl,
+            ip_id: packet.ip_id,
         }
     }
 }

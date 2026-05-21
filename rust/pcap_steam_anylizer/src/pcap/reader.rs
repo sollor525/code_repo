@@ -52,6 +52,12 @@ pub struct PcapPacketHeader {
     pub len: u32,
 }
 
+/// 单个数据包允许的最大捕获长度（16 MiB）
+///
+/// 用于在 `caplen` 字段被损坏文件构造成超大值时，避免一次性分配巨量内存。
+/// 16 MiB 远大于任何以太网巨型帧。
+const MAX_CAPLEN: u32 = 16 * 1024 * 1024;
+
 /// PCAP文件读取器
 pub struct PcapReader {
     /// 文件句柄
@@ -60,6 +66,8 @@ pub struct PcapReader {
     global_header: PcapGlobalHeader,
     /// 是否是大端字节序
     is_big_endian: bool,
+    /// 时间戳是否为纳秒精度（magic 为 0xA1B23C4D 系列）
+    is_nanosecond: bool,
     /// 当前位置
     current_position: u64,
 }
@@ -79,13 +87,18 @@ impl PcapReader {
         // 读取全局头部
         file.read_exact(&mut header_bytes)?;
 
-        // 检查魔数，确定字节序
+        // 检查魔数，确定字节序与时间戳精度。
+        // 用 from_le_bytes 读取后，魔数取值的含义：
+        //   0xA1B2C3D4 -> 小端、微秒精度
+        //   0xD4C3B2A1 -> 大端、微秒精度
+        //   0xA1B23C4D -> 小端、纳秒精度
+        //   0x4D3CB2A1 -> 大端、纳秒精度
         let magic = u32::from_le_bytes([header_bytes[0], header_bytes[1], header_bytes[2], header_bytes[3]]);
-        let is_big_endian = match magic {
-            0xA1B2C3D4 => false,  // 小端
-            0xD4C3B2A1 => false,  // 小端（字节交换）
-            0xA1B23C4D => true,   // 大端
-            0x4D3CB2A1 => true,   // 大端（字节交换）
+        let (is_big_endian, is_nanosecond) = match magic {
+            0xA1B2C3D4 => (false, false),
+            0xD4C3B2A1 => (true, false),
+            0xA1B23C4D => (false, true),
+            0x4D3CB2A1 => (true, true),
             _ => return Err(PcapError::InvalidFile),
         };
 
@@ -107,23 +120,27 @@ impl PcapReader {
             return Err(PcapError::UnsupportedVersion { major: major_version, minor: minor_version });
         }
 
-        // 读取其他头部字段
+        // PCAP 全局头部 24 字节的字段布局：
+        //   magic(0..4) major(4..6) minor(6..8) thiszone(8..12)
+        //   sigfigs(12..16) snaplen(16..20) linktype(20..24)
         let thiszone = if is_big_endian {
             i32::from_be_bytes([header_bytes[8], header_bytes[9], header_bytes[10], header_bytes[11]])
         } else {
             i32::from_le_bytes([header_bytes[8], header_bytes[9], header_bytes[10], header_bytes[11]])
         };
 
-        let snaplen = if is_big_endian {
-            u32::from_be_bytes([header_bytes[12], header_bytes[13], header_bytes[14], header_bytes[15]])
-        } else {
-            u32::from_le_bytes([header_bytes[12], header_bytes[13], header_bytes[14], header_bytes[15]])
-        };
+        // sigfigs（时间戳精度）位于 [12..16]，本程序不使用，跳过
 
-        let linktype = if is_big_endian {
+        let snaplen = if is_big_endian {
             u32::from_be_bytes([header_bytes[16], header_bytes[17], header_bytes[18], header_bytes[19]])
         } else {
             u32::from_le_bytes([header_bytes[16], header_bytes[17], header_bytes[18], header_bytes[19]])
+        };
+
+        let linktype = if is_big_endian {
+            u32::from_be_bytes([header_bytes[20], header_bytes[21], header_bytes[22], header_bytes[23]])
+        } else {
+            u32::from_le_bytes([header_bytes[20], header_bytes[21], header_bytes[22], header_bytes[23]])
         };
 
         // 检查链接层类型
@@ -151,6 +168,7 @@ impl PcapReader {
             file,
             global_header,
             is_big_endian,
+            is_nanosecond,
             current_position: 24, // 全局头部之后
         })
     }
@@ -174,7 +192,7 @@ impl PcapReader {
         }
 
         // 解析数据包头部
-        let (ts_sec, ts_usec) = if self.is_big_endian {
+        let (ts_sec, ts_frac) = if self.is_big_endian {
             (
                 u32::from_be_bytes([header_bytes[0], header_bytes[1], header_bytes[2], header_bytes[3]]),
                 u32::from_be_bytes([header_bytes[4], header_bytes[5], header_bytes[6], header_bytes[7]])
@@ -184,6 +202,13 @@ impl PcapReader {
                 u32::from_le_bytes([header_bytes[0], header_bytes[1], header_bytes[2], header_bytes[3]]),
                 u32::from_le_bytes([header_bytes[4], header_bytes[5], header_bytes[6], header_bytes[7]])
             )
+        };
+
+        // 纳秒精度文件需把亚秒部分换算为微秒（PacketHeader 统一以微秒存储）
+        let ts_usec = if self.is_nanosecond {
+            ts_frac / 1000
+        } else {
+            ts_frac
         };
 
         let (caplen, len) = if self.is_big_endian {
@@ -197,6 +222,11 @@ impl PcapReader {
                 u32::from_le_bytes([header_bytes[12], header_bytes[13], header_bytes[14], header_bytes[15]])
             )
         };
+
+        // 校验 caplen 合理性，避免损坏文件里的超大字段触发巨量内存分配
+        if caplen > MAX_CAPLEN {
+            return Err(PcapError::TruncatedPacket);
+        }
 
         // 读取数据包数据
         let mut packet_data = vec![0u8; caplen as usize];
@@ -258,5 +288,92 @@ mod tests {
 
         let result = PcapReader::open(temp_file.path());
         assert!(matches!(result, Err(PcapError::InvalidFile)));
+    }
+
+    /// 写一个最小的 PCAP 全局头部（24 字节），endianness 由 `big_endian` 决定。
+    fn write_global_header(buf: &mut Vec<u8>, linktype: u32, big_endian: bool, nanosecond: bool) {
+        let magic: u32 = if nanosecond { 0xA1B23C4D } else { 0xA1B2C3D4 };
+        let put_u32 = |buf: &mut Vec<u8>, v: u32| {
+            if big_endian {
+                buf.extend_from_slice(&v.to_be_bytes());
+            } else {
+                buf.extend_from_slice(&v.to_le_bytes());
+            }
+        };
+        let put_u16 = |buf: &mut Vec<u8>, v: u16| {
+            if big_endian {
+                buf.extend_from_slice(&v.to_be_bytes());
+            } else {
+                buf.extend_from_slice(&v.to_le_bytes());
+            }
+        };
+        put_u32(buf, magic);
+        put_u16(buf, 2); // major
+        put_u16(buf, 4); // minor
+        put_u32(buf, 0); // thiszone
+        put_u32(buf, 0); // sigfigs
+        put_u32(buf, 65535); // snaplen
+        put_u32(buf, linktype);
+    }
+
+    /// BUG-7：大端字节序的 PCAP 文件应能被正确识别和解析。
+    #[test]
+    fn test_big_endian_pcap_header() {
+        let mut buf = Vec::new();
+        write_global_header(&mut buf, 1, true, false);
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write_all(&buf).unwrap();
+
+        let reader = PcapReader::open(temp_file.path()).expect("大端 PCAP 应能打开");
+        // 若字节序判错，linktype 会被读成 0x01000000 从而触发 UnsupportedLinkType
+        assert_eq!(reader.global_header().linktype, 1);
+        assert_eq!(reader.global_header().snaplen, 65535);
+        assert!(reader.is_big_endian);
+    }
+
+    /// BUG-7：纳秒精度 PCAP 的亚秒时间戳应被换算为微秒。
+    #[test]
+    fn test_nanosecond_pcap_timestamp_conversion() {
+        let mut buf = Vec::new();
+        write_global_header(&mut buf, 1, false, true);
+        // 一个报文：ts_sec=100，ts_nsec=1_500_000（即 1500 微秒），4 字节负载
+        buf.extend_from_slice(&100u32.to_le_bytes());
+        buf.extend_from_slice(&1_500_000u32.to_le_bytes());
+        buf.extend_from_slice(&4u32.to_le_bytes()); // caplen
+        buf.extend_from_slice(&4u32.to_le_bytes()); // origlen
+        buf.extend_from_slice(&[1, 2, 3, 4]);
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write_all(&buf).unwrap();
+
+        let mut reader = PcapReader::open(temp_file.path()).unwrap();
+        assert!(reader.is_nanosecond);
+        let pkt = reader.next_packet().unwrap().unwrap();
+        // 1_500_000 纳秒 == 1500 微秒
+        let expected = std::time::Duration::from_secs(100) + std::time::Duration::from_micros(1500);
+        assert_eq!(pkt.header.timestamp(), expected);
+    }
+
+    /// BUG-10：异常巨大的 caplen 应被拒绝，而不是触发超大内存分配。
+    #[test]
+    fn test_oversized_caplen_is_rejected() {
+        let mut buf = Vec::new();
+        write_global_header(&mut buf, 1, false, false);
+        // 一个报文头，caplen 设为 1 GiB
+        buf.extend_from_slice(&0u32.to_le_bytes()); // ts_sec
+        buf.extend_from_slice(&0u32.to_le_bytes()); // ts_usec
+        buf.extend_from_slice(&(1024u32 * 1024 * 1024).to_le_bytes()); // caplen = 1 GiB
+        buf.extend_from_slice(&(1024u32 * 1024 * 1024).to_le_bytes()); // origlen
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write_all(&buf).unwrap();
+
+        let mut reader = PcapReader::open(temp_file.path()).unwrap();
+        let result = reader.next_packet();
+        assert!(
+            matches!(result, Err(PcapError::TruncatedPacket)),
+            "超大 caplen 应返回 TruncatedPacket 错误"
+        );
     }
 }
