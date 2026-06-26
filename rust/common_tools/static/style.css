@@ -540,3 +540,119 @@ code {
         scroll-behavior: auto !important;
     }
 }
+
+/* =========================================================================
+   App shell — desktop window layout (sidebar rail + fit-to-window content)
+   Overrides the old top-bar/hero page layout.
+   ========================================================================= */
+html { height: 100%; }
+body { height: 100vh; overflow: hidden; }     /* window app: no page-level scroll */
+
+.app { display: flex; height: 100vh; }
+
+/* ---- sidebar nav rail ---- */
+.sidebar {
+    width: 214px; flex: none; height: 100vh;
+    display: flex; flex-direction: column;
+    padding: 14px 12px;
+    background: rgba(12, 16, 23, 0.94);
+    border-right: 1px solid var(--line);
+}
+.sidebar .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 4px 8px 14px; margin-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--font-display); font-weight: 700; font-size: 1rem;
+    letter-spacing: 0.03em; color: var(--ink); text-decoration: none;
+}
+.sidebar .brand .brand-mark {
+    width: 28px; height: 28px; flex: none; display: grid; place-items: center;
+    border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+    background: linear-gradient(180deg, var(--panel-2), var(--inset));
+}
+.side-nav { display: flex; flex-direction: column; gap: 3px; }
+.side-link {
+    display: flex; align-items: center; gap: 11px;
+    padding: 9px 11px; border-radius: var(--r-sm);
+    font-family: var(--font-display); font-size: 0.9rem; font-weight: 500;
+    color: var(--ink-dim); text-decoration: none; border: 1px solid transparent;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.side-link svg { width: 18px; height: 18px; flex: none; opacity: 0.8; }
+.side-link:hover { background: var(--panel-2); color: var(--ink); }
+.side-link.active {
+    background: var(--signal-soft); color: var(--signal);
+    border-color: rgba(240, 178, 62, 0.32);
+}
+.side-link.active svg { opacity: 1; }
+.side-foot { margin-top: auto; padding: 12px 8px 2px; border-top: 1px solid var(--line); }
+.side-foot .link-led {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.18em;
+    color: var(--ink-faint);
+}
+.side-foot .link-led .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ok); box-shadow: 0 0 8px var(--ok);
+    animation: led 2.4s ease-in-out infinite;
+}
+
+/* ---- content area (only this scrolls, and only if a tool overflows) ---- */
+.content { flex: 1; min-width: 0; height: 100vh; overflow-y: auto; padding: 24px 30px 30px; }
+/* neutralize the legacy page wrappers when nested inside the app content */
+.content > .main { padding: 0; }
+.content .container { max-width: none; margin: 0; padding: 0; }
+.content-head { margin-bottom: 16px; }
+.content-head .eyebrow { margin-bottom: 9px; }
+.content-title {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 1.45rem; letter-spacing: -0.01em; color: var(--ink);
+}
+.content-sub { color: var(--ink-dim); font-size: 0.9rem; margin-top: 5px; max-width: 76ch; }
+
+/* denser cards inside the app content */
+.content .card { padding: 18px; margin-bottom: 14px; box-shadow: none; }
+.content .card-header { padding-bottom: 12px; margin-bottom: 14px; }
+.content .card-title { font-size: 1.05rem; }
+.content .form-group { margin-bottom: 14px; }
+.content .compact-grid { gap: 18px; }
+
+/* ---- collapsible help / examples (keeps screens short) ---- */
+details.help {
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    background: var(--panel); margin-top: 2px;
+}
+details.help > summary {
+    cursor: pointer; list-style: none;
+    padding: 12px 18px;
+    display: flex; align-items: center; gap: 9px;
+    font-family: var(--font-display); font-weight: 600; font-size: 0.9rem; color: var(--ink-dim);
+}
+details.help > summary::-webkit-details-marker { display: none; }
+details.help > summary::before {
+    content: "\25B8"; color: var(--signal); transition: transform .15s ease; display: inline-block;
+}
+details.help[open] > summary { color: var(--ink); border-bottom: 1px solid var(--line); }
+details.help[open] > summary::before { transform: rotate(90deg); }
+.help-body { padding: 16px 18px; }
+.help-body > .card { background: var(--inset); margin-bottom: 12px; }
+.help-body > .card:last-child { margin-bottom: 0; }
+
+/* ---- landing dashboard ---- */
+.home-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 20px; align-items: start; }
+.home-grid .dump { margin: 0; }
+.home-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.content .tool-card { padding: 16px; }
+.content .tool-card .tool-title { font-size: 1rem; }
+.content .tool-card .tool-description { font-size: 0.82rem; margin-bottom: 0; }
+
+@media (max-width: 920px) {
+    .home-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+    .sidebar { width: 60px; padding: 12px 8px; }
+    .sidebar .brand span:not(.brand-mark), .side-link span, .side-foot .link-led { display: none; }
+    .side-link { justify-content: center; }
+    .home-tools { grid-template-columns: 1fr; }
+    .content { padding: 16px; }
+}

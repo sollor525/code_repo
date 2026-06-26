@@ -8,38 +8,28 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
 </head>
 <body>
-    <header class="header">
-        <div class="header-content">
-            <a href="/" class="logo">
-                <span class="brand-mark" aria-hidden="true">
-                    <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
-                        <polyline points="1,11 4,11 5.5,5 7.5,12 9,8 11,8" stroke="#F0B23E" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
-                        <polyline points="6,15 10,15 11.5,15 13,15 16,15" stroke="#4FD0E0" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
-                    </svg>
-                </span>
-                <span>字节工具台</span>
-                <span class="brand-sub">BYTE&nbsp;BENCH</span>
-            </a>
-            <nav class="nav">
-                <a href="/" class="nav-link">首页</a>
-                <a href="/network.html" class="nav-link">网络转换</a>
-                <a href="/packet.html" class="nav-link active">报文分析</a>
-                <a href="/regex.html" class="nav-link">正则匹配</a>
-                <a href="/md5.html" class="nav-link">MD5 计算</a>
-                <a href="/string.html" class="nav-link">字符串转换</a>
-                <span class="link-led"><span class="dot"></span>LINK</span>
-            </nav>
-        </div>
-    </header>
-
-    <!-- 面包屑导航 -->
-    <nav class="statusline">
-        <div class="container">
-            <a href="/">首页</a>
-            <span class="sep">/</span>
-            <span class="here">报文分析</span>
-        </div>
-    </nav>
+<div class="app">
+    <aside class="sidebar">
+        <a class="brand" href="/">
+            <span class="brand-mark" aria-hidden="true">
+                <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                    <polyline points="1,11 4,11 5.5,5 7.5,12 9,8 11,8" stroke="#F0B23E" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+                    <polyline points="6,15 10,15 11.5,15 13,15 16,15" stroke="#4FD0E0" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+                </svg>
+            </span>
+            <span>字节工具台</span>
+        </a>
+        <nav class="side-nav">
+            <a href="/" class="side-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>首页</span></a>
+            <a href="/network.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h16M15 4l4 4-4 4"/><path d="M23 18H7M11 22l-4-4 4-4"/></svg><span>网络转换</span></a>
+            <a href="/packet.html" class="side-link active"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2l9 5v12l-9 5-9-5V7z"/><path d="M4 7l9 5 9-5M13 12v12"/></svg><span>报文分析</span></a>
+            <a href="/regex.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4H4v18h3M19 4h3v18h-3"/><path d="M13 9v8M9.5 11l7 4M16.5 11l-7 4"/></svg><span>正则匹配</span></a>
+            <a href="/md5.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L7 23M19 3l-3 20M4 9h18M3 17h18"/></svg><span>MD5 计算</span></a>
+            <a href="/string.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5l-6 16M8 9l-4 4 4 4M18 9l4 4-4 4"/></svg><span>字符串转换</span></a>
+        </nav>
+        <div class="side-foot"><span class="link-led"><span class="dot"></span>LINK</span></div>
+    </aside>
+    <div class="content">
 
     <main class="main">
         <div class="container">
@@ -99,6 +89,7 @@
                 </div>
             </div>
 
+            <details class="help"><summary>说明与示例</summary><div class="help-body">
             <!-- 使用说明 -->
             <div class="card">
                 <div class="card-header">
@@ -177,8 +168,9 @@
                     </div>
                 </div>
             </div>
+            </div></details>
         </div>
-    </main>
+    </main></div></div>
 
     <script>
         // 示例数据
