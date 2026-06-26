@@ -1,0 +1,11 @@
+# 构建输出（仓库根 .gitignore 已含 **/target/，此处显式列出便于本项目自解释）
+/target/
+/src-tauri/target/
+
+# Tauri 生成文件
+/src-tauri/gen/
+
+# 运行产物与日志
+*.log
+*.pcap
+/release/

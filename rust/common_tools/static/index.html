@@ -3,300 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>开发者工具箱 - 免费在线工具集合</title>
-    <meta name="description" content="开发者工具箱提供丰富的在线开发工具，包括网络转换、报文分析、正则匹配、字符串转换、MD5计算等功能。完全免费，界面美观，功能强大。">
-    <meta name="keywords" content="开发者工具,在线工具,网络工具,正则表达式,报文分析,IP转换,端口转换,字符串转换,MD5计算">
+    <title>字节工具台 — 网络协议调试工具集</title>
+    <meta name="description" content="为协议调试而生的字节级工具台：网络字节序转换、报文逐层解析、PCAP 导出、正则匹配、MD5 与转义序列互转。">
+    <meta name="keywords" content="网络字节序,报文分析,PCAP,正则表达式,MD5,字符串转义,协议调试,开发者工具">
     <link rel="stylesheet" href="/static/style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛠️</text></svg>">
-
-    <style>
-        /* 美化的首页样式 */
-        .hero-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 2.5rem 0;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .hero-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-            animation: float 6s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .hero-content {
-            position: relative;
-            z-index: 1;
-        }
-
-        .hero-title {
-            font-size: 2.8rem;
-            font-weight: 800;
-            color: white;
-            margin-bottom: 0.8rem;
-            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .hero-subtitle {
-            font-size: 1.1rem;
-            color: rgba(255, 255, 255, 0.9);
-            margin-bottom: 2rem;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .search-container {
-            max-width: 500px;
-            margin: 0 auto 1.5rem;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 0.8rem 1.2rem;
-            border: none;
-            border-radius: 50px;
-            font-size: 0.95rem;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-        }
-
-        .search-input:focus {
-            outline: none;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-            transform: translateY(-2px);
-        }
-
-        .tools-section {
-            padding: 2.5rem 0;
-            background: #f8fafc;
-        }
-
-        .tools-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-
-        .tool-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .tool-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
-        }
-
-        .tool-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-        }
-
-        .tool-card:hover::before {
-            transform: scaleX(1);
-        }
-
-        .tool-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            display: block;
-        }
-
-        .tool-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #1a202c;
-            margin-bottom: 0.8rem;
-        }
-
-        .tool-description {
-            color: #4a5568;
-            line-height: 1.5;
-            margin-bottom: 1rem;
-            font-size: 0.9rem;
-        }
-
-        .tool-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.4rem;
-        }
-
-        .tool-tag {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 0.2rem 0.6rem;
-            border-radius: 16px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-
-        .section-title {
-            font-size: 2.2rem;
-            font-weight: 800;
-            text-align: center;
-            color: #1a202c;
-            margin-bottom: 0.8rem;
-        }
-
-        .section-subtitle {
-            text-align: center;
-            color: #4a5568;
-            font-size: 1rem;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .stats-section {
-            padding: 2rem 0;
-            background: white;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1.5rem;
-            margin-top: 1.5rem;
-        }
-
-        .stat-card {
-            text-align: center;
-            padding: 1.5rem;
-            background: #f8fafc;
-            border-radius: 10px;
-        }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #667eea;
-            display: block;
-            margin-bottom: 0.4rem;
-        }
-
-        .stat-label {
-            color: #4a5568;
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-
-        .footer-section {
-            background: #1a202c;
-            color: white;
-            padding: 2rem 0 1.5rem;
-            margin-top: 3rem;
-        }
-
-        .footer-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .footer-section h4 {
-            margin-bottom: 0.8rem;
-            color: #667eea;
-        }
-
-        .footer-section ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .footer-section a {
-            color: #a0aec0;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-
-        .footer-section a:hover {
-            color: #667eea;
-        }
-
-        .footer-bottom {
-            text-align: center;
-            padding-top: 1.5rem;
-            border-top: 1px solid #2d3748;
-            color: #a0aec0;
-        }
-
-        /* 响应式设计 */
-        @media (max-width: 768px) {
-            .hero-title {
-                font-size: 2.2rem;
-            }
-
-            .hero-section {
-                padding: 2rem 0;
-            }
-
-            .tools-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        /* 动画效果 */
-        .fade-in {
-            opacity: 0;
-            transform: translateY(20px);
-            animation: fadeInUp 0.8s ease forwards;
-        }
-
-        @keyframes fadeInUp {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .stagger-1 { animation-delay: 0.1s; }
-        .stagger-2 { animation-delay: 0.2s; }
-        .stagger-3 { animation-delay: 0.3s; }
-        .stagger-4 { animation-delay: 0.4s; }
-        .stagger-5 { animation-delay: 0.5s; }
-    </style>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⎓</text></svg>">
 </head>
 <body>
     <header class="header">
         <div class="header-content">
             <a href="/" class="logo">
-                <span style="font-size: 1.5rem; margin-right: 0.5rem;">🛠️</span>
-                <span>开发者工具箱</span>
+                <span class="brand-mark" aria-hidden="true">
+                    <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                        <polyline points="1,11 4,11 5.5,5 7.5,12 9,8 11,8" stroke="#F0B23E" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+                        <polyline points="6,15 10,15 11.5,15 13,15 16,15" stroke="#4FD0E0" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+                    </svg>
+                </span>
+                <span>字节工具台</span>
+                <span class="brand-sub">BYTE&nbsp;BENCH</span>
             </a>
             <nav class="nav">
                 <a href="/" class="nav-link active">首页</a>
@@ -305,214 +29,220 @@
                 <a href="/regex.html" class="nav-link">正则匹配</a>
                 <a href="/md5.html" class="nav-link">MD5 计算</a>
                 <a href="/string.html" class="nav-link">字符串转换</a>
+                <span class="link-led"><span class="dot"></span>LINK</span>
             </nav>
         </div>
     </header>
 
     <main>
-        <!-- Hero 区域 -->
-        <section class="hero-section">
-            <div class="container">
-                <div class="hero-content">
-                    <h1 class="hero-title">🛠️ 开发者工具箱</h1>
-                    <p class="hero-subtitle">专业的在线开发工具集合，让您的开发工作更高效、更便捷</p>
+        <!-- Hero：论点 = 把线上的字节翻译成可读的协议 -->
+        <section class="hero">
+            <div class="container hero-grid">
+                <div class="hero-copy">
+                    <span class="eyebrow">Network byte workbench</span>
+                    <h1 class="hero-title">读懂线上的<br>每一个<em>字节</em></h1>
+                    <p class="hero-sub">
+                        网络字节序转换、报文逐层解析、PCAP 导出、正则匹配、MD5
+                        与转义序列互转——一套为协议调试而生的本地工具台，零依赖、即开即用。
+                    </p>
+                    <div class="hero-actions">
+                        <a href="/packet.html" class="btn btn-primary">打开报文分析 →</a>
+                        <a href="#tools" class="btn btn-outline">浏览全部工具</a>
+                    </div>
+                    <div class="console-search">
+                        <input type="text" class="search-input" placeholder="输入工具名或关键字，回车直达…  (⌘/Ctrl + K)" id="toolSearch" aria-label="搜索工具">
+                    </div>
+                </div>
 
-                    <!-- 搜索框 -->
-                    <div class="search-container">
-                        <input type="text" class="search-input" placeholder="搜索工具..." id="toolSearch">
+                <!-- 签名元素：带注释的十六进制转储 -->
+                <div class="dump" aria-label="以太网帧十六进制转储示例">
+                    <div class="dump-bar">
+                        <span class="lamp a"></span><span class="lamp b"></span>
+                        <span class="title">frame · ethernet&nbsp;II / ipv4 / tcp</span>
+                        <span class="right">len 60</span>
+                    </div>
+                    <div class="dump-body">
+                        <div class="dump-row">
+                            <span class="dump-off">0000</span>
+                            <span class="dump-hex">08 00 27 12 34 56 0a 00  27 ab cd ef <b class="b-a">08 00</b> 45 00</span>
+                            <span class="dump-asc">··'·4V··'·····E·</span>
+                        </div>
+                        <div class="dump-row">
+                            <span class="dump-off">0010</span>
+                            <span class="dump-hex">00 3c 1c 46 40 00 40 <b class="b-a">06</b>  a2 c7 <b class="b-b">c0 a8 00 1c</b> <b class="b-b">c0 a8</b></span>
+                            <span class="dump-asc">·&lt;·F@·@·········</span>
+                        </div>
+                        <div class="dump-row">
+                            <span class="dump-off">0020</span>
+                            <span class="dump-hex"><b class="b-b">00 c8</b> <b class="b-a">00 50 1f 90</b> 7a 1c  00 00 00 00 a0 02 72 10</span>
+                            <span class="dump-asc">···P··z·······r·</span>
+                        </div>
+                    </div>
+                    <div class="dump-legend">
+                        <span class="key"><span class="swatch" style="background:var(--signal)"></span><i>EtherType · 协议 · 端口</i></span>
+                        <span class="key"><span class="swatch" style="background:var(--cyan)"></span><i>源 / 目标 IP</i></span>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- 工具网格 -->
-        <section class="tools-section">
+        <!-- 工具模块网格 -->
+        <section class="main" id="tools">
             <div class="container">
-                <h2 class="section-title">🚀 实用工具</h2>
-                <p class="section-subtitle">精选的开发工具，覆盖日常开发中的各种需求</p>
+                <div class="section-head">
+                    <h2 class="section-title">工具模块</h2>
+                    <p class="section-subtitle">五个独立通道，覆盖从字节序到协议解析的日常调试场景。</p>
+                </div>
 
-                <div class="tools-grid">
-                    <!-- 网络转换工具 -->
-                    <div class="tool-card fade-in stagger-1" onclick="navigateToTool('/network.html')">
-                        <span class="tool-icon">🌐</span>
+                <div class="tool-grid">
+                    <!-- NET -->
+                    <a class="tool-card" href="/network.html">
+                        <div class="tool-code"><span>CH · NET</span><span>01</span></div>
+                        <span class="tool-icon" aria-hidden="true">
+                            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 8h16M15 4l4 4-4 4"/><path d="M23 18H7M11 22l-4-4 4-4"/>
+                            </svg>
+                        </span>
                         <h3 class="tool-title">网络转换</h3>
-                        <p class="tool-description">IP地址、端口、整数的主机序与网络序相互转换，网络开发必备工具</p>
+                        <p class="tool-description">IP、端口、整数在主机序与网络序之间互转，支持十进制与十六进制。</p>
                         <div class="tool-tags">
-                            <span class="tool-tag">IP转换</span>
+                            <span class="tool-tag">IP 转换</span>
                             <span class="tool-tag">端口转换</span>
                             <span class="tool-tag">字节序</span>
                         </div>
-                    </div>
+                    </a>
 
-                    <!-- 报文分析工具 -->
-                    <div class="tool-card fade-in stagger-2" onclick="navigateToTool('/packet.html')">
-                        <span class="tool-icon">📦</span>
+                    <!-- PKT -->
+                    <a class="tool-card" href="/packet.html">
+                        <div class="tool-code"><span>CH · PKT</span><span>02</span></div>
+                        <span class="tool-icon" aria-hidden="true">
+                            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M13 2l9 5v12l-9 5-9-5V7z"/><path d="M4 7l9 5 9-5M13 12v12"/>
+                            </svg>
+                        </span>
                         <h3 class="tool-title">报文分析</h3>
-                        <p class="tool-description">强大的网络报文分析功能，支持Hex数据解析和PCAP文件导出</p>
+                        <p class="tool-description">解析 Hex 报文，逐层拆出以太网 / IP / TCP / UDP 头部，并导出 PCAP。</p>
                         <div class="tool-tags">
-                            <span class="tool-tag">Hex解析</span>
-                            <span class="tool-tag">协议分析</span>
-                            <span class="tool-tag">PCAP导出</span>
+                            <span class="tool-tag">Hex 解析</span>
+                            <span class="tool-tag">协议分层</span>
+                            <span class="tool-tag">PCAP 导出</span>
                         </div>
-                    </div>
+                    </a>
 
-                    <!-- 正则匹配工具 -->
-                    <div class="tool-card fade-in stagger-3" onclick="navigateToTool('/regex.html')">
-                        <span class="tool-icon">🔍</span>
+                    <!-- RGX -->
+                    <a class="tool-card" href="/regex.html">
+                        <div class="tool-code"><span>CH · RGX</span><span>03</span></div>
+                        <span class="tool-icon" aria-hidden="true">
+                            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M7 4H4v18h3M19 4h3v18h-3"/><path d="M13 9v8M9.5 11l7 4M16.5 11l-7 4"/>
+                            </svg>
+                        </span>
                         <h3 class="tool-title">正则匹配</h3>
-                        <p class="tool-description">强大的正则表达式匹配功能，支持多种匹配模式和实时预览</p>
+                        <p class="tool-description">实时匹配与捕获组展示，支持大小写、多行、点号匹配换行等选项。</p>
                         <div class="tool-tags">
                             <span class="tool-tag">实时匹配</span>
                             <span class="tool-tag">捕获组</span>
                             <span class="tool-tag">常用模式</span>
                         </div>
-                    </div>
+                    </a>
 
-                    <!-- MD5计算工具 -->
-                    <div class="tool-card fade-in stagger-4" onclick="navigateToTool('/md5.html')">
-                        <span class="tool-icon">🔐</span>
+                    <!-- MD5 -->
+                    <a class="tool-card" href="/md5.html">
+                        <div class="tool-code"><span>CH · MD5</span><span>04</span></div>
+                        <span class="tool-icon" aria-hidden="true">
+                            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10 3L7 23M19 3l-3 20M4 9h18M3 17h18"/>
+                            </svg>
+                        </span>
                         <h3 class="tool-title">MD5 计算</h3>
-                        <p class="tool-description">快速计算文本或文件的MD5哈希值，适用于数据校验和文件完整性验证</p>
+                        <p class="tool-description">计算文本或文件的 MD5 摘要，用于数据校验与文件完整性比对。</p>
                         <div class="tool-tags">
-                            <span class="tool-tag">MD5哈希</span>
+                            <span class="tool-tag">MD5 摘要</span>
                             <span class="tool-tag">文件校验</span>
-                            <span class="tool-tag">数据完整性</span>
+                            <span class="tool-tag">完整性</span>
                         </div>
-                    </div>
+                    </a>
 
-                    <!-- 字符串转换工具 -->
-                    <div class="tool-card fade-in stagger-5" onclick="navigateToTool('/string.html')">
-                        <span class="tool-icon">🔤</span>
+                    <!-- STR -->
+                    <a class="tool-card" href="/string.html">
+                        <div class="tool-code"><span>CH · STR</span><span>05</span></div>
+                        <span class="tool-icon" aria-hidden="true">
+                            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 5l-6 16M8 9l-4 4 4 4M18 9l4 4-4 4"/>
+                            </svg>
+                        </span>
                         <h3 class="tool-title">字符串转换</h3>
-                        <p class="tool-description">支持八进制和Unicode转义序列之间的双向转换，自动检测格式</p>
+                        <p class="tool-description">八进制（\000）与 Unicode（\u0000）转义序列双向转换，自动识别格式。</p>
                         <div class="tool-tags">
-                            <span class="tool-tag">\000转换</span>
-                            <span class="tool-tag">\u0000转换</span>
+                            <span class="tool-tag">\000</span>
+                            <span class="tool-tag">\u0000</span>
                             <span class="tool-tag">自动检测</span>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 统计数据 -->
-        <section class="stats-section">
-            <div class="container">
-                <h2 class="section-title">📊 平台数据</h2>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <span class="stat-number" data-target="5">0</span>
-                        <div class="stat-label">核心工具</div>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-number" data-target="100">0</span>
-                        <div class="stat-label">毫秒响应</div>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-number" data-target="24">0</span>
-                        <div class="stat-label">小时在线</div>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-number" data-target="100">0</span>
-                        <div class="stat-label">免费使用</div>
-                    </div>
+                    </a>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- 页脚 -->
     <footer class="footer-section">
         <div class="container">
             <div class="footer-content">
                 <div>
-                    <h4>🛠️ 工具</h4>
+                    <h4>工具</h4>
                     <ul>
                         <li><a href="/network.html">网络转换</a></li>
                         <li><a href="/packet.html">报文分析</a></li>
                         <li><a href="/regex.html">正则匹配</a></li>
-                        <li><a href="/md5.html">MD5计算</a></li>
+                        <li><a href="/md5.html">MD5 计算</a></li>
                         <li><a href="/string.html">字符串转换</a></li>
                     </ul>
                 </div>
                 <div>
-                    <h4>📊 资源</h4>
+                    <h4>接口</h4>
                     <ul>
-                        <li><a href="/health">健康检查</a></li>
-                        <li><a href="/api">API文档</a></li>
-                        <li><a href="/static/API.md">使用指南</a></li>
+                        <li><a href="/health">健康检查 /health</a></li>
+                        <li><a href="/api">API 信息 /api</a></li>
+                        <li><a href="/static/API.md">API 文档</a></li>
                     </ul>
                 </div>
                 <div>
-                    <h4>🌟 技术栈</h4>
+                    <h4>技术栈</h4>
                     <ul>
-                        <li><a href="#">Rust + Tokio</a></li>
-                        <li><a href="#">Axum Web框架</a></li>
-                        <li><a href="#">高性能异步架构</a></li>
+                        <li><span>Rust · Tokio</span></li>
+                        <li><span>Axum Web 框架</span></li>
+                        <li><span>异步 · 单二进制部署</span></li>
                     </ul>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 开发者工具箱. 基于高性能 Rust 技术栈构建</p>
+                © 2026 字节工具台 · built on rust
             </div>
         </div>
     </footer>
 
     <script>
-        // 页面加载动画
-        document.addEventListener('DOMContentLoaded', function() {
-            // 数字统计动画
-            const statNumbers = document.querySelectorAll('.stat-number');
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const target = parseInt(entry.target.getAttribute('data-target'));
-                        let current = 0;
-                        const increment = target / 50;
-                        const timer = setInterval(() => {
-                            current += increment;
-                            if (current >= target) {
-                                current = target;
-                                clearInterval(timer);
-                            }
-                            entry.target.textContent = Math.floor(current);
-                        }, 30);
-                        observer.unobserve(entry.target);
-                    }
-                });
-            });
-
-            statNumbers.forEach(stat => {
-                observer.observe(stat);
-            });
-        });
-
         // 导航到工具页面
         function navigateToTool(url) {
             window.location.href = url;
         }
 
-        // 搜索工具功能
-        document.getElementById('toolSearch').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                const searchTerm = e.target.value.toLowerCase();
-                if (searchTerm.includes('网络') || searchTerm.includes('转换') || searchTerm.includes('ip')) {
-                    window.location.href = '/network.html';
-                } else if (searchTerm.includes('报文') || searchTerm.includes('包') || searchTerm.includes('hex')) {
-                    window.location.href = '/packet.html';
-                } else if (searchTerm.includes('正则') || searchTerm.includes('regex') || searchTerm.includes('匹配')) {
-                    window.location.href = '/regex.html';
-                } else if (searchTerm.includes('md5') || searchTerm.includes('哈希')) {
-                    window.location.href = '/md5.html';
-                } else if (searchTerm.includes('字符串') || searchTerm.includes('转换') || searchTerm.includes('unicode') || searchTerm.includes('八进制')) {
-                    window.location.href = '/string.html';
-                }
-            }
+        // 搜索工具：回车直达
+        document.getElementById('toolSearch').addEventListener('keypress', function (e) {
+            if (e.key !== 'Enter') return;
+            const q = e.target.value.toLowerCase();
+            const routes = [
+                { keys: ['网络', '字节序', 'ip', '端口', 'net'], url: '/network.html' },
+                { keys: ['报文', '包', 'hex', 'pcap', 'pkt'], url: '/packet.html' },
+                { keys: ['正则', 'regex', '匹配', 'rgx'], url: '/regex.html' },
+                { keys: ['md5', '哈希', '摘要', '校验'], url: '/md5.html' },
+                { keys: ['字符串', 'unicode', '八进制', '转义', 'str'], url: '/string.html' },
+            ];
+            const hit = routes.find(r => r.keys.some(k => q.includes(k)));
+            if (hit) window.location.href = hit.url;
         });
 
-        // 键盘快捷键
-        document.addEventListener('keydown', function(e) {
-            // Ctrl/Cmd + K 聚焦搜索
+        // ⌘/Ctrl + K 聚焦搜索
+        document.addEventListener('keydown', function (e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 document.getElementById('toolSearch').focus();

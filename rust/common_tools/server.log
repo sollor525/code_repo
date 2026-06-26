@@ -1,3 +1,0 @@
-   Compiling common_tools v0.1.0 (/root/workspace/code_repo/rust/tls_common_tools)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.62s
-     Running `target/debug/common_tools --host 0.0.0.0 --port 8080`

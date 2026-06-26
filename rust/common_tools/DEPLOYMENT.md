@@ -1,396 +1,150 @@
-# 开发者工具箱部署指南
+# 字节工具台 部署与分发指南
 
-本文档详细介绍了如何将开发者工具箱部署到另一台设备。
+本项目现为 **Tauri 桌面应用**。主要交付物是一个 Windows 桌面程序；同时保留了一个
+不依赖 WebView 的**服务模式**，可用于无界面/服务器部署。本文覆盖两种场景的分发方式。
 
-## 📋 目录
+- [一、桌面版分发（Windows）](#一桌面版分发windows)
+- [二、无界面服务模式部署](#二无界面服务模式部署)
+- [三、容器化服务模式（可选）](#三容器化服务模式可选)
+- [四、故障排除](#四故障排除)
 
-- [部署方案概览](#部署方案概览)
-- [方案一：源码部署](#方案一源码部署)
-- [方案二：二进制发布包部署](#方案二二进制发布包部署)
-- [方案三：Docker容器部署](#方案三docker容器部署)
-- [配置说明](#配置说明)
-- [故障排除](#故障排除)
-- [性能优化](#性能优化)
+> 构建步骤本身见 [`BUILD_WINDOWS.md`](BUILD_WINDOWS.md)。本文聚焦「构建产物如何分发与运行」。
 
-## 🚀 部署方案概览
+---
 
-| 方案 | 优点 | 缺点 | 适用场景 |
-|------|------|------|----------|
-| 源码部署 | 灵活、可定制 | 需要Rust环境 | 开发环境、定制需求 |
-| 二进制包 | 部署简单、性能好 | 平台相关 | 生产环境、快速部署 |
-| Docker | 跨平台、隔离性好 | 需要Docker环境 | 容器化环境、微服务架构 |
+## 一、桌面版分发（Windows）
 
-## 方案一：源码部署
+`cargo tauri build` / `cargo build --release` 会产出两类制品：
 
-### 系统要求
+| 制品 | 路径 | 用途 |
+|------|------|------|
+| 便携版可执行文件 | `src-tauri\target\release\common_tools.exe` | 免安装，直接双击运行 |
+| NSIS 安装包 | `src-tauri\target\release\bundle\nsis\ByteBench_0.1.0_x64-setup.exe` | 标准安装流程，写入开始菜单/卸载项 |
 
-- Linux (Ubuntu 18.04+, CentOS 7+, Debian 9+)
-- Rust 1.70+
-- Git
+应用名（窗口标题/开始菜单）为 **字节工具台 / ByteBench**，应用标识为
+`com.bytebench.commontools`。
 
-### 部署步骤
+### 运行依赖
 
-1. **克隆代码**
-```bash
-git clone <repository-url>
-cd common_tools
-```
+- **WebView2 运行时**：Windows 11 与较新的 Windows 10 已内置；若缺失，安装微软
+  [Evergreen WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)。
+  这是桌面版唯一的外部运行依赖——前端资源与服务逻辑都已编译进 exe，**无需**随附
+  `static/` 目录或任何 DLL（MSVC 运行库随 exe 静态/系统提供）。
 
-2. **运行自动部署脚本**
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
+### 分发方式
 
-3. **手动部署（可选）**
-```bash
-# 安装Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source ~/.cargo/env
+- **便携分发**：直接把 `common_tools.exe` 发给用户即可，双击启动后会在本机
+  `127.0.0.1` 的随机空闲端口拉起内嵌服务，并打开原生窗口。
+- **安装包分发**：分发 `ByteBench_*-setup.exe`，提供安装/卸载体验，适合面向终端用户。
 
-# 安装依赖 (Ubuntu/Debian)
-sudo apt update
-sudo apt install build-essential pkg-config libssl-dev
+### 代码签名（可选，建议用于对外分发）
 
-# 安装依赖 (CentOS/RHEL)
-sudo yum groupinstall "Development Tools"
-sudo yum install openssl-devel pkg-config
+未签名的 exe/安装包在用户机器上可能触发 SmartScreen 警告。如需消除：
 
-# 构建项目
-cargo build --release
+- 使用代码签名证书对 exe 与安装包签名（`signtool sign /fd SHA256 ...`）。
+- Tauri 也支持在打包阶段自动签名，配置 `tauri.conf.json` 的
+  `bundle.windows.certificateThumbprint` 等字段。
 
-# 创建systemd服务
-sudo cp common-tools.service /etc/systemd/system/
-sudo systemctl enable common-tools
-sudo systemctl start common-tools
-```
+### 自动更新（可选，当前未启用）
 
-### 验证部署
+Tauri 内置 updater 插件可实现增量自动更新。如需启用，需添加
+`@tauri-apps/plugin-updater`、配置更新服务器与签名公钥；当前项目未集成。
 
-访问：`http://<服务器IP>:8080`
+---
 
-## 方案二：二进制发布包部署
+## 二、无界面服务模式部署
 
-### 快速部署
+服务模式是不含 Tauri/WebView 的纯 axum 服务，适合放在服务器上以浏览器访问。它同样
+**自包含**（前端已嵌入二进制）。
 
-1. **下载发布包**
-```bash
-# 选择适合您系统的包
-wget https://releases.example.com/common-tools-v1.0.0-linux-x64-deploy.tar.gz
-```
-
-2. **解压部署**
-```bash
-tar -xzf common-tools-v1.0.0-linux-x64-deploy.tar.gz
-cd common-tools-v1.0.0-deploy
-```
-
-3. **启动服务**
-```bash
-# 直接启动
-./start.sh
-
-# 或安装为系统服务
-sudo cp common-tools.service /etc/systemd/system/
-sudo systemctl enable common-tools
-sudo systemctl start common-tools
-```
-
-### 手动构建发布包
+### 构建与运行
 
 ```bash
-# 在开发机器上执行
-./build_release.sh
+cd src-tauri
+cargo build --release --no-default-features        # 产物：target/release/common_tools
+CT_PORT=8080 ./target/release/common_tools         # 端口取自 CT_PORT，未设置则自动分配
 ```
 
-生成的文件：
-- `release/common-tools-1.0.0-linux-x64.tar.gz` - 仅二进制文件
-- `release/common-tools-1.0.0-deploy.tar.gz` - 完整部署包
+- 监听地址固定为 **`127.0.0.1`**（仅本机）。`CT_PORT` 控制端口。
+- 二进制可放在任意目录运行，无需 `static/`。
 
-## 方案三：Docker容器部署
+### 对外暴露
 
-### 前置要求
+由于服务仅监听 `127.0.0.1`，对外提供时请在前面加一层反向代理：
 
-- Docker 20.03+
-- Docker Compose 2.0+
-
-### 快速启动
-
-1. **克隆代码**
-```bash
-git clone <repository-url>
-cd common_tools
-```
-
-2. **启动服务**
-```bash
-# 使用脚本
-./docker-deploy.sh start
-
-# 或使用docker-compose
-docker-compose up -d
-```
-
-### Docker部署脚本
-
-```bash
-# 构建镜像
-./docker-deploy.sh build
-
-# 启动服务
-./docker-deploy.sh start
-
-# 查看状态
-./docker-deploy.sh status
-
-# 查看日志
-./docker-deploy.sh logs
-
-# 更新服务
-./docker-deploy.sh update
-
-# 停止服务
-./docker-deploy.sh stop
-
-# 清理资源
-./docker-deploy.sh cleanup
-```
-
-### 生产环境配置
-
-创建 `docker-compose.prod.yml`：
-
-```yaml
-version: '3.8'
-
-services:
-  common-tools:
-    build: .
-    container_name: common-tools
-    ports:
-      - "80:8080"
-    environment:
-      - RUST_LOG=warn
-      - LISTEN_ADDRESS=0.0.0.0:8080
-    restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    volumes:
-      - ./logs:/app/logs
-      - /etc/localtime:/etc/localtime:ro
-    networks:
-      - common-tools-network
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
-
-networks:
-  common-tools-network:
-    driver: bridge
-
-volumes:
-  logs:
-    driver: local
-```
-
-## ⚙️ 配置说明
-
-### 环境变量
-
-| 变量名 | 默认值 | 说明 |
-|--------|--------|------|
-| `RUST_LOG` | `info` | 日志级别 (debug/info/warn/error) |
-| `LISTEN_ADDRESS` | `0.0.0.0:8080` | 监听地址和端口 |
-| `STATIC_DIR` | `./static` | 静态文件目录 |
-
-### 端口配置
-
-- **HTTP端口**: 8080
-- **健康检查**: `/health`
-
-### 防火墙配置
-
-```bash
-# Ubuntu/Debian
-sudo ufw allow 8080/tcp
-
-# CentOS/RHEL
-sudo firewall-cmd --add-port=8080/tcp --permanent
-sudo firewall-cmd --reload
-```
-
-## 🔧 故障排除
-
-### 常见问题
-
-1. **端口被占用**
-```bash
-# 查看端口占用
-sudo netstat -tlnp | grep 8080
-# 或
-sudo lsof -i :8080
-
-# 停止占用进程
-sudo kill -9 <PID>
-```
-
-2. **权限问题**
-```bash
-# 设置文件权限
-chmod +x common_tools
-chown -R $USER:$USER /path/to/common_tools
-```
-
-3. **依赖缺失**
-```bash
-# Ubuntu/Debian
-sudo apt install build-essential pkg-config libssl-dev
-
-# CentOS/RHEL
-sudo yum groupinstall "Development Tools"
-sudo yum install openssl-devel pkg-config
-```
-
-4. **服务启动失败**
-```bash
-# 查看systemd日志
-sudo journalctl -u common-tools -f
-
-# 查看详细错误
-sudo journalctl -u common-tools --no-pager -l
-```
-
-### 日志配置
-
-```bash
-# 启用调试日志
-export RUST_LOG=debug
-
-# 查看应用日志
-./common_tools
-
-# 或使用systemd
-sudo journalctl -u common-tools -f
-```
-
-## 📈 性能优化
-
-### 系统优化
-
-1. **文件描述符限制**
-```bash
-# 临时增加
-ulimit -n 65536
-
-# 永久设置
-echo "* soft nofile 65536" >> /etc/security/limits.conf
-echo "* hard nofile 65536" >> /etc/security/limits.conf
-```
-
-2. **内核参数优化**
-```bash
-# 编辑 /etc/sysctl.conf
-echo "net.core.somaxconn = 65536" >> /etc/sysctl.conf
-echo "net.ipv4.tcp_max_syn_backlog = 65536" >> /etc/sysctl.conf
-
-# 应用配置
-sudo sysctl -p
-```
-
-### 应用优化
-
-1. **并发配置**
-```bash
-# 设置工作线程数
-export TOKIO_WORKER_THREADS=4
-
-# 启用Tokio控制台
-export TOKIO_CONSOLE_ENABLED=true
-```
-
-2. **缓存配置**
-```bash
-# 启用文件缓存
-export FILE_CACHE_ENABLED=true
-export FILE_CACHE_SIZE=1000
-```
-
-## 🔒 安全配置
-
-### SSL/TLS配置
-
-```bash
-# 使用反向代理 (Nginx)
+```nginx
 server {
-    listen 443 ssl http2;
+    listen 80;
     server_name your-domain.com;
-
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
     location / {
-        proxy_pass http://localhost:8080;
+        proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
-### 访问控制
+如确需直接对外监听 `0.0.0.0`，请在 `src-tauri/src/main.rs` 的服务模式入口中调整
+`TcpListener::bind` 的地址（当前硬编码为 `127.0.0.1`）。
 
-```bash
-# IP白名单 (Nginx)
-location / {
-    allow 192.168.1.0/24;
-    allow 10.0.0.0/8;
-    deny all;
-    proxy_pass http://localhost:8080;
-}
+### systemd 守护
+
+```ini
+[Unit]
+Description=ByteBench 服务模式
+After=network.target
+
+[Service]
+Type=simple
+Environment=CT_PORT=8080
+ExecStart=/opt/bytebench/common_tools
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
 ```
 
-## 📞 技术支持
-
-如遇到部署问题，请：
-
-1. 检查系统日志
-2. 确认环境配置
-3. 验证网络连接
-4. 查看GitHub Issues
-
-## 🔄 更新升级
-
-### 源码部署更新
 ```bash
-git pull origin master
-cargo build --release
-sudo systemctl restart common-tools
+sudo cp common_tools /opt/bytebench/
+sudo cp bytebench.service /etc/systemd/system/
+sudo systemctl enable --now bytebench
 ```
 
-### Docker更新
-```bash
-./docker-deploy.sh update
+---
+
+## 三、容器化服务模式（可选）
+
+> 旧版（Tauri 改造前）的 `Dockerfile`、`docker-compose.yml`、`docker-deploy.sh`、
+> `deploy.sh`、`build_release.sh` 已随本次重构**删除**——它们假设代码与 `Cargo.toml`
+> 位于仓库根目录并从磁盘读取 `static/`，这些前提均已不再成立。
+
+如需容器化服务模式，工程现位于 `src-tauri/`，构建需加 `--no-default-features`，且无需
+再拷贝 `static/`（资源已内嵌）。最小 Dockerfile 示例：
+
+```dockerfile
+FROM rust:1-bookworm AS build
+WORKDIR /app
+COPY . .
+RUN cd src-tauri && cargo build --release --no-default-features
+FROM debian:bookworm-slim
+COPY --from=build /app/src-tauri/target/release/common_tools /usr/local/bin/
+ENV CT_PORT=8080
+EXPOSE 8080
+CMD ["common_tools"]
 ```
 
-### 二进制包更新
-```bash
-# 停止服务
-sudo systemctl stop common-tools
+> 注意：服务监听 `127.0.0.1`，容器内对外暴露时仍需将其改为 `0.0.0.0` 或加反代。
 
-# 备份当前版本
-cp common_tools common_tools.backup
+---
 
-# 替换二进制文件
-cp new_common_tools common_tools
+## 四、故障排除
 
-# 启动服务
-sudo systemctl start common_tools
-```
+| 现象 | 排查 |
+|------|------|
+| 双击 exe 无窗口/闪退 | 确认已安装 WebView2 运行时；用 `cargo build` 的调试版可见控制台日志 |
+| Windows 提示「无法验证发布者」 | 未签名所致，见 [代码签名](#代码签名可选建议用于对外分发) |
+| 交叉编译 Windows 失败 | Tauri 不支持从 Linux/macOS 交叉编译 Windows，请在 Windows 上构建 |
+| 服务模式外网访问不到 | 默认仅监听 `127.0.0.1`，需反向代理或改绑定地址 |
+| 端口被占用（服务模式） | 改用其他 `CT_PORT`，或不设置该变量以自动分配空闲端口 |

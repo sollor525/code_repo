@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "字节工具台主窗口的默认能力集合",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

@@ -3,102 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MD5 计算工具 - 开发者工具箱</title>
+    <title>MD5 计算工具 - 字节工具台</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔐</text></svg>">
 
     <style>
-        /* MD5 计算页面专用样式 */
-        .compact-card {
-            margin-bottom: 1.5rem;
-        }
-
-        .compact-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            align-items: start;
-        }
-
-        .result-container {
-            min-height: 80px !important;
-        }
-
-        .form-textarea, .form-input {
-            padding: 0.75rem;
-        }
-
-        .btn {
-            padding: 0.5rem 1rem;
-            margin: 0.25rem;
-        }
-
-        .hash-result {
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            word-break: break-all;
-            background: var(--background-secondary);
-            padding: 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-
-        .file-input-wrapper {
-            position: relative;
-            display: inline-block;
-            width: 100%;
-        }
-
-        .file-input {
-            position: absolute;
-            opacity: 0;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
-        }
-
-        .file-input-label {
-            display: block;
-            padding: 0.75rem;
-            border: 2px dashed var(--border-color);
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: var(--background-secondary);
-        }
-
-        .file-input-label:hover {
-            border-color: var(--primary-color);
-            background: var(--primary-color-light);
-        }
-
-        .file-info {
-            margin-top: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-
-        .copy-btn {
-            background: var(--success-color);
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
-
-        .copy-btn:hover {
-            background: var(--success-color-dark);
-            transform: translateY(-1px);
-        }
-
-        .copy-btn:active {
-            transform: translateY(0);
-        }
-
         @media (max-width: 768px) {
             .compact-grid {
                 grid-template-columns: 1fr;
@@ -111,37 +20,43 @@
     <header class="header">
         <div class="header-content">
             <a href="/" class="logo">
-                <span style="font-size: 1.5rem; margin-right: 0.5rem;">🛠️</span>
-                <span>开发者工具箱</span>
+                <span class="brand-mark" aria-hidden="true">
+                    <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                        <polyline points="1,11 4,11 5.5,5 7.5,12 9,8 11,8" stroke="#F0B23E" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+                        <polyline points="6,15 10,15 11.5,15 13,15 16,15" stroke="#4FD0E0" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+                    </svg>
+                </span>
+                <span>字节工具台</span>
+                <span class="brand-sub">BYTE&nbsp;BENCH</span>
             </a>
             <nav class="nav">
-                <a href="/" class="nav-link">主页</a>
+                <a href="/" class="nav-link">首页</a>
                 <a href="/network.html" class="nav-link">网络转换</a>
                 <a href="/packet.html" class="nav-link">报文分析</a>
                 <a href="/regex.html" class="nav-link">正则匹配</a>
                 <a href="/md5.html" class="nav-link active">MD5 计算</a>
                 <a href="/string.html" class="nav-link">字符串转换</a>
+                <span class="link-led"><span class="dot"></span>LINK</span>
             </nav>
         </div>
     </header>
 
     <!-- 面包屑导航 -->
-    <nav style="background: var(--background); padding: 1rem 0; border-bottom: 1px solid var(--border-color);">
+    <nav class="statusline">
         <div class="container">
-            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
-                <a href="/" style="color: var(--primary-color); text-decoration: none;">🏠 首页</a>
-                <span>›</span>
-                <span style="color: var(--text-primary); font-weight: 500;">MD5 计算工具</span>
-            </div>
+            <a href="/">首页</a>
+            <span class="sep">/</span>
+            <span class="here">MD5 计算</span>
         </div>
     </nav>
 
     <main class="main">
         <div class="container">
             <!-- 页面标题 -->
-            <div class="card">
+            <div class="card lead">
                 <div class="card-header">
-                    <h1 class="card-title">🔐 MD5 哈希计算工具</h1>
+                    <span class="eyebrow">CH · MD5 — message digest</span>
+                    <h1 class="card-title">MD5 哈希计算</h1>
                     <p class="card-description">
                         快速计算文本或文件的 MD5 哈希值，支持多种输入格式，适用于数据校验、文件完整性验证等场景
                     </p>
@@ -151,7 +66,7 @@
             <!-- 文本 MD5 计算 -->
             <div class="card compact-card">
                 <div class="card-header">
-                    <h2 class="card-title">📝 文本 MD5 计算</h2>
+                    <h2 class="card-title">文本 MD5 计算</h2>
                 </div>
                 <div class="compact-grid">
                     <div>
@@ -162,10 +77,10 @@
                         </div>
                         <div class="btn-group">
                             <button class="btn btn-primary" onclick="calculateTextMD5()">
-                                🔐 计算 MD5
+                                计算 MD5
                             </button>
                             <button class="btn btn-secondary" onclick="clearTextInput()">
-                                🗑️ 清空
+                                清空
                             </button>
                         </div>
                     </div>
@@ -177,7 +92,7 @@
                                     <div id="textHashValue"></div>
                                     <div class="file-info" id="textInfo"></div>
                                     <button class="copy-btn" onclick="copyToClipboard('textHashValue')">
-                                        📋 复制结果
+                                        复制结果
                                     </button>
                                 </div>
                                 <div id="textPlaceholder" style="color: var(--text-secondary); text-align: center; padding: 2rem;">
@@ -192,7 +107,7 @@
             <!-- 文件 MD5 计算 -->
             <div class="card compact-card">
                 <div class="card-header">
-                    <h2 class="card-title">📁 文件 MD5 计算</h2>
+                    <h2 class="card-title">文件 MD5 计算</h2>
                 </div>
                 <div class="compact-grid">
                     <div>
@@ -201,7 +116,6 @@
                             <div class="file-input-wrapper">
                                 <input type="file" id="fileInput" class="file-input" onchange="handleFileSelect()">
                                 <label for="fileInput" class="file-input-label">
-                                    <div style="font-size: 1.2rem; margin-bottom: 0.5rem;">📁</div>
                                     <div>点击选择文件或拖拽文件到此处</div>
                                     <div style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-secondary);">
                                         支持任意格式文件
@@ -212,10 +126,10 @@
                         </div>
                         <div class="btn-group">
                             <button class="btn btn-primary" onclick="calculateFileMD5()" id="calculateFileBtn" disabled>
-                                🔐 计算文件 MD5
+                                计算文件 MD5
                             </button>
                             <button class="btn btn-secondary" onclick="clearFileInput()">
-                                🗑️ 清空
+                                清空
                             </button>
                         </div>
                     </div>
@@ -227,7 +141,7 @@
                                     <div id="fileHashValue"></div>
                                     <div class="file-info" id="fileInfoResult"></div>
                                     <button class="copy-btn" onclick="copyToClipboard('fileHashValue')">
-                                        📋 复制结果
+                                        复制结果
                                     </button>
                                 </div>
                                 <div id="filePlaceholder" style="color: var(--text-secondary); text-align: center; padding: 2rem;">
@@ -242,12 +156,12 @@
             <!-- 使用说明 -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">📖 使用说明</h2>
+                    <h2 class="card-title">使用说明</h2>
                 </div>
                 <div class="card-content">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
                         <div>
-                            <h3 style="color: var(--primary-color); margin-bottom: 1rem;">🔤 文本计算</h3>
+                            <h3 style="color: var(--primary-color); margin-bottom: 1rem;">文本计算</h3>
                             <ul style="line-height: 1.6; color: var(--text-secondary);">
                                 <li>支持任意文本内容，包括中文、英文、数字等</li>
                                 <li>实时计算，输入后即可查看结果</li>
@@ -256,7 +170,7 @@
                             </ul>
                         </div>
                         <div>
-                            <h3 style="color: var(--primary-color); margin-bottom: 1rem;">📁 文件计算</h3>
+                            <h3 style="color: var(--primary-color); margin-bottom: 1rem;">文件计算</h3>
                             <ul style="line-height: 1.6; color: var(--text-secondary);">
                                 <li>支持任意格式和大小的文件</li>
                                 <li>显示文件大小和基本信息</li>
@@ -265,7 +179,7 @@
                             </ul>
                         </div>
                         <div>
-                            <h3 style="color: var(--primary-color); margin-bottom: 1rem;">💡 应用场景</h3>
+                            <h3 style="color: var(--primary-color); margin-bottom: 1rem;">应用场景</h3>
                             <ul style="line-height: 1.6; color: var(--text-secondary);">
                                 <li>密码哈希存储</li>
                                 <li>文件完整性验证</li>
@@ -281,7 +195,7 @@
 
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2024 开发者工具箱. 免费开源工具集合.</p>
+            <p>© 2026 字节工具台 · built on rust</p>
         </div>
     </footer>
 

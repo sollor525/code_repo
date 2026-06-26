@@ -1,0 +1,43 @@
+[package]
+name = "common_tools"
+version = "0.1.0"
+edition = "2021"
+authors = ["Common Tools Developer"]
+description = "字节工具台 — 网络协议调试工具集（Tauri 桌面版）"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# 桌面外壳（仅在 desktop 特性下编译；Windows 构建使用它）
+tauri = { version = "2", features = [], optional = true }
+
+# 内嵌 Web 服务 + 工具逻辑（跨平台，纯 Rust）
+tokio = { version = "1.0", features = ["full"] }
+axum = "0.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1.0"
+mime_guess = "2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+hex = "0.4"
+pcap-file = "2.0"
+regex = "1.10"
+md5 = "0.7"
+
+[[bin]]
+name = "common_tools"
+path = "src/main.rs"
+
+[features]
+# 默认构建桌面应用（Tauri 窗口）。Linux 上用 --no-default-features 可单独验证内嵌服务。
+default = ["desktop"]
+desktop = ["dep:tauri"]
+
+# 发布构建：精简单文件可执行程序
+[profile.release]
+strip = true
+opt-level = "s"
+lto = "thin"

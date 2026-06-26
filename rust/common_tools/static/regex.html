@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>正则匹配工具 - 开发者工具箱</title>
+    <title>正则匹配工具 - 字节工具台</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔍</text></svg>">
 </head>
@@ -11,37 +11,43 @@
     <header class="header">
         <div class="header-content">
             <a href="/" class="logo">
-                <span style="font-size: 1.5rem; margin-right: 0.5rem;">🛠️</span>
-                <span>开发者工具箱</span>
+                <span class="brand-mark" aria-hidden="true">
+                    <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                        <polyline points="1,11 4,11 5.5,5 7.5,12 9,8 11,8" stroke="#F0B23E" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+                        <polyline points="6,15 10,15 11.5,15 13,15 16,15" stroke="#4FD0E0" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+                    </svg>
+                </span>
+                <span>字节工具台</span>
+                <span class="brand-sub">BYTE&nbsp;BENCH</span>
             </a>
             <nav class="nav">
-                <a href="/" class="nav-link">主页</a>
+                <a href="/" class="nav-link">首页</a>
                 <a href="/network.html" class="nav-link">网络转换</a>
                 <a href="/packet.html" class="nav-link">报文分析</a>
                 <a href="/regex.html" class="nav-link active">正则匹配</a>
                 <a href="/md5.html" class="nav-link">MD5 计算</a>
                 <a href="/string.html" class="nav-link">字符串转换</a>
+                <span class="link-led"><span class="dot"></span>LINK</span>
             </nav>
         </div>
     </header>
 
     <!-- 面包屑导航 -->
-    <nav style="background: var(--background); padding: 1rem 0; border-bottom: 1px solid var(--border-color);">
+    <nav class="statusline">
         <div class="container">
-            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
-                <a href="/" style="color: var(--primary-color); text-decoration: none;">🏠 首页</a>
-                <span>›</span>
-                <span style="color: var(--text-primary); font-weight: 500;">正则匹配工具</span>
-            </div>
+            <a href="/">首页</a>
+            <span class="sep">/</span>
+            <span class="here">正则匹配</span>
         </div>
     </nav>
 
     <main class="main">
         <div class="container">
             <!-- 页面标题 -->
-            <div class="card">
+            <div class="card lead">
                 <div class="card-header">
-                    <h1 class="card-title">🔍 正则表达式匹配工具</h1>
+                    <span class="eyebrow">CH · RGX — pattern matcher</span>
+                    <h1 class="card-title">正则表达式匹配工具</h1>
                     <p class="card-description">
                         强大的正则表达式匹配和捕获组功能，支持多种匹配模式和高级选项
                     </p>
@@ -51,7 +57,7 @@
             <!-- 正则表达式输入 -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">📝 正则表达式</h2>
+                    <h2 class="card-title">正则表达式</h2>
                 </div>
                 <div class="form-group">
                     <label class="form-label">输入正则表达式</label>
@@ -79,7 +85,7 @@
             <!-- 测试文本输入 -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">📄 测试文本</h2>
+                    <h2 class="card-title">测试文本</h2>
                 </div>
                 <div class="form-group">
                     <label class="form-label">输入测试文本</label>
@@ -96,19 +102,19 @@
                 </div>
                 <div class="btn-group">
                     <button class="btn btn-primary" onclick="performMatch()">
-                        🔍 执行匹配
+                        执行匹配
                     </button>
                     <button class="btn btn-outline" onclick="clearAll()">
-                        🗑️ 清空所有
+                        清空所有
                     </button>
                     <button class="btn btn-outline" onclick="loadExample('email')">
-                        📧 邮箱示例
+                        邮箱示例
                     </button>
                     <button class="btn btn-outline" onclick="loadExample('phone')">
-                        📞 电话示例
+                        电话示例
                     </button>
                     <button class="btn btn-outline" onclick="loadExample('url')">
-                        🌐 URL示例
+                        URL示例
                     </button>
                 </div>
             </div>
@@ -116,7 +122,7 @@
             <!-- 匹配结果 -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">🎯 匹配结果</h2>
+                    <h2 class="card-title">匹配结果</h2>
                 </div>
                 <div class="form-group">
                     <label class="form-label">匹配结果</label>
@@ -129,11 +135,11 @@
             <!-- 使用说明 -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">📖 使用说明</h2>
+                    <h2 class="card-title">使用说明</h2>
                 </div>
                 <div class="grid">
                     <div>
-                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">⚙️ 匹配选项</h3>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">匹配选项</h3>
                         <ul style="line-height: 1.8; color: var(--text-secondary);">
                             <li><strong>区分大小写:</strong> a ≠ A</li>
                             <li><strong>多行模式:</strong> ^$ 匹配行首行尾</li>
@@ -141,7 +147,7 @@
                         </ul>
                     </div>
                     <div>
-                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">🔧 常用语法</h3>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">常用语法</h3>
                         <ul style="line-height: 1.8; color: var(--text-secondary);">
                             <li><strong>\b:</strong> 单词边界</li>
                             <li><strong>\d:</strong> 数字 (0-9)</li>
@@ -156,12 +162,12 @@
             <!-- 常用正则表达式 -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">📚 常用正则表达式</h2>
+                    <h2 class="card-title">常用正则表达式</h2>
                 </div>
                 <div style="display: grid; gap: 1rem;">
                     <div class="message message-info">
-                        <strong>📧 邮箱地址:</strong>
-                        <code style="background: #1e293b; color: #f1f5f9; padding: 2px 6px; border-radius: 3px;">
+                        <strong>邮箱地址:</strong>
+                        <code style="background: var(--bg); color: var(--cyan);">
                             \b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b
                         </code>
                         <button class="btn btn-outline" onclick="useRegex('\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')" style="margin-left: 10px; padding: 4px 8px; font-size: 0.85rem;">
@@ -169,8 +175,8 @@
                         </button>
                     </div>
                     <div class="message message-info">
-                        <strong>📞 电话号码:</strong>
-                        <code style="background: #1e293b; color: #f1f5f9; padding: 2px 6px; border-radius: 3px;">
+                        <strong>电话号码:</strong>
+                        <code style="background: var(--bg); color: var(--cyan);">
                             \b\d{3}-\d{3}-\d{4}\b
                         </code>
                         <button class="btn btn-outline" onclick="useRegex('\b\d{3}-\d{3}-\d{4}\b')" style="margin-left: 10px; padding: 4px 8px; font-size: 0.85rem;">
@@ -178,8 +184,8 @@
                         </button>
                     </div>
                     <div class="message message-info">
-                        <strong>🌐 URL地址:</strong>
-                        <code style="background: #1e293b; color: #f1f5f9; padding: 2px 6px; border-radius: 3px;">
+                        <strong>URL地址:</strong>
+                        <code style="background: var(--bg); color: var(--cyan);">
                             https?://[^\s]+
                         </code>
                         <button class="btn btn-outline" onclick="useRegex('https?://[^\s]+')" style="margin-left: 10px; padding: 4px 8px; font-size: 0.85rem;">
@@ -187,8 +193,8 @@
                         </button>
                     </div>
                     <div class="message message-info">
-                        <strong>🔤 IPv4地址:</strong>
-                        <code style="background: #1e293b; color: #f1f5f9; padding: 2px 6px; border-radius: 3px;">
+                        <strong>IPv4地址:</strong>
+                        <code style="background: var(--bg); color: var(--cyan);">
                             \b(?:\d{1,3}\.){3}\d{1,3}\b
                         </code>
                         <button class="btn btn-outline" onclick="useRegex('\b(?:\d{1,3}\.){3}\d{1,3}\b')" style="margin-left: 10px; padding: 4px 8px; font-size: 0.85rem;">
@@ -201,7 +207,7 @@
             <!-- 快捷键说明 -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">⌨️ 快捷键</h2>
+                    <h2 class="card-title">快捷键</h2>
                 </div>
                 <div class="grid">
                     <div>
