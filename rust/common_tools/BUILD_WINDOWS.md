@@ -14,8 +14,11 @@ self-contained — no `static/` folder needs to ship next to it.
 
 1. **Rust** (MSVC toolchain) — install from <https://rustup.rs>. Accept the
    default `stable-x86_64-pc-windows-msvc`.
-2. **Microsoft C++ Build Tools** — the "Desktop development with C++" workload
-   (MSVC compiler + Windows SDK). rustup links you to it during setup.
+2. **Microsoft C++ Build Tools** — the **"Desktop development with C++"** workload
+   (MSVC `link.exe`/`cl.exe` + Windows SDK). Install via the **Visual Studio
+   Installer** (standalone Build Tools *or* full VS → Modify → tick that workload).
+   The Visual Studio IDE on its own is **not** enough — that workload is what
+   provides the linker; without it you get `error: linker 'link.exe' not found`.
 3. **WebView2 Runtime** — preinstalled on Windows 11 and current Windows 10.
    If missing, install the Evergreen runtime from Microsoft.
 4. **Tauri CLI** (only needed to produce an installer):
@@ -24,6 +27,17 @@ self-contained — no `static/` folder needs to ship next to it.
    ```
 
 ## Build
+
+> **Build from a Visual Studio developer shell — not Git Bash, and not a plain
+> PowerShell/cmd.** MSVC's linker is only on `PATH` inside the VS environment.
+> Use any one of:
+> - the **"x64 Native Tools Command Prompt for VS"** (Start menu), or
+> - a `cmd` window after running `"...\VC\Auxiliary\Build\vcvars64.bat"`, or
+> - PowerShell after `& "...\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64`
+>   (the leading `&` is required; `vcvars64.bat` does **not** work in PowerShell).
+>
+> Git Bash / MSYS2 will fail: its `link.exe` is GNU coreutils, not MSVC's.
+> Sanity check inside the shell: `where link` must point at `…\VC\Tools\MSVC\…`.
 
 From the project root (`...\rust\common_tools`):
 
@@ -72,3 +86,13 @@ cargo build --no-default-features          # compiles everything except Tauri
 CT_PORT=3031 ./target/debug/common_tools   # runs the embedded server headless
 # then open http://127.0.0.1:3031
 ```
+
+## Troubleshooting
+
+| Symptom | Cause / fix |
+|---------|-------------|
+| `error: linker 'link.exe' not found` | MSVC C++ workload not installed (the VS IDE alone is not enough), or you're in a shell without the VS env. Install **"Desktop development with C++"** and build from a VS developer shell. |
+| `link: extra operand … Try 'link --help'` | You're in **Git Bash / MSYS2** — its GNU `link.exe` shadows MSVC's. Build from the VS dev shell / x64 Native Tools prompt instead. |
+| `proc macro panicked … Unsupported PNG bit depth: Sixteen` | An icon is a 16-bit PNG; Tauri's `generate_context!` needs 8-bit. Regenerate every icon + `.ico` frame at 8-bit (ImageMagick: `-depth 8` / `PNG32:`). The committed icons are already 8-bit. |
+| Builds, but the window is blank or won't open | Install the **WebView2 runtime** (Evergreen) — required at runtime, not build time. |
+| `cargo install tauri-cli` fails to link | Same shell issue — run it from the VS dev shell, not Git Bash. |
