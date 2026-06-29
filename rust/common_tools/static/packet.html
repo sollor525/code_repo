@@ -29,28 +29,24 @@
         </nav>
         <div class="side-foot"><span class="link-led"><span class="dot"></span>LINK</span></div>
     </aside>
-    <div class="content">
+    <div class="content tool">
 
     <main class="main">
         <div class="container">
-            <!-- 页面标题 -->
-            <div class="card lead">
-                <div class="card-header">
-                    <span class="eyebrow">CH · PKT — packet dissector</span>
-                    <h1 class="card-title">报文分析</h1>
-                    <p class="card-description">
-                        支持 Hex 数据解析、网络协议分析和 PCAP 文件导出，适用于网络调试和数据分析
-                    </p>
-                </div>
-            </div>
+            <header class="tool-head">
+                <span class="eyebrow">CH · PKT — packet dissector</span>
+                <h1>报文分析</h1>
+                <p>粘贴 Hex 数据，逐层解析以太网 / IPv4 / TCP·UDP·ICMP，并可导出标准 PCAP 文件。</p>
+            </header>
 
+            <div class="workspace io">
             <!-- Hex数据输入 -->
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">Hex 数据输入</h2>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">输入Hex数据</label>
+                <div class="form-group fill">
+                    <label class="form-label">输入 Hex 数据</label>
                     <textarea id="hexInput" class="form-textarea" rows="6"
                               placeholder="请输入十六进制数据，例如：
 08002712345608002712345608000450000283c7c4000400643c2c0a80101c0a801c8
@@ -81,13 +77,14 @@
                 <div class="card-header">
                     <h2 class="card-title">分析结果</h2>
                 </div>
-                <div class="form-group">
+                <div class="form-group fill">
                     <label class="form-label">解析结果</label>
-                    <div id="analysisResult" class="result-container" style="min-height: 200px;">
+                    <div id="analysisResult" class="result-container">
                         等待分析...
                     </div>
                 </div>
             </div>
+            </div><!-- /workspace -->
 
             <details class="help"><summary>说明与示例</summary><div class="help-body">
             <!-- 使用说明 -->

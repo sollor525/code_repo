@@ -38,110 +38,95 @@
         </nav>
         <div class="side-foot"><span class="link-led"><span class="dot"></span>LINK</span></div>
     </aside>
-    <div class="content">
+    <div class="content tool">
 
     <main class="main">
         <div class="container">
-            <!-- 页面标题 -->
-            <div class="card lead">
-                <div class="card-header">
-                    <span class="eyebrow">CH · MD5 — message digest</span>
-                    <h1 class="card-title">MD5 哈希计算</h1>
-                    <p class="card-description">
-                        快速计算文本或文件的 MD5 哈希值，支持多种输入格式，适用于数据校验、文件完整性验证等场景
-                    </p>
-                </div>
-            </div>
+            <header class="tool-head">
+                <span class="eyebrow">CH · MD5 — message digest</span>
+                <h1>MD5 哈希计算</h1>
+                <p>对文本或文件计算 MD5 摘要，用于数据校验与文件完整性验证。</p>
+            </header>
 
+            <div class="workspace cols-2">
             <!-- 文本 MD5 计算 -->
-            <div class="card compact-card">
+            <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">文本 MD5 计算</h2>
                 </div>
-                <div class="compact-grid">
-                    <div>
-                        <div class="form-group">
-                            <label class="form-label">输入文本内容</label>
-                            <textarea id="textInput" class="form-textarea" rows="8"
-                                      placeholder="请输入要计算 MD5 的文本内容..."></textarea>
-                        </div>
-                        <div class="btn-group">
-                            <button class="btn btn-primary" onclick="calculateTextMD5()">
-                                计算 MD5
+                <div class="form-group">
+                    <label class="form-label">输入文本内容</label>
+                    <textarea id="textInput" class="form-textarea" rows="4"
+                              placeholder="请输入要计算 MD5 的文本内容..."></textarea>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="calculateTextMD5()">
+                        计算 MD5
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearTextInput()">
+                        清空
+                    </button>
+                </div>
+                <div class="form-group fill">
+                    <label class="form-label">MD5 哈希结果</label>
+                    <div class="result-container">
+                        <div id="textResult" class="hash-result" style="display: none;">
+                            <div id="textHashValue"></div>
+                            <div class="file-info" id="textInfo"></div>
+                            <button class="copy-btn" onclick="copyToClipboard('textHashValue')">
+                                复制结果
                             </button>
-                            <button class="btn btn-secondary" onclick="clearTextInput()">
-                                清空
-                            </button>
                         </div>
-                    </div>
-                    <div>
-                        <div class="form-group">
-                            <label class="form-label">MD5 哈希结果</label>
-                            <div class="result-container">
-                                <div id="textResult" class="hash-result" style="display: none;">
-                                    <div id="textHashValue"></div>
-                                    <div class="file-info" id="textInfo"></div>
-                                    <button class="copy-btn" onclick="copyToClipboard('textHashValue')">
-                                        复制结果
-                                    </button>
-                                </div>
-                                <div id="textPlaceholder" style="color: var(--text-secondary); text-align: center; padding: 2rem;">
-                                    点击"计算 MD5"按钮查看结果
-                                </div>
-                            </div>
+                        <div id="textPlaceholder" style="color: var(--text-secondary); text-align: center; padding: 1rem;">
+                            点击"计算 MD5"按钮查看结果
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- 文件 MD5 计算 -->
-            <div class="card compact-card">
+            <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">文件 MD5 计算</h2>
                 </div>
-                <div class="compact-grid">
-                    <div>
-                        <div class="form-group">
-                            <label class="form-label">选择文件</label>
-                            <div class="file-input-wrapper">
-                                <input type="file" id="fileInput" class="file-input" onchange="handleFileSelect()">
-                                <label for="fileInput" class="file-input-label">
-                                    <div>点击选择文件或拖拽文件到此处</div>
-                                    <div style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-secondary);">
-                                        支持任意格式文件
-                                    </div>
-                                </label>
+                <div class="form-group">
+                    <label class="form-label">选择文件</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="fileInput" class="file-input" onchange="handleFileSelect()">
+                        <label for="fileInput" class="file-input-label">
+                            <div>点击选择文件或拖拽文件到此处</div>
+                            <div style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-secondary);">
+                                支持任意格式文件
                             </div>
-                            <div id="fileInfo" class="file-info" style="display: none;"></div>
-                        </div>
-                        <div class="btn-group">
-                            <button class="btn btn-primary" onclick="calculateFileMD5()" id="calculateFileBtn" disabled>
-                                计算文件 MD5
-                            </button>
-                            <button class="btn btn-secondary" onclick="clearFileInput()">
-                                清空
-                            </button>
-                        </div>
+                        </label>
                     </div>
-                    <div>
-                        <div class="form-group">
-                            <label class="form-label">文件 MD5 哈希结果</label>
-                            <div class="result-container">
-                                <div id="fileResult" class="hash-result" style="display: none;">
-                                    <div id="fileHashValue"></div>
-                                    <div class="file-info" id="fileInfoResult"></div>
-                                    <button class="copy-btn" onclick="copyToClipboard('fileHashValue')">
-                                        复制结果
-                                    </button>
-                                </div>
-                                <div id="filePlaceholder" style="color: var(--text-secondary); text-align: center; padding: 2rem;">
-                                    选择文件后点击"计算文件 MD5"按钮
-                                </div>
-                            </div>
+                    <div id="fileInfo" class="file-info" style="display: none;"></div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="calculateFileMD5()" id="calculateFileBtn" disabled>
+                        计算文件 MD5
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearFileInput()">
+                        清空
+                    </button>
+                </div>
+                <div class="form-group fill">
+                    <label class="form-label">文件 MD5 哈希结果</label>
+                    <div class="result-container">
+                        <div id="fileResult" class="hash-result" style="display: none;">
+                            <div id="fileHashValue"></div>
+                            <div class="file-info" id="fileInfoResult"></div>
+                            <button class="copy-btn" onclick="copyToClipboard('fileHashValue')">
+                                复制结果
+                            </button>
+                        </div>
+                        <div id="filePlaceholder" style="color: var(--text-secondary); text-align: center; padding: 1rem;">
+                            选择文件后点击"计算文件 MD5"按钮
                         </div>
                     </div>
                 </div>
             </div>
+            </div><!-- /workspace -->
 
             <!-- 使用说明 -->
             <details class="help"><summary>说明</summary><div class="help-body">

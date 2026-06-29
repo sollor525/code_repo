@@ -6,24 +6,6 @@
     <title>字符串转换工具 - 字节工具台</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔤</text></svg>">
-
-    <style>
-        @media (max-width: 768px) {
-            .compact-grid {
-                grid-template-columns: 1fr;
-                gap: 0.8rem;
-            }
-
-            .string-result {
-                max-height: 150px;
-                font-size: 0.8rem;
-            }
-
-            .form-textarea {
-                font-size: 0.85rem;
-            }
-        }
-    </style>
 </head>
 <body>
 <div class="app">
@@ -47,21 +29,17 @@
         </nav>
         <div class="side-foot"><span class="link-led"><span class="dot"></span>LINK</span></div>
     </aside>
-    <div class="content">
+    <div class="content tool">
 
     <main class="main">
         <div class="container">
-            <!-- 页面标题 -->
-            <div class="card lead">
-                <div class="card-header">
-                    <span class="eyebrow">CH · STR — escape transcoder</span>
-                    <h1 class="card-title">字符串转义序列转换工具</h1>
-                    <p class="card-description">
-                        支持八进制格式（\000）和 Unicode 格式（\u0000）之间的双向转换，自动检测格式并提供精确转换
-                    </p>
-                </div>
-            </div>
+            <header class="tool-head">
+                <span class="eyebrow">CH · STR — escape transcoder</span>
+                <h1>字符串转义序列转换</h1>
+                <p>八进制（\000）与 Unicode（\u0000）转义序列双向互转，可自动检测输入格式。</p>
+            </header>
 
+            <div class="workspace center">
             <!-- 字符串转换工具 -->
             <div class="card compact-card">
                 <div class="card-header">
@@ -74,7 +52,7 @@
                                 输入字符串
                                 <span class="info-badge">支持包含转义序列的字符串</span>
                             </label>
-                            <textarea id="inputText" class="form-textarea" rows="8"
+                            <textarea id="inputText" class="form-textarea" rows="6"
                                       placeholder="输入包含转义序列的字符串...&#10;例如: 4\000\000\000\n5.0.54\000"></textarea>
                         </div>
                         <div class="form-group">
@@ -113,6 +91,7 @@
                     </div>
                 </div>
             </div>
+            </div><!-- /workspace -->
 
             <details class="help"><summary>说明与示例</summary><div class="help-body">
             <!-- 使用示例 -->

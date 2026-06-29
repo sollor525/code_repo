@@ -700,3 +700,57 @@ details.help[open] > summary::before { transform: rotate(90deg); }
     .content .tool-card, .content .tool-card.wide { grid-column: span 1; }
     .content { padding: 16px; }
 }
+
+/* =========================================================================
+   Tool pages — fit-to-window. A compact header, a work area that fills the
+   remaining height (inputs and results side-by-side), and the help
+   disclosure docked at the base. The page never scrolls; only the input
+   and result panels scroll, internally.
+   ========================================================================= */
+.content.tool { display: flex; flex-direction: column; overflow: hidden; }
+.content.tool > .main { flex: 1; min-height: 0; padding: 0; display: flex; }
+.content.tool .container { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+.tool-head { flex: none; margin-bottom: 14px; }
+.tool-head .eyebrow { margin-bottom: 8px; }
+.tool-head h1 {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 1.4rem; letter-spacing: -0.01em; color: var(--ink);
+}
+.tool-head p { color: var(--ink-dim); font-size: 0.88rem; margin-top: 4px; max-width: 82ch; }
+
+.workspace { flex: 1; min-height: 0; display: grid; gap: 14px; }
+.workspace.io     { grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); }
+.workspace.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.workspace.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.workspace.center { align-content: center; }   /* natural-height cards, vertically centered */
+
+.workspace .card { margin: 0; min-height: 0; display: flex; flex-direction: column; }
+.workspace .card > .card-header { flex: none; }
+.workspace .card > .compact-grid { flex: 1; min-height: 0; }
+
+/* a field flagged .fill consumes the card's leftover height (primary
+   textarea or result read-out) and scrolls inside itself */
+.workspace .fill { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-bottom: 14px; }
+.workspace .fill:last-child { margin-bottom: 0; }
+.workspace .fill > label { flex: none; }
+.workspace .fill > .form-textarea,
+.workspace .fill > .result-container,
+.workspace .fill > .string-result {
+    flex: 1; min-height: 0; max-height: none; height: auto; overflow-y: auto;
+}
+.workspace .fill > .form-textarea { resize: none; }
+
+/* compact, centered layouts (network / md5 / string): bound the result
+   panels instead of letting them fill, so a single short row stays tidy */
+.workspace.center .result-container { min-height: 88px; max-height: 200px; overflow-y: auto; }
+.workspace.center .string-result { max-height: 200px; }
+.workspace.center .compact-grid > div { min-width: 0; }
+
+/* in multi-column workspaces each card is narrow, so stack its input above
+   its result instead of side-by-side */
+.workspace.cols-3 .compact-grid,
+.workspace.cols-2 .compact-grid { grid-template-columns: 1fr; gap: 12px; }
+
+.content.tool details.help { flex: none; margin-top: 14px; }
+.content.tool details.help[open] > .help-body { max-height: 38vh; overflow-y: auto; }

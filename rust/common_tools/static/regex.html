@@ -29,25 +29,21 @@
         </nav>
         <div class="side-foot"><span class="link-led"><span class="dot"></span>LINK</span></div>
     </aside>
-    <div class="content">
+    <div class="content tool">
 
     <main class="main">
         <div class="container">
-            <!-- 页面标题 -->
-            <div class="card lead">
-                <div class="card-header">
-                    <span class="eyebrow">CH · RGX — pattern matcher</span>
-                    <h1 class="card-title">正则表达式匹配工具</h1>
-                    <p class="card-description">
-                        强大的正则表达式匹配和捕获组功能，支持多种匹配模式和高级选项
-                    </p>
-                </div>
-            </div>
+            <header class="tool-head">
+                <span class="eyebrow">CH · RGX — pattern matcher</span>
+                <h1>正则表达式匹配</h1>
+                <p>实时测试正则表达式并逐组展示捕获结果，支持大小写、多行与点号匹配选项。</p>
+            </header>
 
-            <!-- 正则表达式输入 -->
+            <div class="workspace io">
+            <!-- 正则 + 测试文本 -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">正则表达式</h2>
+                    <h2 class="card-title">正则表达式与测试文本</h2>
                 </div>
                 <div class="form-group">
                     <label class="form-label">输入正则表达式</label>
@@ -70,16 +66,10 @@
                         <label for="dotAll">点号匹配所有字符</label>
                     </div>
                 </div>
-            </div>
 
-            <!-- 测试文本输入 -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">测试文本</h2>
-                </div>
-                <div class="form-group">
+                <div class="form-group fill">
                     <label class="form-label">输入测试文本</label>
-                    <textarea id="testString" class="form-textarea" rows="8"
+                    <textarea id="testString" class="form-textarea" rows="6"
                               placeholder="请输入要测试的文本，例如：
 
 联系我们：support@example.com
@@ -114,13 +104,14 @@
                 <div class="card-header">
                     <h2 class="card-title">匹配结果</h2>
                 </div>
-                <div class="form-group">
+                <div class="form-group fill">
                     <label class="form-label">匹配结果</label>
-                    <div id="matchResult" class="result-container" style="min-height: 200px;">
+                    <div id="matchResult" class="result-container">
                         等待匹配...
                     </div>
                 </div>
             </div>
+            </div><!-- /workspace -->
 
             <details class="help"><summary>说明与示例</summary><div class="help-body">
             <!-- 使用说明 -->
