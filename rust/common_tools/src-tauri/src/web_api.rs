@@ -8,9 +8,10 @@ use axum::{
     Json, Router,
 };
 use axum::response::{AppendHeaders};
-use axum::http::{header, HeaderValue};
+use axum::http::{header, HeaderName, HeaderValue};
 use crate::network_utils::NetworkUtils;
 use crate::packet_analyzer::PacketAnalyzer;
+use crate::pcap_generator::{generate_pcap, PcapGenParams};
 use crate::regex_matcher::RegexMatcher;
 use crate::md5_utils::{Md5Request, Md5Response, process_md5_request, process_md5_bytes};
 use crate::string_converter::{StringConvertRequest, StringConvertResponse, process_string_conversion};
@@ -105,6 +106,11 @@ pub fn create_packet_routes() -> Router {
         .route("/analyze", post(packet_analyze))
         .route("/export", post(packet_export))
         .route("/download", post(packet_download))
+}
+
+pub fn create_pcap_routes() -> Router {
+    Router::new()
+        .route("/generate", post(pcap_generate))
 }
 
 pub fn create_regex_routes() -> Router {
@@ -204,6 +210,94 @@ async fn packet_download(
         Err(e) => {
             let error_response = ApiResponse::<serde_json::Value>::error(e.to_string());
             (StatusCode::INTERNAL_SERVER_ERROR, Json(error_response)).into_response()
+        }
+    }
+}
+
+// ============================  PCAP 流量生成  ============================
+fn default_sessions() -> u32 { 1 }
+fn default_src_ip() -> String { "10.10.1.100".to_string() }
+fn default_dst_ip() -> String { "192.168.1.100".to_string() }
+fn default_src_port() -> String { "30000-40000".to_string() }
+fn default_dst_port() -> String { "80".to_string() }
+fn default_http_host() -> String { "example.com".to_string() }
+
+#[derive(Deserialize)]
+struct PcapGenerateRequest {
+    #[serde(default = "default_sessions")]
+    session_count: u32,
+    #[serde(default = "default_src_ip")]
+    src_ip: String,
+    #[serde(default = "default_dst_ip")]
+    dst_ip: String,
+    #[serde(default = "default_src_port")]
+    src_port: String,
+    #[serde(default = "default_dst_port")]
+    dst_port: String,
+    #[serde(default)]
+    include_http: bool,
+    #[serde(default = "default_http_host")]
+    http_host: String,
+    #[serde(default)]
+    http_uris: Vec<String>,
+    #[serde(default)]
+    vlan_id: Option<u16>,
+    #[serde(default)]
+    vlan_priority: u8,
+    #[serde(default)]
+    vlan_dei: bool,
+    #[serde(default)]
+    qinq: bool,
+    #[serde(default)]
+    outer_vlan: Option<u16>,
+    #[serde(default)]
+    inner_vlan: Option<u16>,
+    #[serde(default)]
+    outer_priority: u8,
+    #[serde(default)]
+    inner_priority: u8,
+}
+
+async fn pcap_generate(
+    Json(request): Json<PcapGenerateRequest>
+) -> impl IntoResponse {
+    let params = PcapGenParams {
+        session_count: request.session_count,
+        src_ip: request.src_ip,
+        dst_ip: request.dst_ip,
+        src_port: request.src_port,
+        dst_port: request.dst_port,
+        include_http: request.include_http,
+        http_host: request.http_host,
+        http_uris: request.http_uris,
+        vlan_id: request.vlan_id,
+        vlan_priority: request.vlan_priority,
+        vlan_dei: request.vlan_dei,
+        qinq: request.qinq,
+        outer_vlan: request.outer_vlan,
+        inner_vlan: request.inner_vlan,
+        outer_priority: request.outer_priority,
+        inner_priority: request.inner_priority,
+    };
+
+    match generate_pcap(&params) {
+        Ok(result) => {
+            let headers = AppendHeaders([
+                (header::CONTENT_TYPE, HeaderValue::from_static("application/octet-stream")),
+                (header::CONTENT_DISPOSITION, HeaderValue::from_static("attachment; filename=generated.pcap")),
+                (header::CACHE_CONTROL, HeaderValue::from_static("no-cache")),
+                (HeaderName::from_static("x-session-count"),
+                 HeaderValue::from_str(&result.session_count.to_string()).unwrap()),
+                (HeaderName::from_static("x-packet-count"),
+                 HeaderValue::from_str(&result.packet_count.to_string()).unwrap()),
+                (HeaderName::from_static("x-flow"),
+                 HeaderValue::from_str(&result.flow).unwrap_or(HeaderValue::from_static(""))),
+            ]);
+            (headers, result.pcap).into_response()
+        }
+        Err(e) => {
+            let error_response = ApiResponse::<serde_json::Value>::error(e);
+            (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
         }
     }
 }

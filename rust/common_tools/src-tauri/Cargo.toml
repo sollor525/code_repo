@@ -27,6 +27,9 @@ pcap-file = "2.0"
 regex = "1.10"
 md5 = "0.7"
 
+# PCAP 流量生成核心（自 rust/gen_pcap 移植的纯计算子集，本地路径依赖）
+genpcap = { path = "../genpcap" }
+
 [[bin]]
 name = "common_tools"
 path = "src/main.rs"

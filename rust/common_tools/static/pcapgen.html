@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCAP 流量生成 - 字节工具台</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>">
+    <style>
+        .pcap-fields { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 6px; }
+        .pcap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .pcap-fields .form-group { margin-bottom: 0; }
+        .pcap-sub { border-top: 1px solid var(--line); padding-top: 12px; }
+        .pcap-sub-title { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 10px; }
+        .pcap-fields .form-input { padding: 9px 11px; }
+    </style>
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <a class="brand" href="/">
+            <span class="brand-mark" aria-hidden="true">
+                <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                    <polyline points="1,11 4,11 5.5,5 7.5,12 9,8 11,8" stroke="#F0B23E" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+                    <polyline points="6,15 10,15 11.5,15 13,15 16,15" stroke="#4FD0E0" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+                </svg>
+            </span>
+            <span>字节工具台</span>
+        </a>
+        <nav class="side-nav">
+            <a href="/" class="side-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>首页</span></a>
+            <a href="/network.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h16M15 4l4 4-4 4"/><path d="M23 18H7M11 22l-4-4 4-4"/></svg><span>网络转换</span></a>
+            <a href="/packet.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2l9 5v12l-9 5-9-5V7z"/><path d="M4 7l9 5 9-5M13 12v12"/></svg><span>报文分析</span></a>
+            <a href="/pcapgen.html" class="side-link active"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l6 6v14H5z"/><path d="M15 3v6h6"/><path d="M13 11v7M9.5 14.5L13 18l3.5-3.5"/></svg><span>PCAP 生成</span></a>
+            <a href="/regex.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4H4v18h3M19 4h3v18h-3"/><path d="M13 9v8M9.5 11l7 4M16.5 11l-7 4"/></svg><span>正则匹配</span></a>
+            <a href="/md5.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L7 23M19 3l-3 20M4 9h18M3 17h18"/></svg><span>MD5 计算</span></a>
+            <a href="/string.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5l-6 16M8 9l-4 4 4 4M18 9l4 4-4 4"/></svg><span>字符串转换</span></a>
+        </nav>
+        <div class="side-foot"><span class="link-led"><span class="dot"></span>LINK</span></div>
+    </aside>
+    <div class="content tool">
+
+    <main class="main">
+        <div class="container">
+            <header class="tool-head">
+                <span class="eyebrow">CH · GEN — pcap traffic synthesizer</span>
+                <h1>PCAP 流量生成</h1>
+                <p>按参数批量合成 TCP / HTTP 会话（可选 VLAN / QinQ）并导出标准 PCAP，可用 Wireshark 打开分析。</p>
+            </header>
+
+            <div class="workspace io">
+            <!-- 生成参数 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">生成参数</h2>
+                </div>
+                <div class="pcap-fields">
+                    <div class="pcap-grid">
+                        <div class="form-group">
+                            <label class="form-label">会话数量</label>
+                            <input type="number" id="sessionCount" class="form-input" min="1" max="10000" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">目标端口</label>
+                            <input type="text" id="dstPort" class="form-input" value="80" placeholder="80 或 80-443 或 random">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">源 IP 范围</label>
+                            <input type="text" id="srcIp" class="form-input" value="10.10.1.100" placeholder="10.0.0.1 或 10.0.0.1-10.0.0.100 或 random">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">目标 IP 范围</label>
+                            <input type="text" id="dstIp" class="form-input" value="192.168.1.100" placeholder="192.168.1.100 或 random">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">源端口范围</label>
+                            <input type="text" id="srcPort" class="form-input" value="30000-40000" placeholder="30000-40000 或 random">
+                        </div>
+                    </div>
+
+                    <div class="pcap-sub">
+                        <div class="pcap-sub-title">应用层流量</div>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="includeHttp" onchange="toggleHttp()">
+                                <label for="includeHttp">包含 HTTP 请求 / 响应（否则仅生成 TCP 三次握手）</label>
+                            </div>
+                        </div>
+                        <div class="pcap-grid" id="httpFields" style="margin-top: 10px; display: none;">
+                            <div class="form-group">
+                                <label class="form-label">HTTP Host</label>
+                                <input type="text" id="httpHost" class="form-input" value="example.com">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">HTTP URI（逗号分隔）</label>
+                                <input type="text" id="httpUris" class="form-input" value="/,/api/users">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pcap-sub">
+                        <div class="pcap-sub-title">VLAN（可选）</div>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="enableVlan" onchange="toggleVlan()">
+                                <label for="enableVlan">单层 VLAN (802.1Q)</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="enableQinq" onchange="toggleVlan()">
+                                <label for="enableQinq">双层 VLAN / QinQ</label>
+                            </div>
+                        </div>
+                        <div class="pcap-grid" id="vlanFields" style="margin-top: 10px; display: none;">
+                            <div class="form-group">
+                                <label class="form-label">VLAN ID (1-4094)</label>
+                                <input type="number" id="vlanId" class="form-input" min="1" max="4094" placeholder="100">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">VLAN 优先级 (0-7)</label>
+                                <input type="number" id="vlanPriority" class="form-input" min="0" max="7" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">DEI</label>
+                                <div class="checkbox-item" style="padding-top: 8px;">
+                                    <input type="checkbox" id="vlanDei">
+                                    <label for="vlanDei">设置 Drop Eligible 位</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pcap-grid" id="qinqFields" style="margin-top: 10px; display: none;">
+                            <div class="form-group">
+                                <label class="form-label">外层 VLAN ID</label>
+                                <input type="number" id="outerVlan" class="form-input" min="1" max="4094" placeholder="200">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">内层 VLAN ID</label>
+                                <input type="number" id="innerVlan" class="form-input" min="1" max="4094" placeholder="100">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">外层优先级 (0-7)</label>
+                                <input type="number" id="outerPriority" class="form-input" min="0" max="7" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">内层优先级 (0-7)</label>
+                                <input type="number" id="innerPriority" class="form-input" min="0" max="7" value="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="generatePcap()">生成并下载 PCAP</button>
+                    <button class="btn btn-secondary" onclick="resetForm()">重置</button>
+                </div>
+            </div>
+
+            <!-- 输出 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">输出</h2>
+                </div>
+                <div class="form-group fill">
+                    <label class="form-label">生成结果</label>
+                    <div id="genResult" class="result-container">等待生成...</div>
+                </div>
+            </div>
+            </div><!-- /workspace -->
+
+            <details class="help"><summary>说明与示例</summary><div class="help-body">
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">使用说明</h2></div>
+                <div class="grid">
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">范围语法</h3>
+                        <ul style="line-height: 1.8; color: var(--text-secondary);">
+                            <li><strong>固定:</strong> 10.0.0.1 / 80</li>
+                            <li><strong>区间:</strong> 10.0.0.1-10.0.0.100 / 80-443</li>
+                            <li><strong>随机:</strong> random（在每个会话随机取值）</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">生成内容</h3>
+                        <ul style="line-height: 1.8; color: var(--text-secondary);">
+                            <li>每个会话包含完整 TCP 三次握手</li>
+                            <li>勾选 HTTP 时追加请求 / 响应报文</li>
+                            <li>可叠加单层 VLAN 或 QinQ 双层标签</li>
+                            <li>导出标准 Ethernet 链路层 PCAP</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            </div></details>
+        </div>
+    </main></div></div>
+
+    <script>
+        function toggleHttp() {
+            document.getElementById('httpFields').style.display =
+                document.getElementById('includeHttp').checked ? 'grid' : 'none';
+        }
+        function toggleVlan() {
+            document.getElementById('vlanFields').style.display =
+                document.getElementById('enableVlan').checked ? 'grid' : 'none';
+            document.getElementById('qinqFields').style.display =
+                document.getElementById('enableQinq').checked ? 'grid' : 'none';
+        }
+
+        function numOrNull(id) {
+            const v = document.getElementById(id).value.trim();
+            return v === '' ? null : parseInt(v, 10);
+        }
+
+        function collectParams() {
+            const p = {
+                session_count: parseInt(document.getElementById('sessionCount').value || '1', 10),
+                src_ip: document.getElementById('srcIp').value.trim(),
+                dst_ip: document.getElementById('dstIp').value.trim(),
+                src_port: document.getElementById('srcPort').value.trim(),
+                dst_port: document.getElementById('dstPort').value.trim(),
+                include_http: document.getElementById('includeHttp').checked,
+                http_host: document.getElementById('httpHost').value.trim(),
+                http_uris: document.getElementById('httpUris').value.split(',').map(s => s.trim()).filter(Boolean)
+            };
+            if (document.getElementById('enableVlan').checked) {
+                p.vlan_id = numOrNull('vlanId');
+                p.vlan_priority = parseInt(document.getElementById('vlanPriority').value || '0', 10);
+                p.vlan_dei = document.getElementById('vlanDei').checked;
+            }
+            if (document.getElementById('enableQinq').checked) {
+                p.qinq = true;
+                p.outer_vlan = numOrNull('outerVlan');
+                p.inner_vlan = numOrNull('innerVlan');
+                p.outer_priority = parseInt(document.getElementById('outerPriority').value || '0', 10);
+                p.inner_priority = parseInt(document.getElementById('innerPriority').value || '0', 10);
+            }
+            return p;
+        }
+
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showResult(text, status) {
+            const el = document.getElementById('genResult');
+            el.textContent = text;
+            el.className = 'result-container' + (status ? ' result-' + status : '');
+        }
+
+        async function generatePcap() {
+            const body = collectParams();
+            showResult('正在生成 PCAP ...', 'info');
+            try {
+                const resp = await fetch('/api/pcap/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                if (resp.ok) {
+                    const sc = resp.headers.get('x-session-count');
+                    const pc = resp.headers.get('x-packet-count');
+                    const flow = resp.headers.get('x-flow');
+                    const blob = await resp.blob();
+
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `generated_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pcap`;
+                    document.body.appendChild(a);
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    a.remove();
+
+                    showResult(
+                        '✅ 生成成功，文件已下载\n\n' +
+                        '会话数量: ' + sc + '\n' +
+                        '数据包数: ' + pc + '\n' +
+                        '流量类型: ' + flow + '\n' +
+                        '文件大小: ' + formatSize(blob.size) + '\n\n' +
+                        '可使用 Wireshark 等工具打开 .pcap 进行分析。',
+                        'success'
+                    );
+                } else {
+                    let msg = 'HTTP ' + resp.status;
+                    try { const data = await resp.json(); msg = data.error || msg; } catch (e) {}
+                    showResult('生成失败: ' + msg, 'error');
+                }
+            } catch (error) {
+                showResult('请求失败: ' + error.message, 'error');
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('sessionCount').value = '1';
+            document.getElementById('srcIp').value = '10.10.1.100';
+            document.getElementById('dstIp').value = '192.168.1.100';
+            document.getElementById('srcPort').value = '30000-40000';
+            document.getElementById('dstPort').value = '80';
+            document.getElementById('includeHttp').checked = false;
+            document.getElementById('httpHost').value = 'example.com';
+            document.getElementById('httpUris').value = '/,/api/users';
+            document.getElementById('enableVlan').checked = false;
+            document.getElementById('enableQinq').checked = false;
+            document.getElementById('vlanId').value = '';
+            document.getElementById('vlanPriority').value = '0';
+            document.getElementById('vlanDei').checked = false;
+            document.getElementById('outerVlan').value = '';
+            document.getElementById('innerVlan').value = '';
+            document.getElementById('outerPriority').value = '0';
+            document.getElementById('innerPriority').value = '0';
+            toggleHttp();
+            toggleVlan();
+            showResult('等待生成...');
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); generatePcap(); }
+        });
+    </script>
+</body>
+</html>

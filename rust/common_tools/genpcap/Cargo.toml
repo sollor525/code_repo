@@ -1,0 +1,14 @@
+[package]
+name = "genpcap"
+version = "0.1.0"
+edition = "2021"
+description = "TCP/HTTP/VLAN 流量数据包生成核心（自 rust/gen_pcap 移植，仅保留纯计算的报文生成逻辑）"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# 仅依赖纯 Rust 的报文构造库，避免 pnet 伞 crate 引入 pnet_datalink（Windows 需 npcap SDK）
+pnet_packet = "0.33"
+pnet_base = "0.33"
+rand = "0.8"

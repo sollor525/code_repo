@@ -6,6 +6,7 @@
 
 mod network_utils;
 mod packet_analyzer;
+mod pcap_generator;
 mod regex_matcher;
 mod md5_utils;
 mod string_converter;

@@ -21,6 +21,7 @@ const PACKET_HTML: &str = include_str!("../../static/packet.html");
 const REGEX_HTML: &str = include_str!("../../static/regex.html");
 const MD5_HTML: &str = include_str!("../../static/md5.html");
 const STRING_HTML: &str = include_str!("../../static/string.html");
+const PCAPGEN_HTML: &str = include_str!("../../static/pcapgen.html");
 const STYLE_CSS: &str = include_str!("../../static/style.css");
 const API_MD: &str = include_str!("../../static/API.md");
 
@@ -51,6 +52,7 @@ pub fn create_router() -> Router {
         .route("/regex.html", get(|| async { Html(REGEX_HTML) }))
         .route("/md5.html", get(|| async { Html(MD5_HTML) }))
         .route("/string.html", get(|| async { Html(STRING_HTML) }))
+        .route("/pcapgen.html", get(|| async { Html(PCAPGEN_HTML) }))
         .route("/", get(|| async { Html(INDEX_HTML) }))
         .fallback(|| async { (StatusCode::NOT_FOUND, "页面未找到") })
 }
@@ -62,6 +64,7 @@ fn api_routes() -> Router {
         .nest("/regex", web_api::create_regex_routes())
         .nest("/md5", web_api::create_md5_routes())
         .nest("/string", web_api::create_string_routes())
+        .nest("/pcap", web_api::create_pcap_routes())
 }
 
 async fn health_check() -> impl IntoResponse {
@@ -82,7 +85,8 @@ async fn api_info() -> impl IntoResponse {
             "packet": "/api/packet",
             "regex": "/api/regex",
             "md5": "/api/md5",
-            "string": "/api/string"
+            "string": "/api/string",
+            "pcap": "/api/pcap"
         }),
         description: "A collection of common utility tools for developers".to_string(),
     })
@@ -99,6 +103,7 @@ async fn serve_static_file(Path(file_path): Path<String>) -> Response {
         "regex.html" => Some(REGEX_HTML),
         "md5.html" => Some(MD5_HTML),
         "string.html" => Some(STRING_HTML),
+        "pcapgen.html" => Some(PCAPGEN_HTML),
         _ => None,
     };
 
