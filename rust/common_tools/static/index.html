@@ -48,86 +48,76 @@
         <div class="side-foot"><span class="link-led"><span class="dot"></span>LINK</span></div>
     </aside>
 
-    <main class="content">
+    <main class="content home">
         <header class="content-head">
             <span class="eyebrow">Network byte workbench</span>
             <h1 class="content-title">字节工具台</h1>
-            <p class="content-sub">为协议调试而生的本地工具台 —— 网络字节序、报文逐层解析、PCAP 导出、正则匹配、MD5 与转义序列互转。从左侧选择工具，或点击下方卡片开始。</p>
+            <p class="content-sub">为协议调试而生的本地工具台 —— 网络字节序、报文逐层解析、PCAP 导出、正则匹配、MD5 与转义序列互转。选择一个工具开始。</p>
         </header>
 
-        <div class="home-grid">
-            <div class="home-tools">
-                <a class="tool-card" href="/network.html">
-                    <div class="tool-code"><span>CH · NET</span><span>01</span></div>
+        <div class="home-tools">
+            <a class="tool-card" href="/network.html">
+                <div class="tool-top">
                     <span class="tool-icon" aria-hidden="true">
                         <svg width="22" height="22" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h16M15 4l4 4-4 4"/><path d="M23 18H7M11 22l-4-4 4-4"/></svg>
                     </span>
-                    <h3 class="tool-title">网络转换</h3>
-                    <p class="tool-description">IP / 端口 / 整数主机序 ⇄ 网络序</p>
-                </a>
-                <a class="tool-card" href="/packet.html">
-                    <div class="tool-code"><span>CH · PKT</span><span>02</span></div>
+                    <span class="tool-no">01</span>
+                </div>
+                <h3 class="tool-title">网络转换</h3>
+                <p class="tool-description">IP / 端口 / 整数在主机序 ⇄ 网络序之间互转</p>
+                <span class="tool-go">打开<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9M8 4l4 4-4 4"/></svg></span>
+            </a>
+            <a class="tool-card" href="/packet.html">
+                <div class="tool-top">
                     <span class="tool-icon" aria-hidden="true">
                         <svg width="22" height="22" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2l9 5v12l-9 5-9-5V7z"/><path d="M4 7l9 5 9-5M13 12v12"/></svg>
                     </span>
-                    <h3 class="tool-title">报文分析</h3>
-                    <p class="tool-description">Hex 逐层解析 · 导出 PCAP</p>
-                </a>
-                <a class="tool-card" href="/regex.html">
-                    <div class="tool-code"><span>CH · RGX</span><span>03</span></div>
+                    <span class="tool-no">02</span>
+                </div>
+                <h3 class="tool-title">报文分析</h3>
+                <p class="tool-description">Hex 逐层解析以太网 / IP / TCP，并导出 PCAP</p>
+                <span class="tool-go">打开<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9M8 4l4 4-4 4"/></svg></span>
+            </a>
+            <a class="tool-card" href="/regex.html">
+                <div class="tool-top">
                     <span class="tool-icon" aria-hidden="true">
                         <svg width="22" height="22" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4H4v18h3M19 4h3v18h-3"/><path d="M13 9v8M9.5 11l7 4M16.5 11l-7 4"/></svg>
                     </span>
-                    <h3 class="tool-title">正则匹配</h3>
-                    <p class="tool-description">实时匹配 · 捕获组展示</p>
-                </a>
-                <a class="tool-card" href="/md5.html">
-                    <div class="tool-code"><span>CH · MD5</span><span>04</span></div>
+                    <span class="tool-no">03</span>
+                </div>
+                <h3 class="tool-title">正则匹配</h3>
+                <p class="tool-description">实时匹配测试，逐组展示捕获结果</p>
+                <span class="tool-go">打开<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9M8 4l4 4-4 4"/></svg></span>
+            </a>
+            <a class="tool-card wide" href="/md5.html">
+                <div class="tool-top">
                     <span class="tool-icon" aria-hidden="true">
                         <svg width="22" height="22" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L7 23M19 3l-3 20M4 9h18M3 17h18"/></svg>
                     </span>
-                    <h3 class="tool-title">MD5 计算</h3>
-                    <p class="tool-description">文本 / 文件摘要 · 完整性校验</p>
-                </a>
-                <a class="tool-card" href="/string.html">
-                    <div class="tool-code"><span>CH · STR</span><span>05</span></div>
+                    <span class="tool-no">04</span>
+                </div>
+                <h3 class="tool-title">MD5 计算</h3>
+                <p class="tool-description">对文本或文件计算 MD5 摘要，用于完整性校验</p>
+                <span class="tool-go">打开<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9M8 4l4 4-4 4"/></svg></span>
+            </a>
+            <a class="tool-card wide" href="/string.html">
+                <div class="tool-top">
                     <span class="tool-icon" aria-hidden="true">
                         <svg width="22" height="22" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5l-6 16M8 9l-4 4 4 4M18 9l4 4-4 4"/></svg>
                     </span>
-                    <h3 class="tool-title">字符串转换</h3>
-                    <p class="tool-description">\000 ⇄ \u0000 转义互转</p>
-                </a>
-            </div>
-
-            <div class="dump" aria-label="以太网帧十六进制转储示例">
-                <div class="dump-bar">
-                    <span class="lamp a"></span><span class="lamp b"></span>
-                    <span class="title">frame · ethernet&nbsp;II / ipv4 / tcp</span>
-                    <span class="right">len 60</span>
+                    <span class="tool-no">05</span>
                 </div>
-                <div class="dump-body">
-                    <div class="dump-row">
-                        <span class="dump-off">0000</span>
-                        <span class="dump-hex">08 00 27 12 34 56 0a 00  27 ab cd ef <b class="b-a">08 00</b> 45 00</span>
-                        <span class="dump-asc">··'·4V··'·····E·</span>
-                    </div>
-                    <div class="dump-row">
-                        <span class="dump-off">0010</span>
-                        <span class="dump-hex">00 3c 1c 46 40 00 40 <b class="b-a">06</b>  a2 c7 <b class="b-b">c0 a8 00 1c</b> <b class="b-b">c0 a8</b></span>
-                        <span class="dump-asc">·&lt;·F@·@·········</span>
-                    </div>
-                    <div class="dump-row">
-                        <span class="dump-off">0020</span>
-                        <span class="dump-hex"><b class="b-b">00 c8</b> <b class="b-a">00 50 1f 90</b> 7a 1c  00 00 00 00 a0 02 72 10</span>
-                        <span class="dump-asc">···P··z·······r·</span>
-                    </div>
-                </div>
-                <div class="dump-legend">
-                    <span class="key"><span class="swatch" style="background:var(--signal)"></span><i>EtherType · 协议 · 端口</i></span>
-                    <span class="key"><span class="swatch" style="background:var(--cyan)"></span><i>源 / 目标 IP</i></span>
-                </div>
-            </div>
+                <h3 class="tool-title">字符串转换</h3>
+                <p class="tool-description">\000 八进制转义与 NUL 字节之间互相转换</p>
+                <span class="tool-go">打开<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9M8 4l4 4-4 4"/></svg></span>
+            </a>
         </div>
+
+        <footer class="home-foot">
+            <span class="foot-note">5 个本地工具 · 数据全程不出网</span>
+            <span class="foot-spacer"></span>
+            <span class="foot-meta">v0.1.0 · 127.0.0.1</span>
+        </footer>
     </main>
 </div>
 </body>
