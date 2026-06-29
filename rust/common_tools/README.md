@@ -11,6 +11,7 @@ API，前端为重新设计的「示波器 / 协议分析仪」风格 UI。前�
 |------|------|
 | 🛰 网络转换 | IP / 端口 / 整数在主机序与网络序之间互转，支持十进制与十六进制 |
 | 📦 报文分析 | 解析 Hex 报文，逐层拆出以太网 / IP / TCP·UDP·ICMP 头部，并可导出 PCAP |
+| 🧪 PCAP 生成 | 按参数批量合成 TCP / HTTP 会话流量（可选 VLAN / QinQ），导出标准 PCAP 供 Wireshark 分析 |
 | 🔎 正则匹配 | 实时匹配与捕获组展示，支持大小写、多行、点号匹配换行等选项 |
 | 🔐 MD5 计算 | 计算文本或文件的 MD5 摘要，用于校验与完整性比对 |
 | 🔁 字符串转换 | 八进制（`\000`）与 Unicode（`\u0000`）转义序列双向转换，自动识别格式 |
@@ -24,6 +25,7 @@ HTML/CSS/JS 前端与 `fetch('/api/...')` 调用**无需改动**即可在桌面�
 ```
 common_tools/
 ├── static/                     # 前端（Tauri frontendDist）
+├── genpcap/                    # PCAP 生成核心子 crate（自 rust/gen_pcap 移植的纯 Rust 报文生成）
 └── src-tauri/                  # Rust 工程（Tauri 约定布局）
     ├── tauri.conf.json         # productName=ByteBench, identifier=com.bytebench.commontools
     ├── build.rs · capabilities/ · icons/
@@ -31,7 +33,7 @@ common_tools/
         ├── main.rs             # 入口：desktop（Tauri 窗口）/ server（纯服务）双模式
         ├── server.rs           # axum 路由 + 处理器 + include_str! 嵌入的静态资源
         ├── web_api.rs          # /api/* 处理器与统一 ApiResponse 包装
-        └── network_utils.rs · packet_analyzer.rs · regex_matcher.rs · md5_utils.rs · string_converter.rs
+        └── network_utils.rs · packet_analyzer.rs · pcap_generator.rs · regex_matcher.rs · md5_utils.rs · string_converter.rs
 ```
 
 `main.rs` 通过 Cargo `desktop` 特性选择入口：
@@ -94,8 +96,10 @@ cargo test --no-default-features
 | POST | `/api/packet/analyze` | 报文分析 |
 | POST | `/api/packet/download` | 导出 PCAP（字节流下载） |
 | POST | `/api/packet/export` | 导出 PCAP 到运行目录 |
+| POST | `/api/pcap/generate` | 生成 TCP/HTTP/VLAN 流量 PCAP（返回 .pcap 附件下载） |
 | POST | `/api/regex/match` | 正则匹配 |
-| POST | `/api/md5/calculate` | MD5 计算 |
+| POST | `/api/md5/calculate` | 文本 MD5 计算 |
+| POST | `/api/md5/calculate_file` | 文件 MD5 计算（上传文件字节，按内容求值） |
 | POST | `/api/string/convert` | 字符串转义转换 |
 
 示例：
@@ -115,6 +119,7 @@ curl -X POST http://127.0.0.1:3030/api/network/convert \
 - **内嵌服务**：axum 0.7 + Tokio
 - **序列化**：serde / serde_json
 - **工具实现**：regex、md5、pcap-file、hex（均为纯 Rust）
+- **PCAP 生成**：`genpcap` 子 crate（pnet_packet / pnet_base / rand，纯 Rust，不依赖 libpcap）
 
 ## 相关文档
 

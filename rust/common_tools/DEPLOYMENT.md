@@ -3,6 +3,10 @@
 本项目现为 **Tauri 桌面应用**。主要交付物是一个 Windows 桌面程序；同时保留了一个
 不依赖 WebView 的**服务模式**，可用于无界面/服务器部署。本文覆盖两种场景的分发方式。
 
+> 工具集：网络转换、报文分析、**PCAP 流量生成**、正则匹配、MD5、字符串转换。其中
+> 「PCAP 生成」在内存中合成报文（纯 Rust，**不依赖 libpcap / npcap**），不引入任何新的
+> 运行期依赖——分发与运行方式与其余工具完全一致。
+
 - [一、桌面版分发（Windows）](#一桌面版分发windows)
 - [二、无界面服务模式部署](#二无界面服务模式部署)
 - [三、容器化服务模式（可选）](#三容器化服务模式可选)
@@ -121,7 +125,9 @@ sudo systemctl enable --now bytebench
 > 位于仓库根目录并从磁盘读取 `static/`，这些前提均已不再成立。
 
 如需容器化服务模式，工程现位于 `src-tauri/`，构建需加 `--no-default-features`，且无需
-再拷贝 `static/`（资源已内嵌）。最小 Dockerfile 示例：
+再拷贝 `static/`（资源已内嵌）。构建上下文需同时包含同级的 **`genpcap/`** 子 crate（PCAP
+生成核心，`src-tauri` 的本地 path 依赖）；它是纯 Rust（pnet_packet / pnet_base / rand），
+**不需要任何系统库**（如 libpcap）。最小 Dockerfile 示例：
 
 ```dockerfile
 FROM rust:1-bookworm AS build
