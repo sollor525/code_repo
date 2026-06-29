@@ -19,6 +19,8 @@ pub struct TcpConversation {
     cseq: u32,
     /// 服务器下一个要使用的序列号
     sseq: u32,
+    /// 最大 TCP 段大小（payload 上限）；0 = 不分段
+    mss: usize,
     pub packets: Vec<Vec<u8>>,
 }
 
@@ -43,8 +45,14 @@ impl TcpConversation {
             dst_port,
             cseq: client_isn,
             sseq: server_isn,
+            mss: 0,
             packets: Vec::new(),
         }
+    }
+
+    /// 设置最大 TCP 段大小；超过该值的 client_data/server_data 将拆成多个 TCP 段。
+    pub fn set_mss(&mut self, mss: usize) {
+        self.mss = mss;
     }
 
     /// 低层：按方向发送一个报文。`ack` 为显式确认号（无 ACK 标志时通常传 0）。
@@ -80,23 +88,42 @@ impl TcpConversation {
         self.push(true, TcpFlags::ACK, self.sseq, &[]);
     }
 
-    /// 客户端发送数据（PSH|ACK），随后服务器回 ACK
+    /// 按 MSS 切分数据；mss==0 或数据较小时返回单块。
+    fn segments<'a>(&self, data: &'a [u8]) -> Vec<&'a [u8]> {
+        if self.mss == 0 || data.len() <= self.mss {
+            vec![data]
+        } else {
+            data.chunks(self.mss).collect()
+        }
+    }
+
+    /// 客户端发送数据（按 MSS 分段，PSH 置于最后一段），随后服务器回一个 ACK
     pub fn client_data(&mut self, data: &[u8]) {
         if data.is_empty() {
             return;
         }
-        self.push(true, TcpFlags::PSH | TcpFlags::ACK, self.sseq, data);
-        self.cseq = self.cseq.wrapping_add(data.len() as u32);
+        let segs = self.segments(data);
+        let last = segs.len() - 1;
+        for (i, seg) in segs.iter().enumerate() {
+            let flags = if i == last { TcpFlags::PSH | TcpFlags::ACK } else { TcpFlags::ACK };
+            self.push(true, flags, self.sseq, seg);
+            self.cseq = self.cseq.wrapping_add(seg.len() as u32);
+        }
         self.push(false, TcpFlags::ACK, self.cseq, &[]);
     }
 
-    /// 服务器发送数据（PSH|ACK），随后客户端回 ACK
+    /// 服务器发送数据（按 MSS 分段，PSH 置于最后一段），随后客户端回一个 ACK
     pub fn server_data(&mut self, data: &[u8]) {
         if data.is_empty() {
             return;
         }
-        self.push(false, TcpFlags::PSH | TcpFlags::ACK, self.cseq, data);
-        self.sseq = self.sseq.wrapping_add(data.len() as u32);
+        let segs = self.segments(data);
+        let last = segs.len() - 1;
+        for (i, seg) in segs.iter().enumerate() {
+            let flags = if i == last { TcpFlags::PSH | TcpFlags::ACK } else { TcpFlags::ACK };
+            self.push(false, flags, self.cseq, seg);
+            self.sseq = self.sseq.wrapping_add(seg.len() as u32);
+        }
         self.push(true, TcpFlags::ACK, self.sseq, &[]);
     }
 

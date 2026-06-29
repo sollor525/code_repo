@@ -15,9 +15,24 @@ impl TcpSession {
     }
 }
 
+/// 生成选项（跨协议）：MTU 与自动填充载荷大小。
+#[derive(Debug, Clone, Copy)]
+pub struct GenOptions {
+    /// 链路 MTU（IP 数据报上限）。超过则 TCP 分段或 IP 分片；0 = 不限制。
+    pub mtu: usize,
+    /// 自动填充的载荷字节数（用户未指定内容时生效）；0 = 协议默认。
+    pub payload_size: usize,
+}
+
+impl Default for GenOptions {
+    fn default() -> Self {
+        Self { mtu: 1500, payload_size: 0 }
+    }
+}
+
 // 应用层流量抽象
 pub trait ApplicationFlow {
-    fn generate_packets(&self, session: &TcpSession) -> Vec<Vec<u8>>;
+    fn generate_packets(&self, session: &TcpSession, opts: &GenOptions) -> Vec<Vec<u8>>;
     fn name(&self) -> &'static str;
 }
 
@@ -78,15 +93,15 @@ pub enum ApplicationFlowType {
 }
 
 impl ApplicationFlow for ApplicationFlowType {
-    fn generate_packets(&self, session: &TcpSession) -> Vec<Vec<u8>> {
+    fn generate_packets(&self, session: &TcpSession, opts: &GenOptions) -> Vec<Vec<u8>> {
         match self {
-            ApplicationFlowType::Tcp(mode) => crate::flows::tcp_mode(session, *mode),
-            ApplicationFlowType::Http(cfg) => crate::flows::http(session, cfg),
-            ApplicationFlowType::Icmp(cfg) => crate::flows::icmp(session, cfg),
-            ApplicationFlowType::Udp(cfg) => crate::flows::udp(session, cfg),
-            ApplicationFlowType::Ftp(mode) => crate::flows::ftp(session, *mode),
-            ApplicationFlowType::Ssh => crate::flows::ssh(session),
-            ApplicationFlowType::Mysql => crate::flows::mysql(session),
+            ApplicationFlowType::Tcp(mode) => crate::flows::tcp_mode(session, *mode, opts),
+            ApplicationFlowType::Http(cfg) => crate::flows::http(session, cfg, opts),
+            ApplicationFlowType::Icmp(cfg) => crate::flows::icmp(session, cfg, opts),
+            ApplicationFlowType::Udp(cfg) => crate::flows::udp(session, cfg, opts),
+            ApplicationFlowType::Ftp(mode) => crate::flows::ftp(session, *mode, opts),
+            ApplicationFlowType::Ssh => crate::flows::ssh(session, opts),
+            ApplicationFlowType::Mysql => crate::flows::mysql(session, opts),
         }
     }
 

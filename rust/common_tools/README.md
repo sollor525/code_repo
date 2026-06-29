@@ -11,7 +11,7 @@ API，前端为重新设计的「示波器 / 协议分析仪」风格 UI。前�
 |------|------|
 | 🛰 网络转换 | IP / 端口 / 整数在主机序与网络序之间互转，支持十进制与十六进制 |
 | 📦 报文分析 | 解析 Hex 报文，逐层拆出以太网 / IP / TCP·UDP·ICMP 头部，并可导出 PCAP |
-| 🧪 PCAP 生成 | 按参数合成多协议流量并导出 PCAP：TCP（仅SYN/三次握手/四次挥手/RST）、HTTP（可自定义请求/响应）、ICMP、UDP、FTP（主动/被动）、SSH、MySQL，可叠加 VLAN / QinQ |
+| 🧪 PCAP 生成 | 按参数合成多协议流量并导出 PCAP：TCP（仅SYN/三次握手/四次挥手/RST）、HTTP（可自定义请求/响应）、ICMP、UDP、FTP（主动/被动）、SSH、MySQL；支持 IPv4 / IPv6、VLAN / QinQ、按 MTU 自动 TCP 分段 / IP 分片、可指定载荷大小自动填充；可下载或保存到指定目录 |
 | 🔎 正则匹配 | 实时匹配与捕获组展示，支持大小写、多行、点号匹配换行等选项 |
 | 🔐 MD5 计算 | 计算文本或文件的 MD5 摘要，用于校验与完整性比对 |
 | 🔁 字符串转换 | 八进制（`\000`）与 Unicode（`\u0000`）转义序列双向转换，自动识别格式 |
@@ -96,7 +96,8 @@ cargo test --no-default-features
 | POST | `/api/packet/analyze` | 报文分析 |
 | POST | `/api/packet/download` | 导出 PCAP（字节流下载） |
 | POST | `/api/packet/export` | 导出 PCAP 到运行目录 |
-| POST | `/api/pcap/generate` | 生成 TCP/HTTP/VLAN 流量 PCAP（返回 .pcap 附件下载） |
+| POST | `/api/pcap/generate` | 生成多协议流量 PCAP（返回 .pcap 附件下载） |
+| POST | `/api/pcap/save` | 生成并保存到目录（默认程序当前目录），返回文件名与路径 |
 | POST | `/api/regex/match` | 正则匹配 |
 | POST | `/api/md5/calculate` | 文本 MD5 计算 |
 | POST | `/api/md5/calculate_file` | 文件 MD5 计算（上传文件字节，按内容求值） |

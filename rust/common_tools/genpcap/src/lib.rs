@@ -21,7 +21,7 @@ pub mod flows;
 pub use core::{
     NetworkConnection, IpRange, IpVersion, PortRange, BuildError, PcapError,
     session::{
-        TcpSession, ApplicationFlow, ApplicationFlowType,
+        TcpSession, ApplicationFlow, ApplicationFlowType, GenOptions,
         TcpMode, HttpConfig, IcmpConfig, UdpConfig, FtpMode,
     },
 };
@@ -41,7 +41,7 @@ pub use vlan::{VlanTag, VlanConfig, parse_mac_address, build_vlan_ethernet_heade
 
 impl TcpSession {
     /// 生成数据包
-    pub fn generate_packets(&self, flow: &dyn ApplicationFlow) -> Vec<Vec<u8>> {
-        flow.generate_packets(self)
+    pub fn generate_packets(&self, flow: &dyn ApplicationFlow, opts: &GenOptions) -> Vec<Vec<u8>> {
+        flow.generate_packets(self, opts)
     }
 }

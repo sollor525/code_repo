@@ -11,7 +11,7 @@ use axum::response::{AppendHeaders};
 use axum::http::{header, HeaderName, HeaderValue};
 use crate::network_utils::NetworkUtils;
 use crate::packet_analyzer::PacketAnalyzer;
-use crate::pcap_generator::{generate_pcap, PcapGenParams};
+use crate::pcap_generator::{generate_pcap, save_pcap, PcapGenParams};
 use crate::regex_matcher::RegexMatcher;
 use crate::md5_utils::{Md5Request, Md5Response, process_md5_request, process_md5_bytes};
 use crate::string_converter::{StringConvertRequest, StringConvertResponse, process_string_conversion};
@@ -111,6 +111,7 @@ pub fn create_packet_routes() -> Router {
 pub fn create_pcap_routes() -> Router {
     Router::new()
         .route("/generate", post(pcap_generate))
+        .route("/save", post(pcap_save))
 }
 
 pub fn create_regex_routes() -> Router {
@@ -225,6 +226,7 @@ fn default_protocol() -> String { "tcp".to_string() }
 fn default_tcp_mode() -> String { "handshake".to_string() }
 fn default_ftp_mode() -> String { "passive".to_string() }
 fn default_icmp_count() -> u32 { 1 }
+fn default_mtu() -> u32 { 1500 }
 
 #[derive(Deserialize)]
 struct PcapGenerateRequest {
@@ -258,6 +260,14 @@ struct PcapGenerateRequest {
     udp_response: bool,
     #[serde(default = "default_ftp_mode")]
     ftp_mode: String,
+    #[serde(default = "default_mtu")]
+    mtu: u32,
+    #[serde(default)]
+    payload_size: u32,
+    #[serde(default)]
+    output_dir: Option<String>,
+    #[serde(default)]
+    filename: Option<String>,
     #[serde(default)]
     vlan_id: Option<u16>,
     #[serde(default)]
@@ -276,25 +286,26 @@ struct PcapGenerateRequest {
     inner_priority: u8,
 }
 
-async fn pcap_generate(
-    Json(request): Json<PcapGenerateRequest>
-) -> impl IntoResponse {
-    let params = PcapGenParams {
+/// 从请求构造生成参数（下载与保存两个处理器共用）
+fn pcap_params_from(request: &PcapGenerateRequest) -> PcapGenParams {
+    PcapGenParams {
         session_count: request.session_count,
-        src_ip: request.src_ip,
-        dst_ip: request.dst_ip,
-        src_port: request.src_port,
-        dst_port: request.dst_port,
-        protocol: request.protocol,
-        tcp_mode: request.tcp_mode,
-        http_host: request.http_host,
-        http_uris: request.http_uris,
-        http_request: request.http_request,
-        http_response: request.http_response,
+        src_ip: request.src_ip.clone(),
+        dst_ip: request.dst_ip.clone(),
+        src_port: request.src_port.clone(),
+        dst_port: request.dst_port.clone(),
+        protocol: request.protocol.clone(),
+        tcp_mode: request.tcp_mode.clone(),
+        http_host: request.http_host.clone(),
+        http_uris: request.http_uris.clone(),
+        http_request: request.http_request.clone(),
+        http_response: request.http_response.clone(),
         icmp_count: request.icmp_count,
-        udp_payload: request.udp_payload,
+        udp_payload: request.udp_payload.clone(),
         udp_response: request.udp_response,
-        ftp_mode: request.ftp_mode,
+        ftp_mode: request.ftp_mode.clone(),
+        mtu: request.mtu,
+        payload_size: request.payload_size,
         vlan_id: request.vlan_id,
         vlan_priority: request.vlan_priority,
         vlan_dei: request.vlan_dei,
@@ -303,7 +314,13 @@ async fn pcap_generate(
         inner_vlan: request.inner_vlan,
         outer_priority: request.outer_priority,
         inner_priority: request.inner_priority,
-    };
+    }
+}
+
+async fn pcap_generate(
+    Json(request): Json<PcapGenerateRequest>
+) -> impl IntoResponse {
+    let params = pcap_params_from(&request);
 
     match generate_pcap(&params) {
         Ok(result) => {
@@ -320,6 +337,28 @@ async fn pcap_generate(
             ]);
             (headers, result.pcap).into_response()
         }
+        Err(e) => {
+            let error_response = ApiResponse::<serde_json::Value>::error(e);
+            (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
+        }
+    }
+}
+
+/// 生成并保存到目录（output_dir 为空则写入进程当前目录），返回文件名与完整路径。
+async fn pcap_save(
+    Json(request): Json<PcapGenerateRequest>
+) -> impl IntoResponse {
+    let params = pcap_params_from(&request);
+    match save_pcap(&params, request.output_dir.as_deref(), request.filename.as_deref()) {
+        Ok(saved) => Json(ApiResponse::success(serde_json::json!({
+            "filename": saved.filename,
+            "path": saved.path,
+            "session_count": saved.session_count,
+            "packet_count": saved.packet_count,
+            "flow": saved.flow,
+            "size": saved.size,
+        })))
+        .into_response(),
         Err(e) => {
             let error_response = ApiResponse::<serde_json::Value>::error(e);
             (StatusCode::BAD_REQUEST, Json(error_response)).into_response()

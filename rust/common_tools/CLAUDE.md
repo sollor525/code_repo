@@ -15,7 +15,7 @@ common_tools/
 ├── static/                     # frontend (the redesigned "Signal" UI) = Tauri frontendDist
 ├── genpcap/                    # local path-dep sub-crate: PCAP-generation core (ported from rust/gen_pcap)
 │   ├── Cargo.toml              #   deps: pnet_packet + pnet_base + rand (pure Rust, NO libpcap/pnet_datalink)
-│   └── src/{lib.rs, conversation.rs, l4.rs, flows.rs, core/, tcp/, http/, session/, vlan/}   # pure packet-byte gen, no IO/license/yaml
+│   └── src/{lib.rs, conversation.rs, l4.rs, flows.rs, core/, tcp/, http/, session/, vlan/}   # pure packet-byte gen (IPv4/IPv6, MTU seg/frag), no IO/license/yaml
 ├── src-tauri/
 │   ├── Cargo.toml              # the crate; `tauri` is an OPTIONAL dep behind the `desktop` feature; genpcap = path "../genpcap"
 │   ├── build.rs                # calls tauri_build::build() ONLY when CARGO_FEATURE_DESKTOP is set
@@ -63,9 +63,9 @@ cargo test --no-default-features string_converter::tests::test_round_trip_conver
 
 The `genpcap/` path-dep crate is a **trimmed port of `rust/gen_pcap`**: only the pure packet-byte generation (`core`/`tcp`/`http`/`session`/`vlan`) — the original's `license`, `template`/YAML, CLI, file IO, and the native **`pcap` (libpcap)** dependency were all dropped. It depends on **`pnet_packet` + `pnet_base`** (NOT the umbrella `pnet`, which pulls `pnet_datalink` → needs npcap SDK on Windows and would break the self-contained build) + `rand`. Re-porting: copy those module dirs, `rm vlan/packet.rs` (unused, not in `vlan/mod.rs`), and `sed 's/pnet::packet::/pnet_packet::/; s/pnet::util::MacAddr/pnet_base::MacAddr/'`.
 
-`pcap_generator.rs` is the common_tools-side wrapper: it builds a `genpcap::TcpSessionConfig` from request params, calls `generate_sessions()` → `session.generate_packets(&flow)`, applies VLAN, and serializes the `Vec<Vec<u8>>` frames to **in-memory PCAP bytes via `pcap_file`** (same crate `packet_analyzer` uses — no libpcap). The handler streams those bytes back as a `generated.pcap` attachment with `x-session-count`/`x-packet-count`/`x-flow` headers.
+`pcap_generator.rs` is the common_tools-side wrapper: it builds a `genpcap::TcpSessionConfig` from request params, calls `generate_sessions()` → `session.generate_packets(&flow)`, applies VLAN, and serializes the `Vec<Vec<u8>>` frames to **in-memory PCAP bytes via `pcap_file`** (same crate `packet_analyzer` uses — no libpcap). The `/generate` handler streams those bytes back as a `generated.pcap` attachment with `x-session-count`/`x-packet-count`/`x-flow` headers; `/save` instead writes them to disk via `save_pcap()` (output dir defaults to `std::env::current_dir()`, auto-created; filename defaults to `generated_<timestamp>.pcap`, only the basename of a user-supplied name is used) and returns JSON with the resolved `filename`/`path`.
 
-**Protocols / flows** (`genpcap::flows` + `ApplicationFlowType`): `Tcp(TcpMode)` (SynOnly / Handshake / HandshakeClose=4-way / HandshakeReset=RST), `Http(HttpConfig)` (default GET-per-URI, or verbatim `request_content`/`response_content`), `Icmp`/`Udp` (IPv4-only — `pcap_generator` rejects IPv6), `Ftp(FtpMode)` (active/passive: control + data channels), `Ssh`, `Mysql`. TCP-based flows are built by **`conversation::TcpConversation`** (tracks client/server seq, computes ack at send time → Wireshark-clean streams); ICMP/UDP frames come from **`l4.rs`** (hand-built IPv4 + checksums). App-protocol payloads (FTP/SSH/MySQL) are **representative**, not full state machines. The selected protocol is chosen by the request's `protocol` field; the frontend's `pcapgen.html` shows per-protocol option panels.
+**Protocols / flows** (`genpcap::flows` + `ApplicationFlowType`): `Tcp(TcpMode)` (SynOnly / Handshake / HandshakeClose=4-way / HandshakeReset=RST), `Http(HttpConfig)` (default GET-per-URI, or verbatim `request_content`/`response_content`), `Icmp`/`Udp`, `Ftp(FtpMode)` (active/passive: control + data channels), `Ssh`, `Mysql`. **IPv4 and IPv6** are both supported (version comes from the IP range; src/dst must match — `pcap_generator` rejects mixed). TCP-based flows are built by **`conversation::TcpConversation`** (tracks client/server seq, computes ack at send time → Wireshark-clean streams, and splits payloads by MSS); ICMP/UDP frames come from **`l4.rs`** (hand-built IPv4/IPv6 + checksums; ICMPv6 for v6). **`GenOptions { mtu, payload_size }`** is threaded through `ApplicationFlow::generate_packets`: oversize payloads are **TCP-segmented** (MSS = MTU − IP − TCP) or **IP-fragmented** (UDP/ICMP — IPv4 frag flags / IPv6 fragment ext-header), and `payload_size` auto-fills filler content when the user supplies none. App-protocol payloads (FTP/SSH/MySQL) are **representative**, not full state machines. The selected protocol is the request's `protocol` field; `pcapgen.html` shows per-protocol option panels.
 
 ### Adding a new tool
 
@@ -77,7 +77,7 @@ The `genpcap/` path-dep crate is a **trimmed port of `rust/gen_pcap`**: only the
 
 ## Endpoints
 
-`GET /health`, `GET /api` (info) · `POST /api/network/convert` · `POST /api/packet/{analyze,export,download}` · `POST /api/pcap/generate` (returns a `.pcap` attachment) · `POST /api/regex/match` · `POST /api/md5/{calculate,calculate_file}` · `POST /api/string/convert`. Pages: `/`, `/network.html`, `/packet.html`, `/pcapgen.html`, `/regex.html`, `/md5.html`, `/string.html`; embedded assets under `/static/*`.
+`GET /health`, `GET /api` (info) · `POST /api/network/convert` · `POST /api/packet/{analyze,export,download}` · `POST /api/pcap/{generate,save}` (generate → `.pcap` attachment download; save → writes the `.pcap` to a server-side directory, default = process CWD, returns JSON `{filename,path,...}`) · `POST /api/regex/match` · `POST /api/md5/{calculate,calculate_file}` · `POST /api/string/convert`. Pages: `/`, `/network.html`, `/packet.html`, `/pcapgen.html`, `/regex.html`, `/md5.html`, `/string.html`; embedded assets under `/static/*`.
 
 ## Gotchas
 

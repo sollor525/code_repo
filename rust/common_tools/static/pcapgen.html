@@ -48,7 +48,7 @@
             <header class="tool-head">
                 <span class="eyebrow">CH · GEN — pcap traffic synthesizer</span>
                 <h1>PCAP 流量生成</h1>
-                <p>按参数批量合成 TCP / HTTP / ICMP / UDP / FTP / SSH / MySQL 流量（可选 VLAN / QinQ），导出标准 PCAP 供 Wireshark 分析。</p>
+                <p>按参数合成 TCP / HTTP / ICMP / UDP / FTP / SSH / MySQL 流量（IPv4 / IPv6，可选 VLAN / QinQ、MTU 分段·分片），导出标准 PCAP 供 Wireshark 分析。</p>
             </header>
 
             <div class="workspace io">
@@ -135,7 +135,7 @@
                                 <label class="form-label">Echo 请求/应答 对数</label>
                                 <input type="number" id="icmpCount" class="form-input" min="1" max="1000" value="2">
                             </div>
-                            <div class="message message-info">ICMP 生成目前仅支持 IPv4 地址。</div>
+                            <div class="message message-info">ICMP echo（IPv4 / IPv6 自动按地址版本）。载荷超过 MTU 时按 IP 分片。</div>
                         </div>
 
                         <div class="proto-panel" data-proto="udp">
@@ -149,7 +149,7 @@
                                     <label for="udpResponse">生成对端应答报文</label>
                                 </div>
                             </div>
-                            <div class="message message-info">UDP 生成目前仅支持 IPv4 地址。</div>
+                            <div class="message message-info">UDP（IPv4 / IPv6 自动按地址版本）。载荷超过 MTU 时按 IP 分片。</div>
                         </div>
 
                         <div class="proto-panel" data-proto="ftp">
@@ -170,6 +170,22 @@
                         <div class="proto-panel" data-proto="mysql">
                             <div class="message message-info">生成 MySQL 服务器握手、登录、COM_QUERY (SELECT 1) 与结果集报文。</div>
                         </div>
+                    </div>
+
+                    <!-- 传输参数 -->
+                    <div class="pcap-sub">
+                        <div class="pcap-sub-title">传输 / 分段</div>
+                        <div class="pcap-grid">
+                            <div class="form-group">
+                                <label class="form-label">MTU（字节）</label>
+                                <input type="number" id="mtu" class="form-input" min="0" max="65535" value="1500">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">自动填充载荷大小（字节）</label>
+                                <input type="number" id="payloadSize" class="form-input" min="0" value="0">
+                            </div>
+                        </div>
+                        <div class="message message-info">载荷超过 MTU 时：TCP 自动分段、UDP/ICMP 自动 IP 分片。0 = 不限制 / 协议默认。IPv4 与 IPv6 均支持（IP 范围填 IPv6 即可）。</div>
                     </div>
 
                     <!-- VLAN -->
@@ -221,9 +237,24 @@
                             </div>
                         </div>
                     </div>
+                    <!-- 输出 -->
+                    <div class="pcap-sub">
+                        <div class="pcap-sub-title">输出（保存到目录时）</div>
+                        <div class="pcap-grid">
+                            <div class="form-group">
+                                <label class="form-label">输出目录</label>
+                                <input type="text" id="outputDir" class="form-input" placeholder="留空 = 程序所在目录">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">文件名（可选）</label>
+                                <input type="text" id="filename" class="form-input" placeholder="留空 = 自动按时间命名">
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="btn-group">
-                    <button class="btn btn-primary" onclick="generatePcap()">生成并下载 PCAP</button>
+                    <button class="btn btn-primary" onclick="savePcap()">生成并保存到目录</button>
+                    <button class="btn btn-info" onclick="generatePcap()">下载</button>
                     <button class="btn btn-secondary" onclick="resetForm()">重置</button>
                 </div>
             </div>
@@ -322,6 +353,12 @@
                 p.outer_priority = parseInt(val('outerPriority') || '0', 10);
                 p.inner_priority = parseInt(val('innerPriority') || '0', 10);
             }
+            p.mtu = parseInt(val('mtu') || '1500', 10);
+            p.payload_size = parseInt(val('payloadSize') || '0', 10);
+            const od = val('outputDir').trim();
+            if (od) p.output_dir = od;
+            const fnm = val('filename').trim();
+            if (fnm) p.filename = fnm;
             return p;
         }
 
@@ -378,6 +415,37 @@
             }
         }
 
+        async function savePcap() {
+            const body = collectParams();
+            showResult('正在生成并保存 PCAP ...', 'info');
+            try {
+                const resp = await fetch('/api/pcap/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await resp.json();
+                if (resp.ok && data.success) {
+                    const d = data.data;
+                    showResult(
+                        '✅ 已保存\n\n' +
+                        '文件名: ' + d.filename + '\n' +
+                        '路径: ' + d.path + '\n' +
+                        '协议: ' + d.flow + '\n' +
+                        '会话数量: ' + d.session_count + '\n' +
+                        '数据包数: ' + d.packet_count + '\n' +
+                        '文件大小: ' + formatSize(d.size) + '\n\n' +
+                        '可使用 Wireshark 等工具打开。',
+                        'success'
+                    );
+                } else {
+                    showResult('保存失败: ' + (data.error || ('HTTP ' + resp.status)), 'error');
+                }
+            } catch (error) {
+                showResult('请求失败: ' + error.message, 'error');
+            }
+        }
+
         function resetForm() {
             document.getElementById('sessionCount').value = '1';
             document.getElementById('protocol').value = 'tcp';
@@ -403,6 +471,10 @@
             document.getElementById('innerVlan').value = '';
             document.getElementById('outerPriority').value = '0';
             document.getElementById('innerPriority').value = '0';
+            document.getElementById('mtu').value = '1500';
+            document.getElementById('payloadSize').value = '0';
+            document.getElementById('outputDir').value = '';
+            document.getElementById('filename').value = '';
             onProtocolChange();
             toggleVlan();
             showResult('等待生成...');
