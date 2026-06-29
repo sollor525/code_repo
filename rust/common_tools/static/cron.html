@@ -7,13 +7,19 @@
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏱</text></svg>">
     <style>
-        .cron-form { display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
-        .cron-form .form-group { margin-bottom: 0; }
-        .cron-sub { border-top: 1px solid var(--line); padding-top: 10px; }
+        .cron-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+        /* 功能切换（解析 / 生成） */
+        .func-switch { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--inset); }
+        .func-switch .fsw { flex: 1; padding: 10px 10px; background: transparent; border: none; color: var(--ink-dim); font-family: var(--font-display); font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: background .15s, color .15s; }
+        .func-switch .fsw + .fsw { border-left: 1px solid var(--line); }
+        .func-switch .fsw.active { background: rgba(240, 178, 62, 0.16); color: var(--signal); }
+        .fpanel { display: none; flex-direction: column; gap: 12px; }
+        .fpanel.active { display: flex; }
+        .fpanel .form-group { margin-bottom: 0; }
         .cron-sub-title { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 8px; }
         .cron-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
         .cron-grid .form-group { margin-bottom: 0; }
-        .cron-form .form-input, .cron-form .form-select { padding: 8px 11px; }
+        .fpanel .form-input, .fpanel .form-select { padding: 8px 11px; }
         .hint { display: block; font-size: 0.72rem; color: var(--ink-faint); margin-top: 6px; line-height: 1.5; }
         .mono-input { font-family: var(--font-mono); letter-spacing: 0.04em; }
         .workspace .card-header { padding-bottom: 8px; margin-bottom: 10px; }
@@ -51,24 +57,36 @@
             <header class="tool-head">
                 <span class="eyebrow">CH · CRON — schedule calculator</span>
                 <h1>Crontab 时间计算</h1>
-                <p>解析 5-7 字段的 CRON 表达式，给出中文说明与未来 7 次执行时间；也可由「每周 / 每天 / 每小时 / 每 N 分钟 / 每 N 秒」反向生成表达式。</p>
+                <p>两个独立功能，用上方开关切换：① 解析 CRON 表达式 → 中文说明与未来 7 次执行时间；② 由频率选项 → 生成 CRON 表达式。</p>
             </header>
 
             <div class="workspace io">
-            <!-- 输入 / 生成 -->
+            <!-- 功能区 -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">表达式</h2>
+                    <h2 class="card-title" id="cardTitle">解析 CRON 表达式</h2>
                 </div>
-                <div class="cron-form">
-                    <div class="form-group">
-                        <label class="form-label">CRON 表达式（5-7 字段，或 @daily 等）</label>
-                        <input type="text" id="cronExpr" class="form-input mono-input" value="*/15 9-17 * * 1-5" placeholder="*/15 9-17 * * 1-5">
-                        <small class="hint">字段顺序：[秒] 分 时 日 月 周 [年]。支持 * / , - 与 */n、月份/星期英文名、@yearly@monthly@weekly@daily@hourly@reboot。</small>
+                <div class="cron-body">
+                    <div class="func-switch" role="tablist">
+                        <button class="fsw active" id="fswParse" onclick="switchMode('parse')">解析表达式</button>
+                        <button class="fsw" id="fswBuild" onclick="switchMode('build')">生成表达式</button>
                     </div>
 
-                    <div class="cron-sub">
-                        <div class="cron-sub-title">快速生成</div>
+                    <!-- 功能一：解析 -->
+                    <div id="panelParse" class="fpanel active">
+                        <div class="form-group">
+                            <label class="form-label">CRON 表达式（5-7 字段，或 @daily 等）</label>
+                            <input type="text" id="cronExpr" class="form-input mono-input" value="*/15 9-17 * * 1-5" placeholder="*/15 9-17 * * 1-5">
+                            <small class="hint">字段顺序：[秒] 分 时 日 月 周 [年]。支持 * / , - 与 */n、月份/星期英文名，以及 @yearly @monthly @weekly @daily @hourly @reboot。</small>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="doExplain()">解析</button>
+                            <button class="btn btn-secondary" onclick="resetParse()">重置</button>
+                        </div>
+                    </div>
+
+                    <!-- 功能二：生成 -->
+                    <div id="panelBuild" class="fpanel">
                         <div class="form-group">
                             <label class="form-label">频率</label>
                             <select id="buildMode" class="form-select" onchange="onModeChange()">
@@ -110,23 +128,23 @@
                                 <input type="number" id="bdom" class="form-input" min="1" max="31" value="1">
                             </div>
                         </div>
+                        <small class="hint">生成后将自动解析，右侧同时给出说明与未来 7 次执行时间。</small>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="doBuild()">生成</button>
+                            <button class="btn btn-secondary" onclick="resetBuild()">重置</button>
+                        </div>
                     </div>
-                </div>
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="doExplain()">解析</button>
-                    <button class="btn btn-info" onclick="doBuild()">生成并解析</button>
-                    <button class="btn btn-secondary" onclick="resetForm()">重置</button>
                 </div>
             </div>
 
             <!-- 输出 -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">解析结果</h2>
+                    <h2 class="card-title">结果</h2>
                 </div>
                 <div class="form-group fill">
                     <label class="form-label">说明与未来执行时间</label>
-                    <div id="cronOut" class="result-container">等待解析...</div>
+                    <div id="cronOut" class="result-container">等待操作...</div>
                 </div>
             </div>
             </div><!-- /workspace -->
@@ -165,6 +183,17 @@
         const val = id => document.getElementById(id).value;
         const num = id => parseInt(val(id) || '0', 10);
 
+        // ---- 功能切换 ----
+        function switchMode(mode) {
+            const isParse = mode === 'parse';
+            document.getElementById('fswParse').classList.toggle('active', isParse);
+            document.getElementById('fswBuild').classList.toggle('active', !isParse);
+            document.getElementById('panelParse').classList.toggle('active', isParse);
+            document.getElementById('panelBuild').classList.toggle('active', !isParse);
+            document.getElementById('cardTitle').textContent = isParse ? '解析 CRON 表达式' : '由选项生成表达式';
+            if (!isParse) onModeChange();
+        }
+
         // 各频率所需的参数输入
         const MODE_FIELDS = {
             every_n_seconds: ['gN'],
@@ -189,14 +218,17 @@
             el.className = 'result-container' + (status ? ' result-' + status : '');
         }
 
-        function render(d) {
+        function render(d, banner) {
             let out = '';
-            out += '✅ 表达式: ' + d.expression;
-            if (d.normalized && d.normalized !== d.expression) out += '  →  ' + d.normalized;
-            out += '  (' + d.field_count + ' 字段)\n\n';
-            out += '说明:\n  ' + d.description + '\n';
+            if (banner) {
+                out += banner + '\n';
+            } else {
+                out += '✅ 表达式: ' + d.expression;
+                if (d.normalized && d.normalized !== d.expression) out += '  →  ' + d.normalized;
+                out += '  (' + d.field_count + ' 字段)\n';
+            }
+            out += '\n说明:\n  ' + d.description + '\n';
             if (d.note) out += '\n⚠ ' + d.note + '\n';
-
             if (d.fields && d.fields.length) {
                 out += '\n字段拆解:\n';
                 d.fields.forEach(f => {
@@ -212,10 +244,8 @@
             showText(out.trimEnd(), 'success');
         }
 
-        async function doExplain() {
-            const expr = val('cronExpr').trim();
-            if (!expr) { showText('请输入 CRON 表达式', 'error'); return; }
-            showText('正在解析 ...', 'info');
+        // 解析指定表达式（banner 可选，用于「生成」结果的抬头）
+        async function explainExpr(expr, banner) {
             try {
                 const resp = await fetch('/api/cron/explain', {
                     method: 'POST',
@@ -223,13 +253,22 @@
                     body: JSON.stringify({ expression: expr, count: 7 })
                 });
                 const data = await resp.json();
-                if (resp.ok && data.success) render(data.data);
+                if (resp.ok && data.success) render(data.data, banner);
                 else showText('解析失败: ' + (data.error || ('HTTP ' + resp.status)), 'error');
             } catch (e) {
                 showText('请求失败: ' + e.message, 'error');
             }
         }
 
+        // 功能一：解析
+        function doExplain() {
+            const expr = val('cronExpr').trim();
+            if (!expr) { showText('请输入 CRON 表达式', 'error'); return; }
+            showText('正在解析 ...', 'info');
+            explainExpr(expr, null);
+        }
+
+        // 功能二：生成（并自动解析）
         async function doBuild() {
             const m = val('buildMode');
             const body = { mode: m };
@@ -247,8 +286,11 @@
                 });
                 const data = await resp.json();
                 if (resp.ok && data.success) {
-                    document.getElementById('cronExpr').value = data.data.expression;
-                    doExplain();
+                    const expr = data.data.expression;
+                    // 同步到「解析」输入框，方便切到解析功能继续编辑
+                    document.getElementById('cronExpr').value = expr;
+                    const banner = '✅ 已生成 CRON 表达式: ' + expr + '\n   ' + data.data.description;
+                    explainExpr(expr, banner);
                 } else {
                     showText('生成失败: ' + (data.error || ('HTTP ' + resp.status)), 'error');
                 }
@@ -257,8 +299,11 @@
             }
         }
 
-        function resetForm() {
+        function resetParse() {
             document.getElementById('cronExpr').value = '*/15 9-17 * * 1-5';
+            showText('等待操作...');
+        }
+        function resetBuild() {
             document.getElementById('buildMode').value = 'every_n_minutes';
             document.getElementById('bn').value = '5';
             document.getElementById('bhour').value = '9';
@@ -266,16 +311,22 @@
             document.getElementById('bdow').value = '1';
             document.getElementById('bdom').value = '1';
             onModeChange();
-            showText('等待解析...');
+            showText('等待操作...');
         }
 
         document.addEventListener('keydown', function (e) {
-            if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); doExplain(); }
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                if (document.getElementById('panelParse').classList.contains('active')) doExplain();
+                else doBuild();
+            }
         });
 
-        // 初始：渲染默认表达式
+        // 初始：默认进入「解析」；URL 带 #build 时进入「生成」（便于直达）
         onModeChange();
-        doExplain();
+        const initMode = (location.hash === '#build') ? 'build' : 'parse';
+        switchMode(initMode);
+        if (initMode === 'parse') doExplain();
     </script>
 </body>
 </html>
