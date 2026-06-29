@@ -15,6 +15,7 @@ use crate::pcap_generator::{generate_pcap, save_pcap, PcapGenParams};
 use crate::regex_matcher::RegexMatcher;
 use crate::md5_utils::{Md5Request, Md5Response, process_md5_request, process_md5_bytes};
 use crate::string_converter::{StringConvertRequest, StringConvertResponse, process_string_conversion};
+use crate::cron_utils::{self, CronBuildRequest, CronBuildResponse, CronExplainRequest, CronExplainResponse};
 
 #[derive(Serialize, Deserialize)]
 struct ApiResponse<T> {
@@ -133,6 +134,12 @@ pub fn create_md5_routes() -> Router {
 pub fn create_string_routes() -> Router {
     Router::new()
         .route("/convert", post(string_convert))
+}
+
+pub fn create_cron_routes() -> Router {
+    Router::new()
+        .route("/explain", post(cron_explain))
+        .route("/build", post(cron_build))
 }
 
 async fn network_convert(
@@ -417,6 +424,33 @@ async fn string_convert(
         Ok(response) => Json(ApiResponse::success(response)).into_response(),
         Err(error) => {
             let error_response = ApiResponse::<StringConvertResponse>::error(error);
+            (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
+        }
+    }
+}
+
+/// 解析 CRON 表达式：给出中文说明与未来若干次执行时间。
+async fn cron_explain(
+    Json(request): Json<CronExplainRequest>
+) -> impl IntoResponse {
+    let count = request.count.unwrap_or(7);
+    match cron_utils::explain(&request.expression, count) {
+        Ok(response) => Json(ApiResponse::success(response)).into_response(),
+        Err(error) => {
+            let error_response = ApiResponse::<CronExplainResponse>::error(error);
+            (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
+        }
+    }
+}
+
+/// 由「每周 / 每天 / 每小时 / 每 N 分钟 / 每 N 秒」等选项生成 CRON 表达式。
+async fn cron_build(
+    Json(request): Json<CronBuildRequest>
+) -> impl IntoResponse {
+    match cron_utils::build(&request) {
+        Ok(response) => Json(ApiResponse::success(response)).into_response(),
+        Err(error) => {
+            let error_response = ApiResponse::<CronBuildResponse>::error(error);
             (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
         }
     }

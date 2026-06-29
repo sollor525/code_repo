@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crontab 时间计算 - 开发辅助工具</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏱</text></svg>">
+    <style>
+        .cron-form { display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
+        .cron-form .form-group { margin-bottom: 0; }
+        .cron-sub { border-top: 1px solid var(--line); padding-top: 10px; }
+        .cron-sub-title { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 8px; }
+        .cron-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+        .cron-grid .form-group { margin-bottom: 0; }
+        .cron-form .form-input, .cron-form .form-select { padding: 8px 11px; }
+        .hint { display: block; font-size: 0.72rem; color: var(--ink-faint); margin-top: 6px; line-height: 1.5; }
+        .mono-input { font-family: var(--font-mono); letter-spacing: 0.04em; }
+        .workspace .card-header { padding-bottom: 8px; margin-bottom: 10px; }
+        #cronOut { line-height: 1.6; }
+    </style>
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <a class="brand" href="/">
+            <span class="brand-mark" aria-hidden="true">
+                <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                    <polyline points="1,11 4,11 5.5,5 7.5,12 9,8 11,8" stroke="#F0B23E" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+                    <polyline points="6,15 10,15 11.5,15 13,15 16,15" stroke="#4FD0E0" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+                </svg>
+            </span>
+            <span>开发辅助工具</span>
+        </a>
+        <nav class="side-nav">
+            <a href="/" class="side-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>首页</span></a>
+            <a href="/network.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h16M15 4l4 4-4 4"/><path d="M23 18H7M11 22l-4-4 4-4"/></svg><span>网络转换</span></a>
+            <a href="/packet.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2l9 5v12l-9 5-9-5V7z"/><path d="M4 7l9 5 9-5M13 12v12"/></svg><span>报文分析</span></a>
+            <a href="/pcapgen.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l6 6v14H5z"/><path d="M15 3v6h6"/><path d="M13 11v7M9.5 14.5L13 18l3.5-3.5"/></svg><span>PCAP 生成</span></a>
+            <a href="/regex.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4H4v18h3M19 4h3v18h-3"/><path d="M13 9v8M9.5 11l7 4M16.5 11l-7 4"/></svg><span>正则匹配</span></a>
+            <a href="/md5.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L7 23M19 3l-3 20M4 9h18M3 17h18"/></svg><span>MD5 计算</span></a>
+            <a href="/string.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5l-6 16M8 9l-4 4 4 4M18 9l4 4-4 4"/></svg><span>字符串转换</span></a>
+            <a href="/cron.html" class="side-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Crontab</span></a>
+        </nav>
+        <div class="side-foot"><span class="link-led"><span class="dot"></span>LINK</span></div>
+    </aside>
+    <div class="content tool">
+
+    <main class="main">
+        <div class="container">
+            <header class="tool-head">
+                <span class="eyebrow">CH · CRON — schedule calculator</span>
+                <h1>Crontab 时间计算</h1>
+                <p>解析 5-7 字段的 CRON 表达式，给出中文说明与未来 7 次执行时间；也可由「每周 / 每天 / 每小时 / 每 N 分钟 / 每 N 秒」反向生成表达式。</p>
+            </header>
+
+            <div class="workspace io">
+            <!-- 输入 / 生成 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">表达式</h2>
+                </div>
+                <div class="cron-form">
+                    <div class="form-group">
+                        <label class="form-label">CRON 表达式（5-7 字段，或 @daily 等）</label>
+                        <input type="text" id="cronExpr" class="form-input mono-input" value="*/15 9-17 * * 1-5" placeholder="*/15 9-17 * * 1-5">
+                        <small class="hint">字段顺序：[秒] 分 时 日 月 周 [年]。支持 * / , - 与 */n、月份/星期英文名、@yearly@monthly@weekly@daily@hourly@reboot。</small>
+                    </div>
+
+                    <div class="cron-sub">
+                        <div class="cron-sub-title">快速生成</div>
+                        <div class="form-group">
+                            <label class="form-label">频率</label>
+                            <select id="buildMode" class="form-select" onchange="onModeChange()">
+                                <option value="every_n_seconds">每 N 秒</option>
+                                <option value="every_n_minutes" selected>每 N 分钟</option>
+                                <option value="hourly">每小时</option>
+                                <option value="daily">每天</option>
+                                <option value="weekly">每周</option>
+                                <option value="monthly">每月</option>
+                            </select>
+                        </div>
+                        <div class="cron-grid">
+                            <div class="form-group" id="gN">
+                                <label class="form-label">间隔（<span id="nUnit">分钟</span>）</label>
+                                <input type="number" id="bn" class="form-input" min="1" max="59" value="5">
+                            </div>
+                            <div class="form-group" id="gHour" style="display:none;">
+                                <label class="form-label">小时 (0-23)</label>
+                                <input type="number" id="bhour" class="form-input" min="0" max="23" value="9">
+                            </div>
+                            <div class="form-group" id="gMinute" style="display:none;">
+                                <label class="form-label">分钟 (0-59)</label>
+                                <input type="number" id="bminute" class="form-input" min="0" max="59" value="0">
+                            </div>
+                            <div class="form-group" id="gDow" style="display:none;">
+                                <label class="form-label">星期</label>
+                                <select id="bdow" class="form-select">
+                                    <option value="0">周日</option>
+                                    <option value="1" selected>周一</option>
+                                    <option value="2">周二</option>
+                                    <option value="3">周三</option>
+                                    <option value="4">周四</option>
+                                    <option value="5">周五</option>
+                                    <option value="6">周六</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="gDom" style="display:none;">
+                                <label class="form-label">日 (1-31)</label>
+                                <input type="number" id="bdom" class="form-input" min="1" max="31" value="1">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="doExplain()">解析</button>
+                    <button class="btn btn-info" onclick="doBuild()">生成并解析</button>
+                    <button class="btn btn-secondary" onclick="resetForm()">重置</button>
+                </div>
+            </div>
+
+            <!-- 输出 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">解析结果</h2>
+                </div>
+                <div class="form-group fill">
+                    <label class="form-label">说明与未来执行时间</label>
+                    <div id="cronOut" class="result-container">等待解析...</div>
+                </div>
+            </div>
+            </div><!-- /workspace -->
+
+            <details class="help"><summary>说明与示例</summary><div class="help-body">
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">CRON 字段速查</h2></div>
+                <div class="grid">
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">字段范围</h3>
+                        <ul style="line-height: 1.8; color: var(--text-secondary);">
+                            <li><strong>秒:</strong> 0-59（6/7 字段时）</li>
+                            <li><strong>分:</strong> 0-59 &nbsp; <strong>时:</strong> 0-23</li>
+                            <li><strong>日:</strong> 1-31 &nbsp; <strong>月:</strong> 1-12 / JAN-DEC</li>
+                            <li><strong>周:</strong> 0-6（0=周日）/ SUN-SAT，7 亦为周日</li>
+                            <li><strong>年:</strong> 1970-2099（7 字段时）</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">示例</h3>
+                        <ul style="line-height: 1.8; color: var(--text-secondary);">
+                            <li><code>*/15 * * * *</code> 每 15 分钟</li>
+                            <li><code>0 9 * * 1-5</code> 工作日 9:00</li>
+                            <li><code>0 0 1 * *</code> 每月 1 日 0:00</li>
+                            <li><code>30 2 * * 0</code> 每周日 2:30</li>
+                            <li><code>0 0 12 * * *</code> 每天 12:00（含秒字段）</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            </div></details>
+        </div>
+    </main></div></div>
+
+    <script>
+        const val = id => document.getElementById(id).value;
+        const num = id => parseInt(val(id) || '0', 10);
+
+        // 各频率所需的参数输入
+        const MODE_FIELDS = {
+            every_n_seconds: ['gN'],
+            every_n_minutes: ['gN'],
+            hourly: ['gMinute'],
+            daily: ['gHour', 'gMinute'],
+            weekly: ['gDow', 'gHour', 'gMinute'],
+            monthly: ['gDom', 'gHour', 'gMinute'],
+        };
+        function onModeChange() {
+            const m = val('buildMode');
+            const need = MODE_FIELDS[m] || [];
+            ['gN', 'gHour', 'gMinute', 'gDow', 'gDom'].forEach(id => {
+                document.getElementById(id).style.display = need.includes(id) ? '' : 'none';
+            });
+            document.getElementById('nUnit').textContent = (m === 'every_n_seconds') ? '秒' : '分钟';
+        }
+
+        function showText(text, status) {
+            const el = document.getElementById('cronOut');
+            el.textContent = text;
+            el.className = 'result-container' + (status ? ' result-' + status : '');
+        }
+
+        function render(d) {
+            let out = '';
+            out += '✅ 表达式: ' + d.expression;
+            if (d.normalized && d.normalized !== d.expression) out += '  →  ' + d.normalized;
+            out += '  (' + d.field_count + ' 字段)\n\n';
+            out += '说明:\n  ' + d.description + '\n';
+            if (d.note) out += '\n⚠ ' + d.note + '\n';
+
+            if (d.fields && d.fields.length) {
+                out += '\n字段拆解:\n';
+                d.fields.forEach(f => {
+                    out += '  ' + f.label + '  ' + f.value.padEnd(10) + '  ' + f.desc + '\n';
+                });
+            }
+            if (d.next_times && d.next_times.length) {
+                out += '\n未来 ' + d.next_times.length + ' 次执行:\n';
+                d.next_times.forEach((t, i) => {
+                    out += '  ' + String(i + 1).padStart(2, ' ') + '. ' + t + '\n';
+                });
+            }
+            showText(out.trimEnd(), 'success');
+        }
+
+        async function doExplain() {
+            const expr = val('cronExpr').trim();
+            if (!expr) { showText('请输入 CRON 表达式', 'error'); return; }
+            showText('正在解析 ...', 'info');
+            try {
+                const resp = await fetch('/api/cron/explain', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ expression: expr, count: 7 })
+                });
+                const data = await resp.json();
+                if (resp.ok && data.success) render(data.data);
+                else showText('解析失败: ' + (data.error || ('HTTP ' + resp.status)), 'error');
+            } catch (e) {
+                showText('请求失败: ' + e.message, 'error');
+            }
+        }
+
+        async function doBuild() {
+            const m = val('buildMode');
+            const body = { mode: m };
+            if (m === 'every_n_seconds' || m === 'every_n_minutes') body.n = num('bn');
+            if (m === 'hourly' || m === 'daily' || m === 'weekly' || m === 'monthly') body.minute = num('bminute');
+            if (m === 'daily' || m === 'weekly' || m === 'monthly') body.hour = num('bhour');
+            if (m === 'weekly') body.day_of_week = num('bdow');
+            if (m === 'monthly') body.day_of_month = num('bdom');
+            showText('正在生成 ...', 'info');
+            try {
+                const resp = await fetch('/api/cron/build', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await resp.json();
+                if (resp.ok && data.success) {
+                    document.getElementById('cronExpr').value = data.data.expression;
+                    doExplain();
+                } else {
+                    showText('生成失败: ' + (data.error || ('HTTP ' + resp.status)), 'error');
+                }
+            } catch (e) {
+                showText('请求失败: ' + e.message, 'error');
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('cronExpr').value = '*/15 9-17 * * 1-5';
+            document.getElementById('buildMode').value = 'every_n_minutes';
+            document.getElementById('bn').value = '5';
+            document.getElementById('bhour').value = '9';
+            document.getElementById('bminute').value = '0';
+            document.getElementById('bdow').value = '1';
+            document.getElementById('bdom').value = '1';
+            onModeChange();
+            showText('等待解析...');
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); doExplain(); }
+        });
+
+        // 初始：渲染默认表达式
+        onModeChange();
+        doExplain();
+    </script>
+</body>
+</html>

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`common_tools` is a **Tauri v2 desktop application** (productName "Development Assistance Tool") exposing developer utilities — network byte-order conversion, raw-packet hex analysis + PCAP export, multi-protocol PCAP traffic generation (TCP/HTTP/ICMP/UDP/FTP/SSH/MySQL, optional VLAN), regex matching, MD5 hashing, and `\000`↔`\u0000` string-escape conversion. The UI is the original HTML/CSS/JS frontend; an **axum** web server runs *inside the same process* (bound to `127.0.0.1` on a random free port) and the Tauri WebView window points at it, so the frontend's `fetch('/api/...')` calls work unchanged. All frontend assets are embedded into the binary at compile time (`include_str!`), so the executable is self-contained.
+`common_tools` is a **Tauri v2 desktop application** (productName "Development Assistance Tool") exposing developer utilities — network byte-order conversion, raw-packet hex analysis + PCAP export, multi-protocol PCAP traffic generation (TCP/HTTP/ICMP/UDP/FTP/SSH/MySQL, optional VLAN), regex matching, MD5 hashing, and `\000`↔`\u0000` string-escape conversion, and crontab time calculation (explain a 5-7 field CRON expr + next-run times, build an expr from frequency presets). The UI is the original HTML/CSS/JS frontend; an **axum** web server runs *inside the same process* (bound to `127.0.0.1` on a random free port) and the Tauri WebView window points at it, so the frontend's `fetch('/api/...')` calls work unchanged. All frontend assets are embedded into the binary at compile time (`include_str!`), so the executable is self-contained.
 
 The Rust crate lives in **`src-tauri/`** (conventional Tauri layout); the frontend is at the project-root **`static/`**. There is one **local path-dependency sub-crate, `genpcap/`** — the PCAP-generation core ported from the sibling `rust/gen_pcap` project (see "PCAP generation" below); otherwise no Cargo workspace. Other sibling dirs under `rust/` (`tls_ja4`, …) are unrelated.
 
@@ -22,7 +22,7 @@ common_tools/
 │   ├── tauri.conf.json         # productName Development Assistance Tool, identifier com.bytebench.commontools, bundle=nsis
 │   ├── capabilities/default.json
 │   ├── icons/                  # icon.ico used for Windows build (generated with ImageMagick)
-│   └── src/{main.rs, server.rs, web_api.rs, network_utils.rs, packet_analyzer.rs, pcap_generator.rs, regex_matcher.rs, md5_utils.rs, string_converter.rs}
+│   └── src/{main.rs, server.rs, web_api.rs, network_utils.rs, packet_analyzer.rs, pcap_generator.rs, regex_matcher.rs, md5_utils.rs, string_converter.rs, cron_utils.rs}
 ├── BUILD_WINDOWS.md            # how to build the Windows desktop app
 └── README.md / DEPLOYMENT.md   # OLD web-server docs (stale — predate the Tauri/redesign work)
 ```
@@ -77,7 +77,7 @@ The `genpcap/` path-dep crate is a **trimmed port of `rust/gen_pcap`**: only the
 
 ## Endpoints
 
-`GET /health`, `GET /api` (info) · `POST /api/network/convert` · `POST /api/packet/{analyze,export,download}` · `POST /api/pcap/{generate,save}` (generate → JSON request, `.pcap` attachment download; save → writes the `.pcap` to a server-side directory, default = process CWD, returns JSON `{filename,path,...}` — the path has the Windows `\\?\` extended-length prefix stripped). The pcapgen UI only exposes **生成并保存到目录** (save): an in-browser/`fetch`+Blob download button was deliberately removed because `a.click()` after an `await` is outside the user-gesture and uses a `blob:` URL, both of which the Tauri WebView silently drops — don't re-add it. · `POST /api/regex/match` · `POST /api/md5/{calculate,calculate_file}` · `POST /api/string/convert`. Pages: `/`, `/network.html`, `/packet.html`, `/pcapgen.html`, `/regex.html`, `/md5.html`, `/string.html`; embedded assets under `/static/*`.
+`GET /health`, `GET /api` (info) · `POST /api/network/convert` · `POST /api/packet/{analyze,export,download}` · `POST /api/pcap/{generate,save}` (generate → JSON request, `.pcap` attachment download; save → writes the `.pcap` to a server-side directory, default = process CWD, returns JSON `{filename,path,...}` — the path has the Windows `\\?\` extended-length prefix stripped). The pcapgen UI only exposes **生成并保存到目录** (save): an in-browser/`fetch`+Blob download button was deliberately removed because `a.click()` after an `await` is outside the user-gesture and uses a `blob:` URL, both of which the Tauri WebView silently drops — don't re-add it. · `POST /api/regex/match` · `POST /api/md5/{calculate,calculate_file}` · `POST /api/string/convert` · `POST /api/cron/{explain,build}` (explain → CN description + `field_count` + next-run times for a 5/6/7-field CRON or `@macro`; build → expr from a frequency preset). Pages: `/`, `/network.html`, `/packet.html`, `/pcapgen.html`, `/regex.html`, `/md5.html`, `/string.html`, `/cron.html`; embedded assets under `/static/*`.
 
 ## Gotchas
 

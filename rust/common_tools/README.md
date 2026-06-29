@@ -15,6 +15,7 @@ API，前端为重新设计的「示波器 / 协议分析仪」风格 UI。前�
 | 🔎 正则匹配 | 实时匹配与捕获组展示，支持大小写、多行、点号匹配换行等选项 |
 | 🔐 MD5 计算 | 计算文本或文件的 MD5 摘要，用于校验与完整性比对 |
 | 🔁 字符串转换 | 八进制（`\000`）与 Unicode（`\u0000`）转义序列双向转换，自动识别格式 |
+| ⏱ Crontab 计算 | 解析 5-7 字段 CRON 表达式（含秒/年、`@daily` 等宏），给出中文说明与未来 7 次执行时间；并可由「每周/每天/每小时/每 N 分钟/每 N 秒」反向生成表达式 |
 
 ## 架构
 
@@ -33,7 +34,7 @@ common_tools/
         ├── main.rs             # 入口：desktop（Tauri 窗口）/ server（纯服务）双模式
         ├── server.rs           # axum 路由 + 处理器 + include_str! 嵌入的静态资源
         ├── web_api.rs          # /api/* 处理器与统一 ApiResponse 包装
-        └── network_utils.rs · packet_analyzer.rs · pcap_generator.rs · regex_matcher.rs · md5_utils.rs · string_converter.rs
+        └── network_utils.rs · packet_analyzer.rs · pcap_generator.rs · regex_matcher.rs · md5_utils.rs · string_converter.rs · cron_utils.rs
 ```
 
 `main.rs` 通过 Cargo `desktop` 特性选择入口：
@@ -102,6 +103,8 @@ cargo test --no-default-features
 | POST | `/api/md5/calculate` | 文本 MD5 计算 |
 | POST | `/api/md5/calculate_file` | 文件 MD5 计算（上传文件字节，按内容求值） |
 | POST | `/api/string/convert` | 字符串转义转换 |
+| POST | `/api/cron/explain` | 解析 CRON 表达式，返回说明与未来执行时间 |
+| POST | `/api/cron/build` | 由频率选项生成 CRON 表达式 |
 
 示例：
 
