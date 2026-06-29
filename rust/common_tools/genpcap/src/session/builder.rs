@@ -1,6 +1,7 @@
 // 会话建造者
 
 use crate::core::{NetworkConnection, ApplicationFlowType, BuildError, session::TcpSession};
+use crate::core::session::TcpMode;
 use rand::Rng;
 
 // 会话建造者
@@ -37,7 +38,9 @@ impl SessionBuilder {
 
     pub fn build(self) -> Result<TcpSession, BuildError> {
         let connection = self.connection.ok_or(BuildError::MissingConnection)?;
-        let _application_flow = self.application_flow.unwrap_or(ApplicationFlowType::TcpOnly);
+        let _application_flow = self
+            .application_flow
+            .unwrap_or(ApplicationFlowType::Tcp(TcpMode::Handshake));
         let isn = self.isn.unwrap_or_else(|| {
             let mut rng = rand::thread_rng();
             rng.gen_range(1000000..2000000)

@@ -12,10 +12,18 @@ pub mod http;
 pub mod session;
 pub mod vlan;
 
+// 报文序列生成扩展（TCP 模式 / 自定义 HTTP / ICMP / UDP / FTP / SSH / MySQL）
+pub mod conversation;
+pub mod l4;
+pub mod flows;
+
 // 重新导出主要公共接口
 pub use core::{
     NetworkConnection, IpRange, IpVersion, PortRange, BuildError, PcapError,
-    session::{TcpSession, ApplicationFlow, ApplicationFlowType, HttpFlow},
+    session::{
+        TcpSession, ApplicationFlow, ApplicationFlowType,
+        TcpMode, HttpConfig, IcmpConfig, UdpConfig, FtpMode,
+    },
 };
 pub use session::{SessionBuilder, SessionFactory, TcpSessionConfig};
 

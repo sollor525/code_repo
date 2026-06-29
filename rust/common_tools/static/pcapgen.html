@@ -12,7 +12,10 @@
         .pcap-fields .form-group { margin-bottom: 0; }
         .pcap-sub { border-top: 1px solid var(--line); padding-top: 12px; }
         .pcap-sub-title { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 10px; }
-        .pcap-fields .form-input { padding: 9px 11px; }
+        .pcap-fields .form-input, .pcap-fields .form-select { padding: 9px 11px; }
+        .pcap-fields .form-textarea { min-height: 64px; }
+        .proto-panel { display: none; flex-direction: column; gap: 12px; }
+        .proto-panel.active { display: flex; }
     </style>
 </head>
 <body>
@@ -45,7 +48,7 @@
             <header class="tool-head">
                 <span class="eyebrow">CH · GEN — pcap traffic synthesizer</span>
                 <h1>PCAP 流量生成</h1>
-                <p>按参数批量合成 TCP / HTTP 会话（可选 VLAN / QinQ）并导出标准 PCAP，可用 Wireshark 打开分析。</p>
+                <p>按参数批量合成 TCP / HTTP / ICMP / UDP / FTP / SSH / MySQL 流量（可选 VLAN / QinQ），导出标准 PCAP 供 Wireshark 分析。</p>
             </header>
 
             <div class="workspace io">
@@ -61,8 +64,16 @@
                             <input type="number" id="sessionCount" class="form-input" min="1" max="10000" value="1">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">目标端口</label>
-                            <input type="text" id="dstPort" class="form-input" value="80" placeholder="80 或 80-443 或 random">
+                            <label class="form-label">协议 / 流量类型</label>
+                            <select id="protocol" class="form-select" onchange="onProtocolChange()">
+                                <option value="tcp">TCP（握手 / SYN / 挥手 / RST）</option>
+                                <option value="http">HTTP</option>
+                                <option value="icmp">ICMP</option>
+                                <option value="udp">UDP</option>
+                                <option value="ftp">FTP</option>
+                                <option value="ssh">SSH</option>
+                                <option value="mysql">MySQL</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label class="form-label">源 IP 范围</label>
@@ -76,28 +87,92 @@
                             <label class="form-label">源端口范围</label>
                             <input type="text" id="srcPort" class="form-input" value="30000-40000" placeholder="30000-40000 或 random">
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">目标端口</label>
+                            <input type="text" id="dstPort" class="form-input" value="80" placeholder="80 或 80-443 或 random">
+                        </div>
                     </div>
 
+                    <!-- 协议专属选项 -->
                     <div class="pcap-sub">
-                        <div class="pcap-sub-title">应用层流量</div>
-                        <div class="checkbox-group">
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="includeHttp" onchange="toggleHttp()">
-                                <label for="includeHttp">包含 HTTP 请求 / 响应（否则仅生成 TCP 三次握手）</label>
+                        <div class="pcap-sub-title">协议选项</div>
+
+                        <div class="proto-panel active" data-proto="tcp">
+                            <div class="form-group">
+                                <label class="form-label">TCP 模式</label>
+                                <select id="tcpMode" class="form-select">
+                                    <option value="syn_only">仅 SYN（半连接）</option>
+                                    <option value="handshake" selected>三次握手</option>
+                                    <option value="handshake_close">三次握手 + 四次挥手</option>
+                                    <option value="handshake_reset">三次握手 + RST 复位</option>
+                                </select>
                             </div>
                         </div>
-                        <div class="pcap-grid" id="httpFields" style="margin-top: 10px; display: none;">
-                            <div class="form-group">
-                                <label class="form-label">HTTP Host</label>
-                                <input type="text" id="httpHost" class="form-input" value="example.com">
+
+                        <div class="proto-panel" data-proto="http">
+                            <div class="pcap-grid">
+                                <div class="form-group">
+                                    <label class="form-label">HTTP Host</label>
+                                    <input type="text" id="httpHost" class="form-input" value="example.com">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">URI（逗号分隔）</label>
+                                    <input type="text" id="httpUris" class="form-input" value="/,/api/users">
+                                </div>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">HTTP URI（逗号分隔）</label>
-                                <input type="text" id="httpUris" class="form-input" value="/,/api/users">
+                                <label class="form-label">自定义请求内容（可选，留空则按上方 URI 生成 GET）</label>
+                                <textarea id="httpRequest" class="form-textarea" placeholder="GET /index.html HTTP/1.1&#10;Host: example.com&#10;&#10;"></textarea>
                             </div>
+                            <div class="form-group">
+                                <label class="form-label">自定义响应内容（可选）</label>
+                                <textarea id="httpResponse" class="form-textarea" placeholder="HTTP/1.1 200 OK&#10;Content-Type: text/plain&#10;Content-Length: 2&#10;&#10;OK"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="proto-panel" data-proto="icmp">
+                            <div class="form-group">
+                                <label class="form-label">Echo 请求/应答 对数</label>
+                                <input type="number" id="icmpCount" class="form-input" min="1" max="1000" value="2">
+                            </div>
+                            <div class="message message-info">ICMP 生成目前仅支持 IPv4 地址。</div>
+                        </div>
+
+                        <div class="proto-panel" data-proto="udp">
+                            <div class="form-group">
+                                <label class="form-label">UDP 载荷（文本）</label>
+                                <input type="text" id="udpPayload" class="form-input" value="ByteBench UDP payload">
+                            </div>
+                            <div class="checkbox-group">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="udpResponse" checked>
+                                    <label for="udpResponse">生成对端应答报文</label>
+                                </div>
+                            </div>
+                            <div class="message message-info">UDP 生成目前仅支持 IPv4 地址。</div>
+                        </div>
+
+                        <div class="proto-panel" data-proto="ftp">
+                            <div class="form-group">
+                                <label class="form-label">FTP 模式</label>
+                                <select id="ftpMode" class="form-select">
+                                    <option value="passive" selected>被动模式 (PASV)</option>
+                                    <option value="active">主动模式 (PORT)</option>
+                                </select>
+                            </div>
+                            <div class="message message-info">生成控制连接（登录 / RETR）与数据连接（文件传输）两条 TCP 流。</div>
+                        </div>
+
+                        <div class="proto-panel" data-proto="ssh">
+                            <div class="message message-info">生成 SSH 版本协商（SSH-2.0-…）与 KEXINIT 密钥交换报文。</div>
+                        </div>
+
+                        <div class="proto-panel" data-proto="mysql">
+                            <div class="message message-info">生成 MySQL 服务器握手、登录、COM_QUERY (SELECT 1) 与结果集报文。</div>
                         </div>
                     </div>
 
+                    <!-- VLAN -->
                     <div class="pcap-sub">
                         <div class="pcap-sub-title">VLAN（可选）</div>
                         <div class="checkbox-group">
@@ -174,16 +249,16 @@
                         <ul style="line-height: 1.8; color: var(--text-secondary);">
                             <li><strong>固定:</strong> 10.0.0.1 / 80</li>
                             <li><strong>区间:</strong> 10.0.0.1-10.0.0.100 / 80-443</li>
-                            <li><strong>随机:</strong> random（在每个会话随机取值）</li>
+                            <li><strong>随机:</strong> random（每会话随机取值）</li>
                         </ul>
                     </div>
                     <div>
-                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">生成内容</h3>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">协议</h3>
                         <ul style="line-height: 1.8; color: var(--text-secondary);">
-                            <li>每个会话包含完整 TCP 三次握手</li>
-                            <li>勾选 HTTP 时追加请求 / 响应报文</li>
-                            <li>可叠加单层 VLAN 或 QinQ 双层标签</li>
-                            <li>导出标准 Ethernet 链路层 PCAP</li>
+                            <li><strong>TCP:</strong> 仅 SYN / 三次握手 / +四次挥手 / +RST</li>
+                            <li><strong>HTTP:</strong> 默认 GET，或自定义请求/响应内容</li>
+                            <li><strong>ICMP / UDP:</strong> echo 与 UDP 收发（仅 IPv4）</li>
+                            <li><strong>FTP / SSH / MySQL:</strong> 代表性应用层报文</li>
                         </ul>
                     </div>
                 </div>
@@ -193,9 +268,16 @@
     </main></div></div>
 
     <script>
-        function toggleHttp() {
-            document.getElementById('httpFields').style.display =
-                document.getElementById('includeHttp').checked ? 'grid' : 'none';
+        // 协议 → 典型目标端口
+        const PROTO_PORTS = { tcp: '80', http: '80', icmp: '0', udp: '53', ftp: '21', ssh: '22', mysql: '3306' };
+
+        function onProtocolChange() {
+            const proto = document.getElementById('protocol').value;
+            document.querySelectorAll('.proto-panel').forEach(p => {
+                p.classList.toggle('active', p.dataset.proto === proto);
+            });
+            // 切换协议时填入典型端口
+            if (PROTO_PORTS[proto]) document.getElementById('dstPort').value = PROTO_PORTS[proto];
         }
         function toggleVlan() {
             document.getElementById('vlanFields').style.display =
@@ -204,33 +286,41 @@
                 document.getElementById('enableQinq').checked ? 'grid' : 'none';
         }
 
-        function numOrNull(id) {
-            const v = document.getElementById(id).value.trim();
-            return v === '' ? null : parseInt(v, 10);
-        }
+        const val = id => document.getElementById(id).value;
+        const checked = id => document.getElementById(id).checked;
+        const numOrNull = id => { const v = val(id).trim(); return v === '' ? null : parseInt(v, 10); };
 
         function collectParams() {
+            const proto = val('protocol');
             const p = {
-                session_count: parseInt(document.getElementById('sessionCount').value || '1', 10),
-                src_ip: document.getElementById('srcIp').value.trim(),
-                dst_ip: document.getElementById('dstIp').value.trim(),
-                src_port: document.getElementById('srcPort').value.trim(),
-                dst_port: document.getElementById('dstPort').value.trim(),
-                include_http: document.getElementById('includeHttp').checked,
-                http_host: document.getElementById('httpHost').value.trim(),
-                http_uris: document.getElementById('httpUris').value.split(',').map(s => s.trim()).filter(Boolean)
+                session_count: parseInt(val('sessionCount') || '1', 10),
+                src_ip: val('srcIp').trim(),
+                dst_ip: val('dstIp').trim(),
+                src_port: val('srcPort').trim(),
+                dst_port: val('dstPort').trim(),
+                protocol: proto
             };
-            if (document.getElementById('enableVlan').checked) {
-                p.vlan_id = numOrNull('vlanId');
-                p.vlan_priority = parseInt(document.getElementById('vlanPriority').value || '0', 10);
-                p.vlan_dei = document.getElementById('vlanDei').checked;
+            if (proto === 'tcp') p.tcp_mode = val('tcpMode');
+            if (proto === 'http') {
+                p.http_host = val('httpHost').trim();
+                p.http_uris = val('httpUris').split(',').map(s => s.trim()).filter(Boolean);
+                if (val('httpRequest').trim()) p.http_request = val('httpRequest');
+                if (val('httpResponse').trim()) p.http_response = val('httpResponse');
             }
-            if (document.getElementById('enableQinq').checked) {
+            if (proto === 'icmp') p.icmp_count = parseInt(val('icmpCount') || '1', 10);
+            if (proto === 'udp') { p.udp_payload = val('udpPayload'); p.udp_response = checked('udpResponse'); }
+            if (proto === 'ftp') p.ftp_mode = val('ftpMode');
+            if (checked('enableVlan')) {
+                p.vlan_id = numOrNull('vlanId');
+                p.vlan_priority = parseInt(val('vlanPriority') || '0', 10);
+                p.vlan_dei = checked('vlanDei');
+            }
+            if (checked('enableQinq')) {
                 p.qinq = true;
                 p.outer_vlan = numOrNull('outerVlan');
                 p.inner_vlan = numOrNull('innerVlan');
-                p.outer_priority = parseInt(document.getElementById('outerPriority').value || '0', 10);
-                p.inner_priority = parseInt(document.getElementById('innerPriority').value || '0', 10);
+                p.outer_priority = parseInt(val('outerPriority') || '0', 10);
+                p.inner_priority = parseInt(val('innerPriority') || '0', 10);
             }
             return p;
         }
@@ -241,7 +331,6 @@
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
-
         function showResult(text, status) {
             const el = document.getElementById('genResult');
             el.textContent = text;
@@ -257,13 +346,11 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
-
                 if (resp.ok) {
                     const sc = resp.headers.get('x-session-count');
                     const pc = resp.headers.get('x-packet-count');
                     const flow = resp.headers.get('x-flow');
                     const blob = await resp.blob();
-
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -272,12 +359,11 @@
                     a.click();
                     URL.revokeObjectURL(url);
                     a.remove();
-
                     showResult(
                         '✅ 生成成功，文件已下载\n\n' +
+                        '协议: ' + flow + '\n' +
                         '会话数量: ' + sc + '\n' +
                         '数据包数: ' + pc + '\n' +
-                        '流量类型: ' + flow + '\n' +
                         '文件大小: ' + formatSize(blob.size) + '\n\n' +
                         '可使用 Wireshark 等工具打开 .pcap 进行分析。',
                         'success'
@@ -294,13 +380,20 @@
 
         function resetForm() {
             document.getElementById('sessionCount').value = '1';
+            document.getElementById('protocol').value = 'tcp';
             document.getElementById('srcIp').value = '10.10.1.100';
             document.getElementById('dstIp').value = '192.168.1.100';
             document.getElementById('srcPort').value = '30000-40000';
             document.getElementById('dstPort').value = '80';
-            document.getElementById('includeHttp').checked = false;
+            document.getElementById('tcpMode').value = 'handshake';
             document.getElementById('httpHost').value = 'example.com';
             document.getElementById('httpUris').value = '/,/api/users';
+            document.getElementById('httpRequest').value = '';
+            document.getElementById('httpResponse').value = '';
+            document.getElementById('icmpCount').value = '2';
+            document.getElementById('udpPayload').value = 'ByteBench UDP payload';
+            document.getElementById('udpResponse').checked = true;
+            document.getElementById('ftpMode').value = 'passive';
             document.getElementById('enableVlan').checked = false;
             document.getElementById('enableQinq').checked = false;
             document.getElementById('vlanId').value = '';
@@ -310,7 +403,7 @@
             document.getElementById('innerVlan').value = '';
             document.getElementById('outerPriority').value = '0';
             document.getElementById('innerPriority').value = '0';
-            toggleHttp();
+            onProtocolChange();
             toggleVlan();
             showResult('等待生成...');
         }

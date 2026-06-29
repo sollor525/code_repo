@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`common_tools` is a **Tauri v2 desktop application** (productName "ByteBench") exposing developer utilities — network byte-order conversion, raw-packet hex analysis + PCAP export, TCP/HTTP/VLAN PCAP traffic generation, regex matching, MD5 hashing, and `\000`↔`\u0000` string-escape conversion. The UI is the original HTML/CSS/JS frontend; an **axum** web server runs *inside the same process* (bound to `127.0.0.1` on a random free port) and the Tauri WebView window points at it, so the frontend's `fetch('/api/...')` calls work unchanged. All frontend assets are embedded into the binary at compile time (`include_str!`), so the executable is self-contained.
+`common_tools` is a **Tauri v2 desktop application** (productName "ByteBench") exposing developer utilities — network byte-order conversion, raw-packet hex analysis + PCAP export, multi-protocol PCAP traffic generation (TCP/HTTP/ICMP/UDP/FTP/SSH/MySQL, optional VLAN), regex matching, MD5 hashing, and `\000`↔`\u0000` string-escape conversion. The UI is the original HTML/CSS/JS frontend; an **axum** web server runs *inside the same process* (bound to `127.0.0.1` on a random free port) and the Tauri WebView window points at it, so the frontend's `fetch('/api/...')` calls work unchanged. All frontend assets are embedded into the binary at compile time (`include_str!`), so the executable is self-contained.
 
 The Rust crate lives in **`src-tauri/`** (conventional Tauri layout); the frontend is at the project-root **`static/`**. There is one **local path-dependency sub-crate, `genpcap/`** — the PCAP-generation core ported from the sibling `rust/gen_pcap` project (see "PCAP generation" below); otherwise no Cargo workspace. Other sibling dirs under `rust/` (`tls_ja4`, …) are unrelated.
 
@@ -15,7 +15,7 @@ common_tools/
 ├── static/                     # frontend (the redesigned "Signal" UI) = Tauri frontendDist
 ├── genpcap/                    # local path-dep sub-crate: PCAP-generation core (ported from rust/gen_pcap)
 │   ├── Cargo.toml              #   deps: pnet_packet + pnet_base + rand (pure Rust, NO libpcap/pnet_datalink)
-│   └── src/{lib.rs, core/, tcp/, http/, session/, vlan/}   # pure packet-byte generation, no IO/license/yaml
+│   └── src/{lib.rs, conversation.rs, l4.rs, flows.rs, core/, tcp/, http/, session/, vlan/}   # pure packet-byte gen, no IO/license/yaml
 ├── src-tauri/
 │   ├── Cargo.toml              # the crate; `tauri` is an OPTIONAL dep behind the `desktop` feature; genpcap = path "../genpcap"
 │   ├── build.rs                # calls tauri_build::build() ONLY when CARGO_FEATURE_DESKTOP is set
@@ -64,6 +64,8 @@ cargo test --no-default-features string_converter::tests::test_round_trip_conver
 The `genpcap/` path-dep crate is a **trimmed port of `rust/gen_pcap`**: only the pure packet-byte generation (`core`/`tcp`/`http`/`session`/`vlan`) — the original's `license`, `template`/YAML, CLI, file IO, and the native **`pcap` (libpcap)** dependency were all dropped. It depends on **`pnet_packet` + `pnet_base`** (NOT the umbrella `pnet`, which pulls `pnet_datalink` → needs npcap SDK on Windows and would break the self-contained build) + `rand`. Re-porting: copy those module dirs, `rm vlan/packet.rs` (unused, not in `vlan/mod.rs`), and `sed 's/pnet::packet::/pnet_packet::/; s/pnet::util::MacAddr/pnet_base::MacAddr/'`.
 
 `pcap_generator.rs` is the common_tools-side wrapper: it builds a `genpcap::TcpSessionConfig` from request params, calls `generate_sessions()` → `session.generate_packets(&flow)`, applies VLAN, and serializes the `Vec<Vec<u8>>` frames to **in-memory PCAP bytes via `pcap_file`** (same crate `packet_analyzer` uses — no libpcap). The handler streams those bytes back as a `generated.pcap` attachment with `x-session-count`/`x-packet-count`/`x-flow` headers.
+
+**Protocols / flows** (`genpcap::flows` + `ApplicationFlowType`): `Tcp(TcpMode)` (SynOnly / Handshake / HandshakeClose=4-way / HandshakeReset=RST), `Http(HttpConfig)` (default GET-per-URI, or verbatim `request_content`/`response_content`), `Icmp`/`Udp` (IPv4-only — `pcap_generator` rejects IPv6), `Ftp(FtpMode)` (active/passive: control + data channels), `Ssh`, `Mysql`. TCP-based flows are built by **`conversation::TcpConversation`** (tracks client/server seq, computes ack at send time → Wireshark-clean streams); ICMP/UDP frames come from **`l4.rs`** (hand-built IPv4 + checksums). App-protocol payloads (FTP/SSH/MySQL) are **representative**, not full state machines. The selected protocol is chosen by the request's `protocol` field; the frontend's `pcapgen.html` shows per-protocol option panels.
 
 ### Adding a new tool
 

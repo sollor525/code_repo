@@ -8,5 +8,8 @@ pub mod error;
 
 // 重新导出公共接口
 pub use network::{IpRange, IpVersion, PortRange, NetworkConnection};
-pub use session::{ApplicationFlow, ApplicationFlowType, TcpOnlyFlow, HttpFlow};
+pub use session::{
+    ApplicationFlow, ApplicationFlowType, FtpMode, HttpConfig, IcmpConfig, TcpMode, TcpSession,
+    UdpConfig,
+};
 pub use error::{BuildError, PcapError};

@@ -1,8 +1,8 @@
-// 会话层抽象
+// 会话层抽象 + 应用流量类型
 
 use crate::core::network::NetworkConnection;
 
-// 前向声明TcpSession
+// TcpSession：一条会话的寻址信息 + 初始序列号
 #[derive(Debug, Clone)]
 pub struct TcpSession {
     pub connection: NetworkConnection,
@@ -21,79 +21,84 @@ pub trait ApplicationFlow {
     fn name(&self) -> &'static str;
 }
 
-// TCP会话基础结构 - 移动到lib.rs作为主要导出
-// 这样可以避免循环依赖问题
+// ----------------------------- 流量配置 -----------------------------
 
-// 为了支持克隆，我们需要一个包装器
+/// 纯 TCP 模式
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TcpMode {
+    /// 仅 SYN（半连接扫描风格）
+    SynOnly,
+    /// 三次握手
+    Handshake,
+    /// 三次握手后四次挥手关闭
+    HandshakeClose,
+    /// 三次握手后 RST 复位
+    HandshakeReset,
+}
+
+/// HTTP：默认按 uris/host 生成 GET，或指定自定义请求/响应内容
+#[derive(Debug, Clone)]
+pub struct HttpConfig {
+    pub uris: Vec<String>,
+    pub host: String,
+    pub request_content: Option<String>,
+    pub response_content: Option<String>,
+}
+
+/// ICMP echo（请求/应答对数）
+#[derive(Debug, Clone)]
+pub struct IcmpConfig {
+    pub count: u32,
+}
+
+/// UDP（载荷 + 是否生成应答）
+#[derive(Debug, Clone)]
+pub struct UdpConfig {
+    pub payload: Vec<u8>,
+    pub with_response: bool,
+}
+
+/// FTP 模式
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FtpMode {
+    Active,
+    Passive,
+}
+
+// 应用流量类型（克隆友好，便于按会话复用配置）
 #[derive(Debug, Clone)]
 pub enum ApplicationFlowType {
-    Http(HttpFlow),
-    TcpOnly,
+    Tcp(TcpMode),
+    Http(HttpConfig),
+    Icmp(IcmpConfig),
+    Udp(UdpConfig),
+    Ftp(FtpMode),
+    Ssh,
+    Mysql,
 }
 
 impl ApplicationFlow for ApplicationFlowType {
     fn generate_packets(&self, session: &TcpSession) -> Vec<Vec<u8>> {
         match self {
-            ApplicationFlowType::Http(flow) => flow.generate_packets(session),
-            ApplicationFlowType::TcpOnly => TcpOnlyFlow.generate_packets(session),
+            ApplicationFlowType::Tcp(mode) => crate::flows::tcp_mode(session, *mode),
+            ApplicationFlowType::Http(cfg) => crate::flows::http(session, cfg),
+            ApplicationFlowType::Icmp(cfg) => crate::flows::icmp(session, cfg),
+            ApplicationFlowType::Udp(cfg) => crate::flows::udp(session, cfg),
+            ApplicationFlowType::Ftp(mode) => crate::flows::ftp(session, *mode),
+            ApplicationFlowType::Ssh => crate::flows::ssh(session),
+            ApplicationFlowType::Mysql => crate::flows::mysql(session),
         }
     }
 
     fn name(&self) -> &'static str {
         match self {
+            ApplicationFlowType::Tcp(_) => "TCP",
             ApplicationFlowType::Http(_) => "HTTP",
-            ApplicationFlowType::TcpOnly => "TCP_ONLY",
+            ApplicationFlowType::Icmp(_) => "ICMP",
+            ApplicationFlowType::Udp(_) => "UDP",
+            ApplicationFlowType::Ftp(_) => "FTP",
+            ApplicationFlowType::Ssh => "SSH",
+            ApplicationFlowType::Mysql => "MySQL",
         }
-    }
-}
-
-// HTTP流量实现
-#[derive(Debug, Clone)]
-pub struct HttpFlow {
-    pub uris: Vec<String>,
-    pub host: String,
-}
-
-impl HttpFlow {
-    pub fn new(uris: Vec<String>, host: String) -> Self {
-        Self { uris, host }
-    }
-}
-
-impl ApplicationFlow for HttpFlow {
-    fn generate_packets(&self, session: &TcpSession) -> Vec<Vec<u8>> {
-        // 使用HTTP模块中的实现生成流量
-        crate::http::flow::HttpFlowImplementation::generate_packets(&self.uris, &self.host, session)
-    }
-
-    fn name(&self) -> &'static str {
-        "HTTP"
-    }
-}
-
-// 纯TCP流量实现（无应用层）
-#[derive(Debug, Clone)]
-pub struct TcpOnlyFlow;
-
-impl ApplicationFlow for TcpOnlyFlow {
-    fn generate_packets(&self, session: &TcpSession) -> Vec<Vec<u8>> {
-        // 返回TCP三次握手包
-        use crate::tcp::build_tcp_handshake_packets;
-
-        let (handshake_packets, _) = build_tcp_handshake_packets(
-            session.connection.src_mac,
-            session.connection.dst_mac,
-            session.connection.src_ip,
-            session.connection.dst_ip,
-            session.connection.src_port,
-            session.connection.dst_port,
-            session.isn
-        );
-
-        handshake_packets
-    }
-
-    fn name(&self) -> &'static str {
-        "TCP_ONLY"
     }
 }

@@ -7,12 +7,13 @@ use std::borrow::Cow;
 use std::time::Duration;
 
 use genpcap::{
-    build_vlan_ethernet_header, IpRange, PortRange, TcpSession, TcpSessionConfig, VlanConfig,
+    build_vlan_ethernet_header, ApplicationFlow, ApplicationFlowType, FtpMode, HttpConfig,
+    IcmpConfig, IpRange, PortRange, TcpMode, TcpSession, TcpSessionConfig, UdpConfig, VlanConfig,
     VlanTag,
 };
 use pcap_file::pcap::{PcapPacket, PcapWriter};
 
-/// 生成参数（对应 gen_pcap 的命令行配置 + VLAN）
+/// 生成参数：寻址 + 协议（及各自子选项）+ VLAN
 #[derive(Debug, Clone)]
 pub struct PcapGenParams {
     pub session_count: u32,
@@ -20,9 +21,19 @@ pub struct PcapGenParams {
     pub dst_ip: String,
     pub src_port: String,
     pub dst_port: String,
-    pub include_http: bool,
+    /// 协议：tcp | http | icmp | udp | ftp | ssh | mysql
+    pub protocol: String,
+    /// TCP 模式：syn_only | handshake | handshake_close | handshake_reset
+    pub tcp_mode: String,
     pub http_host: String,
     pub http_uris: Vec<String>,
+    pub http_request: Option<String>,
+    pub http_response: Option<String>,
+    pub icmp_count: u32,
+    pub udp_payload: String,
+    pub udp_response: bool,
+    /// FTP 模式：active | passive
+    pub ftp_mode: String,
     // VLAN（单层）
     pub vlan_id: Option<u16>,
     pub vlan_priority: u8,
@@ -33,6 +44,73 @@ pub struct PcapGenParams {
     pub inner_vlan: Option<u16>,
     pub outer_priority: u8,
     pub inner_priority: u8,
+}
+
+/// 由参数构造应用流量类型（含 ICMP/UDP 的 IPv4 限制校验）
+fn build_flow(p: &PcapGenParams, src_v4: bool, dst_v4: bool) -> Result<ApplicationFlowType, String> {
+    let proto = p.protocol.trim().to_ascii_lowercase();
+    let flow = match proto.as_str() {
+        "tcp" | "" => {
+            let mode = match p.tcp_mode.trim() {
+                "syn_only" => TcpMode::SynOnly,
+                "handshake_close" => TcpMode::HandshakeClose,
+                "handshake_reset" => TcpMode::HandshakeReset,
+                _ => TcpMode::Handshake,
+            };
+            ApplicationFlowType::Tcp(mode)
+        }
+        "http" => {
+            let uris: Vec<String> = p
+                .http_uris
+                .iter()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            let uris = if uris.is_empty() { vec!["/".to_string()] } else { uris };
+            let host = {
+                let h = p.http_host.trim();
+                if h.is_empty() { "example.com".to_string() } else { h.to_string() }
+            };
+            let clean = |o: &Option<String>| {
+                o.as_ref()
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+            };
+            ApplicationFlowType::Http(HttpConfig {
+                uris,
+                host,
+                request_content: clean(&p.http_request),
+                response_content: clean(&p.http_response),
+            })
+        }
+        "icmp" => {
+            if !(src_v4 && dst_v4) {
+                return Err("ICMP 生成目前仅支持 IPv4 地址".to_string());
+            }
+            ApplicationFlowType::Icmp(IcmpConfig { count: p.icmp_count.clamp(1, 1000) })
+        }
+        "udp" => {
+            if !(src_v4 && dst_v4) {
+                return Err("UDP 生成目前仅支持 IPv4 地址".to_string());
+            }
+            ApplicationFlowType::Udp(UdpConfig {
+                payload: p.udp_payload.clone().into_bytes(),
+                with_response: p.udp_response,
+            })
+        }
+        "ftp" => {
+            let mode = if p.ftp_mode.trim() == "active" {
+                FtpMode::Active
+            } else {
+                FtpMode::Passive
+            };
+            ApplicationFlowType::Ftp(mode)
+        }
+        "ssh" => ApplicationFlowType::Ssh,
+        "mysql" => ApplicationFlowType::Mysql,
+        other => return Err(format!("未知协议: {other}")),
+    };
+    Ok(flow)
 }
 
 /// 生成结果
@@ -64,34 +142,22 @@ pub fn generate_pcap(params: &PcapGenParams) -> Result<PcapGenResult, String> {
     let dst_port_range = PortRange::from_string(params.dst_port.trim())
         .map_err(|e| format!("无效的目标端口范围: {e}"))?;
 
-    let mut config = TcpSessionConfig::new()
+    let src_v4 = matches!(src_ip_range, IpRange::V4 { .. });
+    let dst_v4 = matches!(dst_ip_range, IpRange::V4 { .. });
+    let app_flow = build_flow(params, src_v4, dst_v4)?;
+    let flow = app_flow.name().to_string();
+
+    let config = TcpSessionConfig::new()
         .with_session_count(params.session_count)
         .with_src_ip_range(src_ip_range)
         .with_dst_ip_range(dst_ip_range)
         .with_src_port_range(src_port_range)
-        .with_dst_port_range(dst_port_range);
-
-    if params.include_http {
-        let mut uris: Vec<String> = params
-            .http_uris
-            .iter()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect();
-        if uris.is_empty() {
-            uris.push("/".to_string());
-        }
-        let host = {
-            let h = params.http_host.trim();
-            if h.is_empty() { "example.com".to_string() } else { h.to_string() }
-        };
-        config = config.with_http(uris, host);
-    }
+        .with_dst_port_range(dst_port_range)
+        .with_application_flow(app_flow);
 
     let vlan_config = build_vlan_config(params)?;
 
     let sessions = config.generate_sessions();
-    let flow = if params.include_http { "HTTP" } else { "TCP_ONLY" }.to_string();
 
     // 在内存中序列化为 PCAP
     let mut buffer: Vec<u8> = Vec::new();

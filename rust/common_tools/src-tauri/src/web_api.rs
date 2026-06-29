@@ -221,6 +221,10 @@ fn default_dst_ip() -> String { "192.168.1.100".to_string() }
 fn default_src_port() -> String { "30000-40000".to_string() }
 fn default_dst_port() -> String { "80".to_string() }
 fn default_http_host() -> String { "example.com".to_string() }
+fn default_protocol() -> String { "tcp".to_string() }
+fn default_tcp_mode() -> String { "handshake".to_string() }
+fn default_ftp_mode() -> String { "passive".to_string() }
+fn default_icmp_count() -> u32 { 1 }
 
 #[derive(Deserialize)]
 struct PcapGenerateRequest {
@@ -234,12 +238,26 @@ struct PcapGenerateRequest {
     src_port: String,
     #[serde(default = "default_dst_port")]
     dst_port: String,
-    #[serde(default)]
-    include_http: bool,
+    #[serde(default = "default_protocol")]
+    protocol: String,
+    #[serde(default = "default_tcp_mode")]
+    tcp_mode: String,
     #[serde(default = "default_http_host")]
     http_host: String,
     #[serde(default)]
     http_uris: Vec<String>,
+    #[serde(default)]
+    http_request: Option<String>,
+    #[serde(default)]
+    http_response: Option<String>,
+    #[serde(default = "default_icmp_count")]
+    icmp_count: u32,
+    #[serde(default)]
+    udp_payload: String,
+    #[serde(default)]
+    udp_response: bool,
+    #[serde(default = "default_ftp_mode")]
+    ftp_mode: String,
     #[serde(default)]
     vlan_id: Option<u16>,
     #[serde(default)]
@@ -267,9 +285,16 @@ async fn pcap_generate(
         dst_ip: request.dst_ip,
         src_port: request.src_port,
         dst_port: request.dst_port,
-        include_http: request.include_http,
+        protocol: request.protocol,
+        tcp_mode: request.tcp_mode,
         http_host: request.http_host,
         http_uris: request.http_uris,
+        http_request: request.http_request,
+        http_response: request.http_response,
+        icmp_count: request.icmp_count,
+        udp_payload: request.udp_payload,
+        udp_response: request.udp_response,
+        ftp_mode: request.ftp_mode,
         vlan_id: request.vlan_id,
         vlan_priority: request.vlan_priority,
         vlan_dei: request.vlan_dei,

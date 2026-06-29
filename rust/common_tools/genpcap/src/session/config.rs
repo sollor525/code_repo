@@ -1,6 +1,7 @@
 // TCP会话配置
 
 use crate::core::{IpRange, PortRange, NetworkConnection, ApplicationFlowType, BuildError, session::TcpSession};
+use crate::core::session::{TcpMode, HttpConfig};
 use crate::session::{SessionFactory, SessionBuilder};
 use std::net::{IpAddr, Ipv4Addr};
 
@@ -35,7 +36,7 @@ impl TcpSessionConfig {
             src_port_range: PortRange::new(30000, 40000),
             dst_port_range: PortRange::new(80, 80),
             session_count: 1,
-            application_flow: ApplicationFlowType::TcpOnly,
+            application_flow: ApplicationFlowType::Tcp(TcpMode::Handshake),
         }
     }
 
@@ -65,9 +66,12 @@ impl TcpSessionConfig {
     }
 
     pub fn with_http(mut self, uris: Vec<String>, host: String) -> Self {
-        self.application_flow = ApplicationFlowType::Http(
-            crate::core::HttpFlow::new(uris, host)
-        );
+        self.application_flow = ApplicationFlowType::Http(HttpConfig {
+            uris,
+            host,
+            request_content: None,
+            response_content: None,
+        });
         self
     }
 
