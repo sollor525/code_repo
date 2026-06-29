@@ -77,7 +77,7 @@ async fn health_check() -> impl IntoResponse {
 
 async fn api_info() -> impl IntoResponse {
     Json(ApiInfoResponse {
-        name: "字节工具台 Web API".to_string(),
+        name: "开发辅助工具 Web API".to_string(),
         version: "0.1.0".to_string(),
         endpoints: serde_json::json!({
             "health": "/health",

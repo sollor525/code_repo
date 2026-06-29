@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`common_tools` is a **Tauri v2 desktop application** (productName "ByteBench") exposing developer utilities — network byte-order conversion, raw-packet hex analysis + PCAP export, multi-protocol PCAP traffic generation (TCP/HTTP/ICMP/UDP/FTP/SSH/MySQL, optional VLAN), regex matching, MD5 hashing, and `\000`↔`\u0000` string-escape conversion. The UI is the original HTML/CSS/JS frontend; an **axum** web server runs *inside the same process* (bound to `127.0.0.1` on a random free port) and the Tauri WebView window points at it, so the frontend's `fetch('/api/...')` calls work unchanged. All frontend assets are embedded into the binary at compile time (`include_str!`), so the executable is self-contained.
+`common_tools` is a **Tauri v2 desktop application** (productName "Development Assistance Tool") exposing developer utilities — network byte-order conversion, raw-packet hex analysis + PCAP export, multi-protocol PCAP traffic generation (TCP/HTTP/ICMP/UDP/FTP/SSH/MySQL, optional VLAN), regex matching, MD5 hashing, and `\000`↔`\u0000` string-escape conversion. The UI is the original HTML/CSS/JS frontend; an **axum** web server runs *inside the same process* (bound to `127.0.0.1` on a random free port) and the Tauri WebView window points at it, so the frontend's `fetch('/api/...')` calls work unchanged. All frontend assets are embedded into the binary at compile time (`include_str!`), so the executable is self-contained.
 
 The Rust crate lives in **`src-tauri/`** (conventional Tauri layout); the frontend is at the project-root **`static/`**. There is one **local path-dependency sub-crate, `genpcap/`** — the PCAP-generation core ported from the sibling `rust/gen_pcap` project (see "PCAP generation" below); otherwise no Cargo workspace. Other sibling dirs under `rust/` (`tls_ja4`, …) are unrelated.
 
@@ -19,7 +19,7 @@ common_tools/
 ├── src-tauri/
 │   ├── Cargo.toml              # the crate; `tauri` is an OPTIONAL dep behind the `desktop` feature; genpcap = path "../genpcap"
 │   ├── build.rs                # calls tauri_build::build() ONLY when CARGO_FEATURE_DESKTOP is set
-│   ├── tauri.conf.json         # productName ByteBench, identifier com.bytebench.commontools, bundle=nsis
+│   ├── tauri.conf.json         # productName Development Assistance Tool, identifier com.bytebench.commontools, bundle=nsis
 │   ├── capabilities/default.json
 │   ├── icons/                  # icon.ico used for Windows build (generated with ImageMagick)
 │   └── src/{main.rs, server.rs, web_api.rs, network_utils.rs, packet_analyzer.rs, pcap_generator.rs, regex_matcher.rs, md5_utils.rs, string_converter.rs}
@@ -77,7 +77,7 @@ The `genpcap/` path-dep crate is a **trimmed port of `rust/gen_pcap`**: only the
 
 ## Endpoints
 
-`GET /health`, `GET /api` (info) · `POST /api/network/convert` · `POST /api/packet/{analyze,export,download}` · `POST /api/pcap/{generate,save}` (generate → `.pcap` attachment download; save → writes the `.pcap` to a server-side directory, default = process CWD, returns JSON `{filename,path,...}`) · `POST /api/regex/match` · `POST /api/md5/{calculate,calculate_file}` · `POST /api/string/convert`. Pages: `/`, `/network.html`, `/packet.html`, `/pcapgen.html`, `/regex.html`, `/md5.html`, `/string.html`; embedded assets under `/static/*`.
+`GET /health`, `GET /api` (info) · `POST /api/network/convert` · `POST /api/packet/{analyze,export,download}` · `POST /api/pcap/{generate,download,save}` (generate → JSON request, `.pcap` attachment; download → **form-encoded** (`payload` field = the same JSON), used by the frontend's hidden-`<form>`→`<iframe>` download so the `Content-Disposition` response drives the WebView's *native* download — `fetch`+Blob+`a.click()` silently fails in the Tauri WebView because it runs after an `await` (outside the user-gesture) and uses a `blob:` URL; on error it returns plain text the iframe `onload` surfaces; save → writes the `.pcap` to a server-side directory, default = process CWD, returns JSON `{filename,path,...}`) · `POST /api/regex/match` · `POST /api/md5/{calculate,calculate_file}` · `POST /api/string/convert`. Pages: `/`, `/network.html`, `/packet.html`, `/pcapgen.html`, `/regex.html`, `/md5.html`, `/string.html`; embedded assets under `/static/*`.
 
 ## Gotchas
 

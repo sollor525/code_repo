@@ -3,7 +3,7 @@ name = "common_tools"
 version = "0.1.0"
 edition = "2021"
 authors = ["Common Tools Developer"]
-description = "字节工具台 — 网络协议调试工具集（Tauri 桌面版）"
+description = "开发辅助工具 — 网络协议调试工具集（Tauri 桌面版）"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

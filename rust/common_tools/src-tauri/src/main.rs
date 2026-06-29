@@ -59,7 +59,7 @@ fn main() {
                 "main",
                 tauri::WebviewUrl::External(url.parse().expect("内嵌服务 URL 无效")),
             )
-            .title("字节工具台")
+            .title("开发辅助工具")
             .inner_size(1240.0, 840.0)
             .min_inner_size(900.0, 600.0)
             .build()?;
@@ -93,7 +93,7 @@ async fn main() -> anyhow::Result<()> {
 
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", port)).await?;
     let bound = listener.local_addr()?;
-    tracing::info!("字节工具台（服务模式）已启动: http://{}", bound);
+    tracing::info!("开发辅助工具（服务模式）已启动: http://{}", bound);
 
     axum::serve(listener, server::create_router()).await?;
     Ok(())

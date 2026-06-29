@@ -1,4 +1,4 @@
-# 字节工具台 ByteBench
+# 开发辅助工具 Development Assistance Tool
 
 一款面向网络协议调试的**桌面工具集**，基于 [Tauri 2](https://v2.tauri.app/) +
 Rust 构建。原生窗口内嵌一个 [axum](https://github.com/tokio-rs/axum) 服务承载界面与
@@ -27,7 +27,7 @@ common_tools/
 ├── static/                     # 前端（Tauri frontendDist）
 ├── genpcap/                    # PCAP 生成核心子 crate（自 rust/gen_pcap 移植的纯 Rust 报文生成）
 └── src-tauri/                  # Rust 工程（Tauri 约定布局）
-    ├── tauri.conf.json         # productName=ByteBench, identifier=com.bytebench.commontools
+    ├── tauri.conf.json         # productName=Development Assistance Tool, identifier=com.bytebench.commontools
     ├── build.rs · capabilities/ · icons/
     └── src/
         ├── main.rs             # 入口：desktop（Tauri 窗口）/ server（纯服务）双模式
@@ -54,7 +54,7 @@ cd src-tauri
 cargo build --release          # 便携版：target\release\common_tools.exe（自包含）
 # 或生成安装包：
 cargo install tauri-cli --version "^2"
-cargo tauri build              # → ...\bundle\nsis\ByteBench_0.1.0_x64-setup.exe
+cargo tauri build              # → ...\bundle\nsis\Development Assistance Tool_0.1.0_x64-setup.exe
 ```
 
 > Tauri 不支持从 Linux/macOS 交叉编译 Windows 版本，请在 Windows 上构建。
@@ -96,7 +96,8 @@ cargo test --no-default-features
 | POST | `/api/packet/analyze` | 报文分析 |
 | POST | `/api/packet/download` | 导出 PCAP（字节流下载） |
 | POST | `/api/packet/export` | 导出 PCAP 到运行目录 |
-| POST | `/api/pcap/generate` | 生成多协议流量 PCAP（返回 .pcap 附件下载） |
+| POST | `/api/pcap/generate` | 生成多协议流量 PCAP（JSON 请求，返回 .pcap 附件） |
+| POST | `/api/pcap/download` | 表单方式下载 PCAP（隐藏 `<form>` 提交，附件响应触发原生下载，兼容 WebView） |
 | POST | `/api/pcap/save` | 生成并保存到目录（默认程序当前目录），返回文件名与路径 |
 | POST | `/api/regex/match` | 正则匹配 |
 | POST | `/api/md5/calculate` | 文本 MD5 计算 |

@@ -1,4 +1,4 @@
-# 字节工具台 部署与分发指南
+# 开发辅助工具 部署与分发指南
 
 本项目现为 **Tauri 桌面应用**。主要交付物是一个 Windows 桌面程序；同时保留了一个
 不依赖 WebView 的**服务模式**，可用于无界面/服务器部署。本文覆盖两种场景的分发方式。
@@ -23,9 +23,9 @@
 | 制品 | 路径 | 用途 |
 |------|------|------|
 | 便携版可执行文件 | `src-tauri\target\release\common_tools.exe` | 免安装，直接双击运行 |
-| NSIS 安装包 | `src-tauri\target\release\bundle\nsis\ByteBench_0.1.0_x64-setup.exe` | 标准安装流程，写入开始菜单/卸载项 |
+| NSIS 安装包 | `src-tauri\target\release\bundle\nsis\Development Assistance Tool_0.1.0_x64-setup.exe` | 标准安装流程，写入开始菜单/卸载项 |
 
-应用名（窗口标题/开始菜单）为 **字节工具台 / ByteBench**，应用标识为
+应用名（窗口标题/开始菜单）为 **开发辅助工具 / Development Assistance Tool**，应用标识为
 `com.bytebench.commontools`。
 
 ### 运行依赖
@@ -39,7 +39,7 @@
 
 - **便携分发**：直接把 `common_tools.exe` 发给用户即可，双击启动后会在本机
   `127.0.0.1` 的随机空闲端口拉起内嵌服务，并打开原生窗口。
-- **安装包分发**：分发 `ByteBench_*-setup.exe`，提供安装/卸载体验，适合面向终端用户。
+- **安装包分发**：分发 `Development Assistance Tool_*-setup.exe`，提供安装/卸载体验，适合面向终端用户。
 
 ### 代码签名（可选，建议用于对外分发）
 
@@ -96,7 +96,7 @@ server {
 
 ```ini
 [Unit]
-Description=ByteBench 服务模式
+Description=Development Assistance Tool 服务模式
 After=network.target
 
 [Service]

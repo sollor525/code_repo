@@ -54,7 +54,7 @@ native window. It needs only the WebView2 runtime; everything else is embedded.
 ```powershell
 # from the project root
 cargo tauri build
-# → src-tauri\target\release\bundle\nsis\ByteBench_0.1.0_x64-setup.exe
+# → src-tauri\target\release\bundle\nsis\Development Assistance Tool_0.1.0_x64-setup.exe
 # (the portable exe is also produced at src-tauri\target\release\common_tools.exe)
 ```
 
@@ -72,7 +72,7 @@ cargo tauri dev
 - `src-tauri/src/server.rs` — the axum router + handlers, with all of `static/`
   embedded via `include_str!`.
 - `static/` — the frontend (set as `frontendDist` in `tauri.conf.json`).
-- `src-tauri/tauri.conf.json` — Tauri config (productName **ByteBench**,
+- `src-tauri/tauri.conf.json` — Tauri config (productName **Development Assistance Tool**,
   identifier `com.bytebench.commontools`, bundle target `nsis`).
 - `src-tauri/icons/` — app icons (`icon.ico` is used for the Windows build).
 

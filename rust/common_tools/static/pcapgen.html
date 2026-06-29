@@ -3,19 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PCAP 流量生成 - 字节工具台</title>
+    <title>PCAP 流量生成 - 开发辅助工具</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>">
     <style>
-        .pcap-fields { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 6px; }
-        .pcap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .tool-head { margin-bottom: 10px; }
+        .tool-head p { font-size: 0.82rem; max-width: 72ch; }
+        .workspace .card-header { padding-bottom: 8px; margin-bottom: 10px; }
+        .pcap-fields { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; padding-right: 4px; }
+        .pcap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 12px; }
         .pcap-fields .form-group { margin-bottom: 0; }
-        .pcap-sub { border-top: 1px solid var(--line); padding-top: 12px; }
-        .pcap-sub-title { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 10px; }
-        .pcap-fields .form-input, .pcap-fields .form-select { padding: 9px 11px; }
-        .pcap-fields .form-textarea { min-height: 64px; }
-        .proto-panel { display: none; flex-direction: column; gap: 12px; }
+        .pcap-sub { border-top: 1px solid var(--line); padding-top: 8px; }
+        .pcap-sub-title { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px; }
+        .pcap-fields .form-input, .pcap-fields .form-select { padding: 8px 11px; }
+        .pcap-fields .form-textarea { min-height: 56px; }
+        .proto-panel { display: none; flex-direction: column; gap: 10px; }
         .proto-panel.active { display: flex; }
+        .hint { display: block; font-size: 0.72rem; color: var(--ink-faint); margin-top: 6px; line-height: 1.5; }
+        details.adv { border: 1px solid var(--line); border-radius: 8px; }
+        details.adv > summary { cursor: pointer; padding: 9px 12px; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); list-style: none; }
+        details.adv > summary::-webkit-details-marker { display: none; }
+        details.adv > summary::before { content: "▸"; margin-right: 8px; display: inline-block; transition: transform .15s; }
+        details.adv[open] > summary::before { transform: rotate(90deg); }
+        details.adv[open] > summary { border-bottom: 1px solid var(--line); color: var(--ink); }
+        details.adv .adv-body { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
     </style>
 </head>
 <body>
@@ -28,7 +39,7 @@
                     <polyline points="6,15 10,15 11.5,15 13,15 16,15" stroke="#4FD0E0" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
                 </svg>
             </span>
-            <span>字节工具台</span>
+            <span>开发辅助工具</span>
         </a>
         <nav class="side-nav">
             <a href="/" class="side-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>首页</span></a>
@@ -48,7 +59,7 @@
             <header class="tool-head">
                 <span class="eyebrow">CH · GEN — pcap traffic synthesizer</span>
                 <h1>PCAP 流量生成</h1>
-                <p>按参数合成 TCP / HTTP / ICMP / UDP / FTP / SSH / MySQL 流量（IPv4 / IPv6，可选 VLAN / QinQ、MTU 分段·分片），导出标准 PCAP 供 Wireshark 分析。</p>
+                <p>合成多协议流量（TCP / HTTP / ICMP / UDP / FTP / SSH / MySQL，IPv4 / IPv6，可选 VLAN、MTU 分段·分片），导出标准 PCAP。</p>
             </header>
 
             <div class="workspace io">
@@ -121,7 +132,7 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">自定义请求内容（可选，留空则按上方 URI 生成 GET）</label>
+                                <label class="form-label">自定义请求内容（可选，留空按 URI 生成 GET）</label>
                                 <textarea id="httpRequest" class="form-textarea" placeholder="GET /index.html HTTP/1.1&#10;Host: example.com&#10;&#10;"></textarea>
                             </div>
                             <div class="form-group">
@@ -135,13 +146,13 @@
                                 <label class="form-label">Echo 请求/应答 对数</label>
                                 <input type="number" id="icmpCount" class="form-input" min="1" max="1000" value="2">
                             </div>
-                            <div class="message message-info">ICMP echo（IPv4 / IPv6 自动按地址版本）。载荷超过 MTU 时按 IP 分片。</div>
+                            <small class="hint">ICMP echo（按地址自动 IPv4 / IPv6）；载荷超 MTU 按 IP 分片。</small>
                         </div>
 
                         <div class="proto-panel" data-proto="udp">
                             <div class="form-group">
                                 <label class="form-label">UDP 载荷（文本）</label>
-                                <input type="text" id="udpPayload" class="form-input" value="ByteBench UDP payload">
+                                <input type="text" id="udpPayload" class="form-input" value="demo udp payload">
                             </div>
                             <div class="checkbox-group">
                                 <div class="checkbox-item">
@@ -149,7 +160,7 @@
                                     <label for="udpResponse">生成对端应答报文</label>
                                 </div>
                             </div>
-                            <div class="message message-info">UDP（IPv4 / IPv6 自动按地址版本）。载荷超过 MTU 时按 IP 分片。</div>
+                            <small class="hint">按地址自动 IPv4 / IPv6；载荷超 MTU 按 IP 分片。</small>
                         </div>
 
                         <div class="proto-panel" data-proto="ftp">
@@ -160,15 +171,15 @@
                                     <option value="active">主动模式 (PORT)</option>
                                 </select>
                             </div>
-                            <div class="message message-info">生成控制连接（登录 / RETR）与数据连接（文件传输）两条 TCP 流。</div>
+                            <small class="hint">生成控制连接（登录 / RETR）与数据连接（文件传输）两条 TCP 流。</small>
                         </div>
 
                         <div class="proto-panel" data-proto="ssh">
-                            <div class="message message-info">生成 SSH 版本协商（SSH-2.0-…）与 KEXINIT 密钥交换报文。</div>
+                            <small class="hint">生成 SSH 版本协商（SSH-2.0-…）与 KEXINIT 密钥交换报文。</small>
                         </div>
 
                         <div class="proto-panel" data-proto="mysql">
-                            <div class="message message-info">生成 MySQL 服务器握手、登录、COM_QUERY (SELECT 1) 与结果集报文。</div>
+                            <small class="hint">生成 MySQL 握手 / 登录 / COM_QUERY (SELECT 1) / 结果集报文。</small>
                         </div>
                     </div>
 
@@ -185,72 +196,72 @@
                                 <input type="number" id="payloadSize" class="form-input" min="0" value="0">
                             </div>
                         </div>
-                        <div class="message message-info">载荷超过 MTU 时：TCP 自动分段、UDP/ICMP 自动 IP 分片。0 = 不限制 / 协议默认。IPv4 与 IPv6 均支持（IP 范围填 IPv6 即可）。</div>
+                        <small class="hint">超 MTU 时 TCP 自动分段、UDP/ICMP 自动 IP 分片；0 = 协议默认。</small>
                     </div>
 
-                    <!-- VLAN -->
-                    <div class="pcap-sub">
-                        <div class="pcap-sub-title">VLAN（可选）</div>
-                        <div class="checkbox-group">
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="enableVlan" onchange="toggleVlan()">
-                                <label for="enableVlan">单层 VLAN (802.1Q)</label>
+                    <!-- 高级：VLAN + 输出目录（默认折叠以保持页面精简） -->
+                    <details class="adv">
+                        <summary>高级选项 · VLAN / 输出目录</summary>
+                        <div class="adv-body">
+                            <div>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="enableVlan" onchange="toggleVlan()">
+                                        <label for="enableVlan">单层 VLAN (802.1Q)</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="enableQinq" onchange="toggleVlan()">
+                                        <label for="enableQinq">双层 VLAN / QinQ</label>
+                                    </div>
+                                </div>
+                                <div class="pcap-grid" id="vlanFields" style="margin-top: 10px; display: none;">
+                                    <div class="form-group">
+                                        <label class="form-label">VLAN ID (1-4094)</label>
+                                        <input type="number" id="vlanId" class="form-input" min="1" max="4094" placeholder="100">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">VLAN 优先级 (0-7)</label>
+                                        <input type="number" id="vlanPriority" class="form-input" min="0" max="7" value="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">DEI</label>
+                                        <div class="checkbox-item" style="padding-top: 8px;">
+                                            <input type="checkbox" id="vlanDei">
+                                            <label for="vlanDei">设置 Drop Eligible 位</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="pcap-grid" id="qinqFields" style="margin-top: 10px; display: none;">
+                                    <div class="form-group">
+                                        <label class="form-label">外层 VLAN ID</label>
+                                        <input type="number" id="outerVlan" class="form-input" min="1" max="4094" placeholder="200">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">内层 VLAN ID</label>
+                                        <input type="number" id="innerVlan" class="form-input" min="1" max="4094" placeholder="100">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">外层优先级 (0-7)</label>
+                                        <input type="number" id="outerPriority" class="form-input" min="0" max="7" value="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">内层优先级 (0-7)</label>
+                                        <input type="number" id="innerPriority" class="form-input" min="0" max="7" value="0">
+                                    </div>
+                                </div>
                             </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="enableQinq" onchange="toggleVlan()">
-                                <label for="enableQinq">双层 VLAN / QinQ</label>
-                            </div>
-                        </div>
-                        <div class="pcap-grid" id="vlanFields" style="margin-top: 10px; display: none;">
-                            <div class="form-group">
-                                <label class="form-label">VLAN ID (1-4094)</label>
-                                <input type="number" id="vlanId" class="form-input" min="1" max="4094" placeholder="100">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">VLAN 优先级 (0-7)</label>
-                                <input type="number" id="vlanPriority" class="form-input" min="0" max="7" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">DEI</label>
-                                <div class="checkbox-item" style="padding-top: 8px;">
-                                    <input type="checkbox" id="vlanDei">
-                                    <label for="vlanDei">设置 Drop Eligible 位</label>
+                            <div class="pcap-grid" style="border-top: 1px solid var(--line); padding-top: 12px;">
+                                <div class="form-group">
+                                    <label class="form-label">输出目录（保存到目录时）</label>
+                                    <input type="text" id="outputDir" class="form-input" placeholder="留空 = 程序所在目录">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">文件名（可选）</label>
+                                    <input type="text" id="filename" class="form-input" placeholder="留空 = 自动按时间命名">
                                 </div>
                             </div>
                         </div>
-                        <div class="pcap-grid" id="qinqFields" style="margin-top: 10px; display: none;">
-                            <div class="form-group">
-                                <label class="form-label">外层 VLAN ID</label>
-                                <input type="number" id="outerVlan" class="form-input" min="1" max="4094" placeholder="200">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">内层 VLAN ID</label>
-                                <input type="number" id="innerVlan" class="form-input" min="1" max="4094" placeholder="100">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">外层优先级 (0-7)</label>
-                                <input type="number" id="outerPriority" class="form-input" min="0" max="7" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">内层优先级 (0-7)</label>
-                                <input type="number" id="innerPriority" class="form-input" min="0" max="7" value="0">
-                            </div>
-                        </div>
-                    </div>
-                    <!-- 输出 -->
-                    <div class="pcap-sub">
-                        <div class="pcap-sub-title">输出（保存到目录时）</div>
-                        <div class="pcap-grid">
-                            <div class="form-group">
-                                <label class="form-label">输出目录</label>
-                                <input type="text" id="outputDir" class="form-input" placeholder="留空 = 程序所在目录">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">文件名（可选）</label>
-                                <input type="text" id="filename" class="form-input" placeholder="留空 = 自动按时间命名">
-                            </div>
-                        </div>
-                    </div>
+                    </details>
                 </div>
                 <div class="btn-group">
                     <button class="btn btn-primary" onclick="savePcap()">生成并保存到目录</button>
@@ -288,7 +299,7 @@
                         <ul style="line-height: 1.8; color: var(--text-secondary);">
                             <li><strong>TCP:</strong> 仅 SYN / 三次握手 / +四次挥手 / +RST</li>
                             <li><strong>HTTP:</strong> 默认 GET，或自定义请求/响应内容</li>
-                            <li><strong>ICMP / UDP:</strong> echo 与 UDP 收发（仅 IPv4）</li>
+                            <li><strong>ICMP / UDP:</strong> echo 与 UDP 收发（IPv4 / IPv6）</li>
                             <li><strong>FTP / SSH / MySQL:</strong> 代表性应用层报文</li>
                         </ul>
                     </div>
@@ -297,6 +308,9 @@
             </div></details>
         </div>
     </main></div></div>
+
+    <!-- 下载用隐藏 iframe：表单 POST 的目标，使附件响应触发原生下载而不离开页面 -->
+    <iframe id="dlframe" name="dlframe" style="display:none" aria-hidden="true"></iframe>
 
     <script>
         // 协议 → 典型目标端口
@@ -362,6 +376,22 @@
             return p;
         }
 
+        // 地址族判定（用于下载前的本地校验）：4 / 6 / null（random 或空，交由服务端处理）
+        function ipFamily(s) {
+            s = (s || '').trim().toLowerCase();
+            if (!s || s === 'random') return null;
+            if (s.includes(':')) return 6;
+            if (/^\d+\.\d+/.test(s)) return 4;
+            return null;
+        }
+        function validateParams(p) {
+            if (!p.src_ip) return '请填写源 IP';
+            if (!p.dst_ip) return '请填写目标 IP';
+            const sf = ipFamily(p.src_ip), df = ipFamily(p.dst_ip);
+            if (sf && df && sf !== df) return '源 IP 与目标 IP 必须同为 IPv4 或同为 IPv6';
+            return null;
+        }
+
         function formatSize(bytes) {
             if (bytes === 0) return '0 B';
             const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
@@ -374,45 +404,48 @@
             el.className = 'result-container' + (status ? ' result-' + status : '');
         }
 
-        async function generatePcap() {
+        // 下载：用隐藏表单 POST 到 /api/pcap/download（target = 隐藏 iframe），
+        // 同步触发以保持用户手势；服务端以附件响应交由 WebView / 浏览器原生下载。
+        // 这样可避免 fetch + Blob 在 Tauri WebView 中静默失败的问题。
+        function generatePcap() {
             const body = collectParams();
-            showResult('正在生成 PCAP ...', 'info');
-            try {
-                const resp = await fetch('/api/pcap/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                if (resp.ok) {
-                    const sc = resp.headers.get('x-session-count');
-                    const pc = resp.headers.get('x-packet-count');
-                    const flow = resp.headers.get('x-flow');
-                    const blob = await resp.blob();
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `generated_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pcap`;
-                    document.body.appendChild(a);
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    a.remove();
-                    showResult(
-                        '✅ 生成成功，文件已下载\n\n' +
-                        '协议: ' + flow + '\n' +
-                        '会话数量: ' + sc + '\n' +
-                        '数据包数: ' + pc + '\n' +
-                        '文件大小: ' + formatSize(blob.size) + '\n\n' +
-                        '可使用 Wireshark 等工具打开 .pcap 进行分析。',
-                        'success'
-                    );
-                } else {
-                    let msg = 'HTTP ' + resp.status;
-                    try { const data = await resp.json(); msg = data.error || msg; } catch (e) {}
-                    showResult('生成失败: ' + msg, 'error');
-                }
-            } catch (error) {
-                showResult('请求失败: ' + error.message, 'error');
-            }
+            const err = validateParams(body);
+            if (err) { showResult('生成失败: ' + err, 'error'); return; }
+
+            const frame = document.getElementById('dlframe');
+            // 成功下载时 iframe 不会触发 load（导航被转为下载）；
+            // 仅当服务端返回错误文本时 load 才触发 —— 读取并展示错误。
+            frame.onload = function () {
+                try {
+                    const doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+                    const txt = doc && doc.body ? doc.body.textContent.trim() : '';
+                    if (txt) showResult('生成失败: ' + txt, 'error');
+                } catch (e) { /* 跨文档读取异常时忽略 */ }
+            };
+
+            let f = document.getElementById('dlForm');
+            if (f) f.remove();
+            f = document.createElement('form');
+            f.id = 'dlForm';
+            f.method = 'POST';
+            f.action = '/api/pcap/download';
+            f.target = 'dlframe';
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = 'payload';
+            inp.value = JSON.stringify(body);
+            f.appendChild(inp);
+            document.body.appendChild(f);
+            f.submit();
+
+            showResult(
+                '✅ 已生成并触发下载\n\n' +
+                '协议: ' + body.protocol.toUpperCase() + '\n' +
+                '会话数量: ' + body.session_count + '\n\n' +
+                '若未弹出保存对话框，文件已保存到系统“下载”目录（文件名 generated_*.pcap）。\n' +
+                '如需指定保存位置并查看数据包统计，请使用“生成并保存到目录”。',
+                'success'
+            );
         }
 
         async function savePcap() {
@@ -459,7 +492,7 @@
             document.getElementById('httpRequest').value = '';
             document.getElementById('httpResponse').value = '';
             document.getElementById('icmpCount').value = '2';
-            document.getElementById('udpPayload').value = 'ByteBench UDP payload';
+            document.getElementById('udpPayload').value = 'demo udp payload';
             document.getElementById('udpResponse').checked = true;
             document.getElementById('ftpMode').value = 'passive';
             document.getElementById('enableVlan').checked = false;
