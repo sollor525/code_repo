@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use axum::{
+    body::Bytes,
+    extract::DefaultBodyLimit,
     http::StatusCode,
     response::IntoResponse,
     routing::post,
@@ -10,7 +12,7 @@ use axum::http::{header, HeaderValue};
 use crate::network_utils::NetworkUtils;
 use crate::packet_analyzer::PacketAnalyzer;
 use crate::regex_matcher::RegexMatcher;
-use crate::md5_utils::{Md5Request, process_md5_request};
+use crate::md5_utils::{Md5Request, Md5Response, process_md5_request, process_md5_bytes};
 use crate::string_converter::{StringConvertRequest, StringConvertResponse, process_string_conversion};
 
 #[derive(Serialize, Deserialize)]
@@ -113,6 +115,12 @@ pub fn create_regex_routes() -> Router {
 pub fn create_md5_routes() -> Router {
     Router::new()
         .route("/calculate", post(md5_calculate))
+        // 文件 MD5：前端直接上传文件字节（浏览器拿不到本地真实路径），
+        // 解除默认 2MB 请求体上限，以支持较大文件。
+        .route(
+            "/calculate_file",
+            post(md5_calculate_file).layer(DefaultBodyLimit::disable()),
+        )
 }
 
 pub fn create_string_routes() -> Router {
@@ -234,6 +242,14 @@ async fn md5_calculate(
 ) -> impl IntoResponse {
     let response = process_md5_request(request);
     Json(ApiResponse::success(response))
+}
+
+/// 文件 MD5：请求体即文件原始字节，直接对内容求 MD5。
+async fn md5_calculate_file(body: Bytes) -> impl IntoResponse {
+    if body.is_empty() {
+        return Json(ApiResponse::<Md5Response>::error("未接收到文件内容".to_string()));
+    }
+    Json(ApiResponse::success(process_md5_bytes(&body)))
 }
 
 async fn string_convert(

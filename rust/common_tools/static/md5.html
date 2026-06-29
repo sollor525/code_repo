@@ -207,6 +207,8 @@
         }
 
         // 计算文件 MD5
+        // 浏览器的文件选择框只提供文件名而非真实路径，无法让服务器按路径读取，
+        // 因此直接读取所选本地文件的内容并把字节上传，由服务器对内容求 MD5。
         async function calculateFileMD5() {
             if (!selectedFile) {
                 alert('请先选择文件');
@@ -214,22 +216,21 @@
             }
 
             try {
-                const response = await fetch('/api/md5/calculate', {
+                const buffer = await selectedFile.arrayBuffer();
+                const response = await fetch('/api/md5/calculate_file', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/octet-stream',
                     },
-                    body: JSON.stringify({
-                        file_path: selectedFile.name
-                    })
+                    body: buffer
                 });
 
                 const result = await response.json();
-                
-                if (result.success && result.data.success) {
+
+                if (result.success && result.data && result.data.success) {
                     displayFileResult(result.data);
                 } else {
-                    alert('计算失败: ' + (result.data?.error || '未知错误'));
+                    alert('计算失败: ' + (result.data?.error || result.error || '未知错误'));
                 }
             } catch (error) {
                 alert('请求失败: ' + error.message);
