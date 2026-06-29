@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use axum::{
     body::Bytes,
-    extract::{DefaultBodyLimit, Form},
+    extract::DefaultBodyLimit,
     http::StatusCode,
     response::IntoResponse,
     routing::post,
@@ -111,10 +111,6 @@ pub fn create_packet_routes() -> Router {
 pub fn create_pcap_routes() -> Router {
     Router::new()
         .route("/generate", post(pcap_generate))
-        // 表单提交式下载：前端用隐藏 <form target=iframe> 同步提交，
-        // 服务端以 Content-Disposition: attachment 响应，交由 WebView 原生下载管理器保存。
-        // （避免 fetch+Blob 在 Tauri WebView 中因脱离用户手势 / 不支持 blob: 下载而静默失败。）
-        .route("/download", post(pcap_download))
         .route("/save", post(pcap_save))
 }
 
@@ -345,41 +341,6 @@ async fn pcap_generate(
             let error_response = ApiResponse::<serde_json::Value>::error(e);
             (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
         }
-    }
-}
-
-/// 表单提交的下载请求：单字段 `payload` 携带与 /generate 相同的 JSON 参数。
-#[derive(Deserialize)]
-struct PcapDownloadForm {
-    payload: String,
-}
-
-/// 浏览器/WebView 通过隐藏表单 POST 触发的下载：
-/// 同步导航 + Content-Disposition 附件响应，确保在 Tauri WebView 中也能可靠下载。
-async fn pcap_download(Form(form): Form<PcapDownloadForm>) -> impl IntoResponse {
-    let request: PcapGenerateRequest = match serde_json::from_str(&form.payload) {
-        Ok(r) => r,
-        Err(e) => return (StatusCode::BAD_REQUEST, format!("参数解析失败: {e}")).into_response(),
-    };
-    let params = pcap_params_from(&request);
-
-    match generate_pcap(&params) {
-        Ok(result) => {
-            let fname = format!(
-                "generated_{}.pcap",
-                chrono::Local::now().format("%Y%m%d_%H%M%S")
-            );
-            let cd = format!("attachment; filename=\"{fname}\"");
-            let headers = AppendHeaders([
-                (header::CONTENT_TYPE, HeaderValue::from_static("application/octet-stream")),
-                (header::CONTENT_DISPOSITION,
-                 HeaderValue::from_str(&cd).unwrap_or(HeaderValue::from_static("attachment; filename=generated.pcap"))),
-                (header::CACHE_CONTROL, HeaderValue::from_static("no-cache")),
-            ]);
-            (headers, result.pcap).into_response()
-        }
-        // 出错时返回纯文本，前端隐藏 iframe 的 load 回调读取并展示。
-        Err(e) => (StatusCode::BAD_REQUEST, e).into_response(),
     }
 }
 

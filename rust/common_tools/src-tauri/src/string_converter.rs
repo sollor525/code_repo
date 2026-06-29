@@ -200,12 +200,14 @@ impl StringConverter {
         }
     }
 
-    /// 清空缓存
+    /// 清空缓存（仅用于测试，运行时每请求新建实例、缓存不跨请求）
+    #[cfg(test)]
     pub fn clear_cache(&mut self) {
         self.cache.clear();
     }
 
-    /// 获取缓存大小
+    /// 获取缓存大小（仅用于测试）
+    #[cfg(test)]
     pub fn cache_size(&self) -> usize {
         self.cache.len()
     }

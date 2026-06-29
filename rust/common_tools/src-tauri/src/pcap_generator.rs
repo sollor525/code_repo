@@ -214,6 +214,18 @@ fn default_filename() -> String {
     format!("generated_{ts}.pcap")
 }
 
+/// 去除 Windows `canonicalize()` 产生的扩展长度前缀 `\\?\`
+/// （UNC 形式 `\\?\UNC\server\share` 还原为 `\\server\share`）。其他平台原样返回。
+fn strip_extended_prefix(p: &str) -> String {
+    if let Some(rest) = p.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{rest}")
+    } else if let Some(rest) = p.strip_prefix(r"\\?\") {
+        rest.to_string()
+    } else {
+        p.to_string()
+    }
+}
+
 /// 生成 PCAP 并写入磁盘目录。
 ///
 /// `output_dir` 为空时使用进程当前工作目录（即 exe 启动所在目录）；目录不存在则创建。
@@ -247,11 +259,12 @@ pub fn save_pcap(
     let full = dir.join(&name);
     std::fs::write(&full, &result.pcap).map_err(|e| format!("写入文件失败: {e}"))?;
 
-    // 展示绝对路径（canonicalize 失败则退回拼接路径）
+    // 展示绝对路径（canonicalize 失败则退回拼接路径），并去除 Windows 扩展长度前缀 \\?\
     let shown = std::fs::canonicalize(&full).unwrap_or(full);
+    let path = strip_extended_prefix(&shown.to_string_lossy());
     Ok(SavedPcap {
         filename: name,
-        path: shown.to_string_lossy().into_owned(),
+        path,
         session_count: result.session_count,
         packet_count: result.packet_count,
         flow: result.flow,
@@ -334,4 +347,25 @@ fn apply_vlan(
             new_packet
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::strip_extended_prefix;
+
+    #[test]
+    fn strips_windows_extended_length_prefix() {
+        assert_eq!(
+            strip_extended_prefix(r"\\?\D:\personal_work\code_repo\generated.pcap"),
+            r"D:\personal_work\code_repo\generated.pcap"
+        );
+        // UNC 形式还原为 \\server\share
+        assert_eq!(
+            strip_extended_prefix(r"\\?\UNC\server\share\out.pcap"),
+            r"\\server\share\out.pcap"
+        );
+        // 无前缀（含类 Unix 路径）原样返回
+        assert_eq!(strip_extended_prefix(r"D:\dir\out.pcap"), r"D:\dir\out.pcap");
+        assert_eq!(strip_extended_prefix("/home/user/out.pcap"), "/home/user/out.pcap");
+    }
 }

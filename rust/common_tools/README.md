@@ -97,7 +97,6 @@ cargo test --no-default-features
 | POST | `/api/packet/download` | 导出 PCAP（字节流下载） |
 | POST | `/api/packet/export` | 导出 PCAP 到运行目录 |
 | POST | `/api/pcap/generate` | 生成多协议流量 PCAP（JSON 请求，返回 .pcap 附件） |
-| POST | `/api/pcap/download` | 表单方式下载 PCAP（隐藏 `<form>` 提交，附件响应触发原生下载，兼容 WebView） |
 | POST | `/api/pcap/save` | 生成并保存到目录（默认程序当前目录），返回文件名与路径 |
 | POST | `/api/regex/match` | 正则匹配 |
 | POST | `/api/md5/calculate` | 文本 MD5 计算 |

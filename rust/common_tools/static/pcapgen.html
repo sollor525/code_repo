@@ -265,7 +265,6 @@
                 </div>
                 <div class="btn-group">
                     <button class="btn btn-primary" onclick="savePcap()">生成并保存到目录</button>
-                    <button class="btn btn-info" onclick="generatePcap()">下载</button>
                     <button class="btn btn-secondary" onclick="resetForm()">重置</button>
                 </div>
             </div>
@@ -308,9 +307,6 @@
             </div></details>
         </div>
     </main></div></div>
-
-    <!-- 下载用隐藏 iframe：表单 POST 的目标，使附件响应触发原生下载而不离开页面 -->
-    <iframe id="dlframe" name="dlframe" style="display:none" aria-hidden="true"></iframe>
 
     <script>
         // 协议 → 典型目标端口
@@ -376,22 +372,6 @@
             return p;
         }
 
-        // 地址族判定（用于下载前的本地校验）：4 / 6 / null（random 或空，交由服务端处理）
-        function ipFamily(s) {
-            s = (s || '').trim().toLowerCase();
-            if (!s || s === 'random') return null;
-            if (s.includes(':')) return 6;
-            if (/^\d+\.\d+/.test(s)) return 4;
-            return null;
-        }
-        function validateParams(p) {
-            if (!p.src_ip) return '请填写源 IP';
-            if (!p.dst_ip) return '请填写目标 IP';
-            const sf = ipFamily(p.src_ip), df = ipFamily(p.dst_ip);
-            if (sf && df && sf !== df) return '源 IP 与目标 IP 必须同为 IPv4 或同为 IPv6';
-            return null;
-        }
-
         function formatSize(bytes) {
             if (bytes === 0) return '0 B';
             const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
@@ -402,50 +382,6 @@
             const el = document.getElementById('genResult');
             el.textContent = text;
             el.className = 'result-container' + (status ? ' result-' + status : '');
-        }
-
-        // 下载：用隐藏表单 POST 到 /api/pcap/download（target = 隐藏 iframe），
-        // 同步触发以保持用户手势；服务端以附件响应交由 WebView / 浏览器原生下载。
-        // 这样可避免 fetch + Blob 在 Tauri WebView 中静默失败的问题。
-        function generatePcap() {
-            const body = collectParams();
-            const err = validateParams(body);
-            if (err) { showResult('生成失败: ' + err, 'error'); return; }
-
-            const frame = document.getElementById('dlframe');
-            // 成功下载时 iframe 不会触发 load（导航被转为下载）；
-            // 仅当服务端返回错误文本时 load 才触发 —— 读取并展示错误。
-            frame.onload = function () {
-                try {
-                    const doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
-                    const txt = doc && doc.body ? doc.body.textContent.trim() : '';
-                    if (txt) showResult('生成失败: ' + txt, 'error');
-                } catch (e) { /* 跨文档读取异常时忽略 */ }
-            };
-
-            let f = document.getElementById('dlForm');
-            if (f) f.remove();
-            f = document.createElement('form');
-            f.id = 'dlForm';
-            f.method = 'POST';
-            f.action = '/api/pcap/download';
-            f.target = 'dlframe';
-            const inp = document.createElement('input');
-            inp.type = 'hidden';
-            inp.name = 'payload';
-            inp.value = JSON.stringify(body);
-            f.appendChild(inp);
-            document.body.appendChild(f);
-            f.submit();
-
-            showResult(
-                '✅ 已生成并触发下载\n\n' +
-                '协议: ' + body.protocol.toUpperCase() + '\n' +
-                '会话数量: ' + body.session_count + '\n\n' +
-                '若未弹出保存对话框，文件已保存到系统“下载”目录（文件名 generated_*.pcap）。\n' +
-                '如需指定保存位置并查看数据包统计，请使用“生成并保存到目录”。',
-                'success'
-            );
         }
 
         async function savePcap() {
@@ -514,7 +450,7 @@
         }
 
         document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); generatePcap(); }
+            if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); savePcap(); }
         });
     </script>
 </body>
