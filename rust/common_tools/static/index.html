@@ -36,6 +36,10 @@
                 <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l6 6v14H5z"/><path d="M15 3v6h6"/><path d="M13 11v7M9.5 14.5L13 18l3.5-3.5"/></svg>
                 <span>PCAP 生成</span>
             </a>
+            <a href="/pcapedit.html" class="side-link">
+                <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l6 6v6"/><path d="M15 3v6h6"/><path d="M20.5 14.5l3 3L16 25H13v-3z"/></svg>
+                <span>PCAP 修改</span>
+            </a>
             <a href="/regex.html" class="side-link">
                 <svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4H4v18h3M19 4h3v18h-3"/><path d="M13 9v8M9.5 11l7 4M16.5 11l-7 4"/></svg>
                 <span>正则匹配</span>
@@ -59,7 +63,7 @@
         <header class="content-head">
             <span class="eyebrow">Network byte workbench</span>
             <h1 class="content-title">开发辅助工具</h1>
-            <p class="content-sub">为协议调试而生的本地工具台 —— 网络字节序、报文逐层解析、PCAP 导出、正则匹配、MD5、转义序列互转、Base64 与 JSON。选择一个工具开始。</p>
+            <p class="content-sub">为协议调试而生的本地工具台 —— 网络字节序、报文逐层解析、PCAP 生成与改写、正则匹配、MD5、转义序列互转、Base64 与 JSON。选择一个工具开始。</p>
         </header>
 
         <div class="home-tools">
@@ -129,12 +133,23 @@
                 <p class="tool-description">按参数合成 TCP / HTTP 流量并导出 PCAP</p>
                 <span class="tool-go">打开<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9M8 4l4 4-4 4"/></svg></span>
             </a>
+            <a class="tool-card" href="/pcapedit.html">
+                <div class="tool-top">
+                    <span class="tool-icon" aria-hidden="true">
+                        <svg width="22" height="22" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l6 6v6"/><path d="M15 3v6h6"/><path d="M20.5 14.5l3 3L16 25H13v-3z"/></svg>
+                    </span>
+                    <span class="tool-no">07</span>
+                </div>
+                <h3 class="tool-title">PCAP 修改</h3>
+                <p class="tool-description">按五元组改写 TCP/UDP 报文的 IP / MAC（方向感知）</p>
+                <span class="tool-go">打开<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9M8 4l4 4-4 4"/></svg></span>
+            </a>
             <a class="tool-card" href="/cron.html">
                 <div class="tool-top">
                     <span class="tool-icon" aria-hidden="true">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                     </span>
-                    <span class="tool-no">07</span>
+                    <span class="tool-no">08</span>
                 </div>
                 <h3 class="tool-title">Crontab 计算</h3>
                 <p class="tool-description">解析 CRON 表达式并预测未来执行时间</p>
@@ -145,7 +160,7 @@
                     <span class="tool-icon" aria-hidden="true">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="4" height="6" rx="2"/><rect x="6" y="4" width="4" height="6" rx="2"/><path d="M6 20h4"/><path d="M14 10h4"/><path d="M6 14h2v6"/><path d="M14 4h2v6"/></svg>
                     </span>
-                    <span class="tool-no">08</span>
+                    <span class="tool-no">09</span>
                 </div>
                 <h3 class="tool-title">Base64 编解码</h3>
                 <p class="tool-description">文本 / Hex ⇄ Base64，支持 URL 安全字母表</p>
@@ -156,7 +171,7 @@
                     <span class="tool-icon" aria-hidden="true">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></svg>
                     </span>
-                    <span class="tool-no">09</span>
+                    <span class="tool-no">10</span>
                 </div>
                 <h3 class="tool-title">JSON 工具</h3>
                 <p class="tool-description">格式化 / 压缩，并按键名、值或 JSONPath 搜索字段</p>
@@ -165,7 +180,7 @@
         </div>
 
         <footer class="home-foot">
-            <span class="foot-note">9 个本地工具 · 数据全程不出网</span>
+            <span class="foot-note">10 个本地工具 · 数据全程不出网</span>
             <span class="foot-spacer"></span>
             <span class="foot-meta">v0.1.0 · 127.0.0.1</span>
         </footer>

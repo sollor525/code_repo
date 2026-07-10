@@ -25,6 +25,7 @@ const PCAPGEN_HTML: &str = include_str!("../../static/pcapgen.html");
 const CRON_HTML: &str = include_str!("../../static/cron.html");
 const BASE64_HTML: &str = include_str!("../../static/base64.html");
 const JSON_HTML: &str = include_str!("../../static/json.html");
+const PCAPEDIT_HTML: &str = include_str!("../../static/pcapedit.html");
 const STYLE_CSS: &str = include_str!("../../static/style.css");
 const API_MD: &str = include_str!("../../static/API.md");
 
@@ -59,6 +60,7 @@ pub fn create_router() -> Router {
         .route("/cron.html", get(|| async { Html(CRON_HTML) }))
         .route("/base64.html", get(|| async { Html(BASE64_HTML) }))
         .route("/json.html", get(|| async { Html(JSON_HTML) }))
+        .route("/pcapedit.html", get(|| async { Html(PCAPEDIT_HTML) }))
         .route("/", get(|| async { Html(INDEX_HTML) }))
         .fallback(|| async { (StatusCode::NOT_FOUND, "页面未找到") })
 }
@@ -74,6 +76,7 @@ fn api_routes() -> Router {
         .nest("/cron", web_api::create_cron_routes())
         .nest("/base64", web_api::create_base64_routes())
         .nest("/json", web_api::create_json_routes())
+        .nest("/pcapedit", web_api::create_pcapedit_routes())
 }
 
 async fn health_check() -> impl IntoResponse {
@@ -98,7 +101,8 @@ async fn api_info() -> impl IntoResponse {
             "pcap": "/api/pcap",
             "cron": "/api/cron",
             "base64": "/api/base64",
-            "json": "/api/json"
+            "json": "/api/json",
+            "pcapedit": "/api/pcapedit"
         }),
         description: "A collection of common utility tools for developers".to_string(),
     })
@@ -119,6 +123,7 @@ async fn serve_static_file(Path(file_path): Path<String>) -> Response {
         "cron.html" => Some(CRON_HTML),
         "base64.html" => Some(BASE64_HTML),
         "json.html" => Some(JSON_HTML),
+        "pcapedit.html" => Some(PCAPEDIT_HTML),
         _ => None,
     };
 

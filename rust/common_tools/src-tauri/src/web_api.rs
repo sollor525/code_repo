@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use axum::{
     body::Bytes,
-    extract::DefaultBodyLimit,
+    extract::{DefaultBodyLimit, Query},
     http::StatusCode,
     response::IntoResponse,
     routing::post,
@@ -12,6 +12,7 @@ use axum::http::{header, HeaderName, HeaderValue};
 use crate::network_utils::NetworkUtils;
 use crate::packet_analyzer::PacketAnalyzer;
 use crate::pcap_generator::{generate_pcap, save_pcap, PcapGenParams};
+use crate::pcap_editor::{self, EditReport, EditRequest};
 use crate::regex_matcher::RegexMatcher;
 use crate::md5_utils::{Md5Request, Md5Response, process_md5_request, process_md5_bytes};
 use crate::string_converter::{StringConvertRequest, StringConvertResponse, process_string_conversion};
@@ -115,6 +116,13 @@ pub fn create_pcap_routes() -> Router {
     Router::new()
         .route("/generate", post(pcap_generate))
         .route("/save", post(pcap_save))
+}
+
+pub fn create_pcapedit_routes() -> Router {
+    // 请求体即上传的 pcap 原始字节（可能较大），解除默认 2MB 上限
+    Router::new()
+        .route("/preview", post(pcapedit_preview).layer(DefaultBodyLimit::disable()))
+        .route("/modify", post(pcapedit_modify).layer(DefaultBodyLimit::disable()))
 }
 
 pub fn create_regex_routes() -> Router {
@@ -518,6 +526,98 @@ async fn json_search(
         Ok(response) => Json(ApiResponse::success(response)).into_response(),
         Err(error) => {
             let error_response = ApiResponse::<JsonSearchResponse>::error(error);
+            (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
+        }
+    }
+}
+
+// ============================  PCAP 修改  ============================
+// 过滤条件与改写目标通过查询串传入，pcap 原始字节作为请求体，避免 base64 膨胀。
+#[derive(Deserialize)]
+struct PcapEditQuery {
+    #[serde(default)]
+    f_src_ip: String,
+    #[serde(default)]
+    f_dst_ip: String,
+    #[serde(default)]
+    f_src_port: String,
+    #[serde(default)]
+    f_dst_port: String,
+    #[serde(default)]
+    protocol: String,
+    #[serde(default)]
+    new_src_ip: String,
+    #[serde(default)]
+    new_dst_ip: String,
+    #[serde(default)]
+    new_src_mac: String,
+    #[serde(default)]
+    new_dst_mac: String,
+    #[serde(default)]
+    output_dir: String,
+    #[serde(default)]
+    filename: String,
+}
+
+impl PcapEditQuery {
+    fn to_request(&self) -> EditRequest {
+        EditRequest {
+            f_src_ip: self.f_src_ip.clone(),
+            f_dst_ip: self.f_dst_ip.clone(),
+            f_src_port: self.f_src_port.clone(),
+            f_dst_port: self.f_dst_port.clone(),
+            protocol: self.protocol.clone(),
+            new_src_ip: self.new_src_ip.clone(),
+            new_dst_ip: self.new_dst_ip.clone(),
+            new_src_mac: self.new_src_mac.clone(),
+            new_dst_mac: self.new_dst_mac.clone(),
+        }
+    }
+}
+
+/// 预览：仅统计匹配情况与改写前后样例，不落盘。
+async fn pcapedit_preview(
+    Query(q): Query<PcapEditQuery>,
+    body: Bytes,
+) -> impl IntoResponse {
+    match pcap_editor::process(&body, &q.to_request(), false) {
+        Ok((report, _)) => Json(ApiResponse::success(report)).into_response(),
+        Err(error) => {
+            let error_response = ApiResponse::<EditReport>::error(error);
+            (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
+        }
+    }
+}
+
+/// 修改并保存：按五元组改写 IP/MAC 后写入目录，返回文件名、路径与统计。
+async fn pcapedit_modify(
+    Query(q): Query<PcapEditQuery>,
+    body: Bytes,
+) -> impl IntoResponse {
+    match pcap_editor::process(&body, &q.to_request(), true) {
+        Ok((report, Some(bytes))) => {
+            let out_dir = if q.output_dir.trim().is_empty() { None } else { Some(q.output_dir.as_str()) };
+            let out_name = if q.filename.trim().is_empty() { None } else { Some(q.filename.as_str()) };
+            match pcap_editor::save(&bytes, out_dir, out_name) {
+                Ok(saved) => Json(ApiResponse::success(serde_json::json!({
+                    "filename": saved.filename,
+                    "path": saved.path,
+                    "size": saved.size,
+                    "report": report,
+                })))
+                .into_response(),
+                Err(e) => {
+                    let error_response = ApiResponse::<serde_json::Value>::error(e);
+                    (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
+                }
+            }
+        }
+        Ok((_, None)) => {
+            let error_response = ApiResponse::<serde_json::Value>::error("未生成输出".to_string());
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(error_response)).into_response()
+        }
+        Err(error) => {
+            let error_response = ApiResponse::<serde_json::Value>::error(error);
             (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
         }
     }

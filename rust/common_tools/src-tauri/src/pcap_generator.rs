@@ -216,7 +216,7 @@ fn default_filename() -> String {
 
 /// 去除 Windows `canonicalize()` 产生的扩展长度前缀 `\\?\`
 /// （UNC 形式 `\\?\UNC\server\share` 还原为 `\\server\share`）。其他平台原样返回。
-fn strip_extended_prefix(p: &str) -> String {
+pub(crate) fn strip_extended_prefix(p: &str) -> String {
     if let Some(rest) = p.strip_prefix(r"\\?\UNC\") {
         format!(r"\\{rest}")
     } else if let Some(rest) = p.strip_prefix(r"\\?\") {
