@@ -94,19 +94,6 @@ fn api_routes() -> Router {
         .nest("/base64", web_api::create_base64_routes())
         .nest("/json", web_api::create_json_routes())
         .nest("/pcapedit", web_api::create_pcapedit_routes())
-        .route("/license", get(license_info))
-}
-
-/// 授权状态（供前端展示有效期）。过期时本路由已被 license_guard 拦截。
-async fn license_info() -> impl IntoResponse {
-    let s = license::status();
-    Json(serde_json::json!({
-        "build_date": s.build_ymd(),
-        "expiry_date": s.expiry_ymd(),
-        "days_left": s.days_left,
-        "expired": s.expired,
-        "contact": license::CONTACT_EMAIL,
-    }))
 }
 
 async fn health_check() -> impl IntoResponse {
@@ -132,8 +119,7 @@ async fn api_info() -> impl IntoResponse {
             "cron": "/api/cron",
             "base64": "/api/base64",
             "json": "/api/json",
-            "pcapedit": "/api/pcapedit",
-            "license": "/api/license"
+            "pcapedit": "/api/pcapedit"
         }),
         description: "A collection of common utility tools for developers".to_string(),
     })

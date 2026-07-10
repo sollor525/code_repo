@@ -53,18 +53,16 @@ fn main() {
         });
     });
 
-    // 有效期提示（过期后窗口会加载「已停用」页面）
+    // 仅在过期后提示（未过期不显示任何有效期信息）；窗口会加载「已停用」页面
     let ls = license::status();
-    eprintln!(
-        "授权：编译于 {}，有效期至 {}（{}）",
-        ls.build_ymd(),
-        ls.expiry_ymd(),
-        if ls.expired {
-            "已过期，软件已停用".to_string()
-        } else {
-            format!("剩 {} 天", ls.days_left)
-        }
-    );
+    if ls.expired {
+        eprintln!(
+            "软件已停用：编译于 {}，有效期至 {}，现已过期；如需新版本请联系 {}",
+            ls.build_ymd(),
+            ls.expiry_ymd(),
+            license::CONTACT_EMAIL
+        );
+    }
 
     // 等待服务选定端口后再加载窗口
     let port = port_rx.recv().expect("未能获取内嵌服务端口");
@@ -113,20 +111,14 @@ async fn main() -> anyhow::Result<()> {
     let bound = listener.local_addr()?;
     tracing::info!("开发辅助工具（服务模式）已启动: http://{}", bound);
 
+    // 仅在过期后提示，未过期不显示有效期信息
     let ls = license::status();
     if ls.expired {
         tracing::warn!(
-            "授权已过期（编译于 {}，有效期至 {}），软件已停用；如需新版本请联系 {}",
+            "软件已停用：编译于 {}，有效期至 {}，现已过期；如需新版本请联系 {}",
             ls.build_ymd(),
             ls.expiry_ymd(),
             license::CONTACT_EMAIL
-        );
-    } else {
-        tracing::info!(
-            "授权：编译于 {}，有效期至 {}（剩 {} 天）",
-            ls.build_ymd(),
-            ls.expiry_ymd(),
-            ls.days_left
         );
     }
 

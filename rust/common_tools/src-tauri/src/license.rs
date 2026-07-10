@@ -22,7 +22,8 @@ pub struct LicenseStatus {
     pub build_date: DateTime<Utc>,
     pub expiry_date: DateTime<Utc>,
     pub expired: bool,
-    /// 距到期天数；已过期为负
+    /// 距到期天数；已过期为负。运行时不展示有效期信息（仅测试断言用），故允许未使用。
+    #[allow(dead_code)]
     pub days_left: i64,
 }
 
