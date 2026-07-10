@@ -44,3 +44,4 @@ rust/web_scan_rust/test_*.c
 rust/web_scan_rust/test_*
 *.bak
 *.backup
+zig/zig_lab/ex01_basics.zig
