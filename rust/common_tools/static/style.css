@@ -640,22 +640,26 @@ details.help[open] > summary::before { transform: rotate(90deg); }
 
 /* ---- landing: tool launcher that fills the window (no scroll) ---- */
 .content.home { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 20px; }
-.content.home .content-head { margin-bottom: 18px; }
+.content.home .content-head { margin-bottom: 14px; }
 
 .home-tools {
     flex: 1; min-height: 0;
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: minmax(168px, 1fr);
+    /* `max-content`, so a row's *base* size is its cards' content height. With
+       `1fr` (or a 168px base) under a fixed max-height, three rows got squeezed
+       to 176px while a card needs ~206px, and `.tool-card`'s overflow:hidden
+       silently clipped the `打开` footer. The card carries its own min-height. */
+    grid-auto-rows: max-content;
     gap: 16px;
-    align-content: center;          /* center the rows in the available height */
-    max-height: 560px;              /* keep cards from stretching into hollow panels */
-    margin: auto 0;
+    align-content: safe center;     /* centered when it fits; never parks row 1 out of reach */
+    overflow-y: auto;               /* scroll the grid rather than clip a card */
 }
 .content .tool-card {
     display: flex; flex-direction: column;
     grid-column: span 3;                 /* four cards per row (12 / 3) */
-    padding: 18px 20px;
+    padding: 14px 20px;                  /* trimmed so three rows fit 840px unscrolled */
+    min-height: 168px;                   /* keeps a sparse grid from collapsing */
 }
 .content .tool-card.wide { grid-column: span 4; }
 
@@ -669,8 +673,8 @@ details.help[open] > summary::before { transform: rotate(90deg); }
 }
 .tool-card:hover .tool-top .tool-icon { background: rgba(240, 178, 62, 0.2); border-color: rgba(240, 178, 62, 0.4); }
 .tool-no { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.22em; color: var(--ink-faint); }
-.content .tool-card .tool-title { font-size: 1.12rem; margin: 16px 0 6px; }
-.content .tool-card .tool-description { font-size: 0.86rem; color: var(--ink-dim); margin-bottom: 14px; }
+.content .tool-card .tool-title { font-size: 1.12rem; margin: 12px 0 4px; }
+.content .tool-card .tool-description { font-size: 0.86rem; color: var(--ink-dim); margin-bottom: 10px; }
 .tool-go {
     display: inline-flex; align-items: center; gap: 6px; margin-top: auto;
     font-family: var(--font-display); font-weight: 600; font-size: 0.82rem;
