@@ -16,7 +16,9 @@ tauri = { version = "2", features = [], optional = true }
 tokio = { version = "1.0", features = ["full"] }
 axum = "0.7"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+# preserve_order：JSON 工具需保留原始键顺序（排序改为显式选项）
+# arbitrary_precision：原样保留数字字面量，避免大整数/长小数被 f64 截断
+serde_json = { version = "1.0", features = ["preserve_order", "arbitrary_precision"] }
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1.0"
 mime_guess = "2.0"

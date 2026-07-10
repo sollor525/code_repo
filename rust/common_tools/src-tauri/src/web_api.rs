@@ -16,6 +16,8 @@ use crate::regex_matcher::RegexMatcher;
 use crate::md5_utils::{Md5Request, Md5Response, process_md5_request, process_md5_bytes};
 use crate::string_converter::{StringConvertRequest, StringConvertResponse, process_string_conversion};
 use crate::cron_utils::{self, CronBuildRequest, CronBuildResponse, CronExplainRequest, CronExplainResponse};
+use crate::base64_utils::{self, Base64DecodeRequest, Base64DecodeResponse, Base64EncodeRequest, Base64EncodeResponse};
+use crate::json_utils::{self, JsonFormatRequest, JsonFormatResponse, JsonSearchRequest, JsonSearchResponse};
 
 #[derive(Serialize, Deserialize)]
 struct ApiResponse<T> {
@@ -140,6 +142,19 @@ pub fn create_cron_routes() -> Router {
     Router::new()
         .route("/explain", post(cron_explain))
         .route("/build", post(cron_build))
+}
+
+pub fn create_base64_routes() -> Router {
+    Router::new()
+        .route("/encode", post(base64_encode))
+        .route("/decode", post(base64_decode))
+}
+
+pub fn create_json_routes() -> Router {
+    Router::new()
+        // 待格式化/搜索的 JSON 可能较大，解除默认 2MB 请求体上限
+        .route("/format", post(json_format).layer(DefaultBodyLimit::disable()))
+        .route("/search", post(json_search).layer(DefaultBodyLimit::disable()))
 }
 
 async fn network_convert(
@@ -451,6 +466,58 @@ async fn cron_build(
         Ok(response) => Json(ApiResponse::success(response)).into_response(),
         Err(error) => {
             let error_response = ApiResponse::<CronBuildResponse>::error(error);
+            (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
+        }
+    }
+}
+
+/// 文本 / 十六进制 → Base64（可选 URL 安全字母表、填充、换行宽度）。
+async fn base64_encode(
+    Json(request): Json<Base64EncodeRequest>
+) -> impl IntoResponse {
+    match base64_utils::process_encode(&request) {
+        Ok(response) => Json(ApiResponse::success(response)).into_response(),
+        Err(error) => {
+            let error_response = ApiResponse::<Base64EncodeResponse>::error(error);
+            (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
+        }
+    }
+}
+
+/// Base64 → 文本 / 十六进制转储（两种字母表通吃，允许缺失填充）。
+async fn base64_decode(
+    Json(request): Json<Base64DecodeRequest>
+) -> impl IntoResponse {
+    match base64_utils::process_decode(&request) {
+        Ok(response) => Json(ApiResponse::success(response)).into_response(),
+        Err(error) => {
+            let error_response = ApiResponse::<Base64DecodeResponse>::error(error);
+            (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
+        }
+    }
+}
+
+/// JSON 格式化：美化 / 压缩，可选排序键与转义非 ASCII；同时返回结构统计。
+async fn json_format(
+    Json(request): Json<JsonFormatRequest>
+) -> impl IntoResponse {
+    match json_utils::format(&request) {
+        Ok(response) => Json(ApiResponse::success(response)).into_response(),
+        Err(error) => {
+            let error_response = ApiResponse::<JsonFormatResponse>::error(error);
+            (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
+        }
+    }
+}
+
+/// JSON 字段搜索：按键名 / 值 / 两者匹配，或用 JSONPath 简版按路径查询。
+async fn json_search(
+    Json(request): Json<JsonSearchRequest>
+) -> impl IntoResponse {
+    match json_utils::search(&request) {
+        Ok(response) => Json(ApiResponse::success(response)).into_response(),
+        Err(error) => {
+            let error_response = ApiResponse::<JsonSearchResponse>::error(error);
             (StatusCode::BAD_REQUEST, Json(error_response)).into_response()
         }
     }

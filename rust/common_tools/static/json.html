@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 工具 - 开发辅助工具</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>❴❵</text></svg>">
+    <style>
+        .json-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+        .json-body .fill { margin-bottom: 0; }
+        /* 功能切换（格式化 / 字段搜索） */
+        .func-switch { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--inset); flex: none; }
+        .func-switch .fsw { flex: 1; padding: 10px; background: transparent; border: none; color: var(--ink-dim); font-family: var(--font-display); font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: background .15s, color .15s; }
+        .func-switch .fsw + .fsw { border-left: 1px solid var(--line); }
+        .func-switch .fsw.active { background: rgba(240, 178, 62, 0.16); color: var(--signal); }
+        .fpanel { display: none; flex-direction: column; gap: 10px; flex: none; }
+        .fpanel.active { display: flex; }
+        .opt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+        .fpanel .form-group { margin-bottom: 0; }
+        .fpanel .form-input, .fpanel .form-select { padding: 8px 11px; }
+        .fpanel .checkbox-group { margin: 0; }
+        .hint { display: block; font-size: 0.72rem; color: var(--ink-faint); margin-top: 6px; line-height: 1.5; }
+        .mono-input { font-family: var(--font-mono); letter-spacing: 0.03em; }
+        .meta-row { display: flex; gap: 8px 16px; flex-wrap: wrap; flex: none;
+                    font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; color: var(--ink-faint); }
+        .meta-row b { color: var(--ink-dim); font-weight: 500; }
+        .workspace .card-header { padding-bottom: 8px; margin-bottom: 10px; }
+        .btn-group { flex: none; }
+        #jsonIn { font-size: 0.85rem; }
+        /* 输出：格式化结果按列对齐、可横向滚动；搜索结果是命中列表 */
+        #output.code { white-space: pre; overflow-x: auto; color: var(--ink); }
+        .hit { border-bottom: 1px dashed var(--line); padding: 8px 0; }
+        .hit:first-child { padding-top: 0; }
+        .hit:last-child { border-bottom: none; padding-bottom: 0; }
+        .hit-path { color: var(--cyan); font-size: 0.8rem; word-break: break-all; cursor: pointer; }
+        .hit-path:hover { color: #8AE6F2; text-decoration: underline; }
+        .hit-meta { display: flex; gap: 12px; font-size: 0.68rem; color: var(--ink-faint); margin-top: 3px; letter-spacing: 0.06em; text-transform: uppercase; }
+        .hit-meta .tag { color: var(--signal); }
+        .hit-val { color: var(--ink); font-size: 0.82rem; margin-top: 4px; word-break: break-all; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <a class="brand" href="/">
+            <span class="brand-mark" aria-hidden="true">
+                <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                    <polyline points="1,11 4,11 5.5,5 7.5,12 9,8 11,8" stroke="#F0B23E" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+                    <polyline points="6,15 10,15 11.5,15 13,15 16,15" stroke="#4FD0E0" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+                </svg>
+            </span>
+            <span>开发辅助工具</span>
+        </a>
+        <nav class="side-nav">
+            <a href="/" class="side-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>首页</span></a>
+            <a href="/network.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h16M15 4l4 4-4 4"/><path d="M23 18H7M11 22l-4-4 4-4"/></svg><span>网络转换</span></a>
+            <a href="/packet.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2l9 5v12l-9 5-9-5V7z"/><path d="M4 7l9 5 9-5M13 12v12"/></svg><span>报文分析</span></a>
+            <a href="/pcapgen.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l6 6v14H5z"/><path d="M15 3v6h6"/><path d="M13 11v7M9.5 14.5L13 18l3.5-3.5"/></svg><span>PCAP 生成</span></a>
+            <a href="/regex.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4H4v18h3M19 4h3v18h-3"/><path d="M13 9v8M9.5 11l7 4M16.5 11l-7 4"/></svg><span>正则匹配</span></a>
+            <a href="/md5.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L7 23M19 3l-3 20M4 9h18M3 17h18"/></svg><span>MD5 计算</span></a>
+            <a href="/string.html" class="side-link"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5l-6 16M8 9l-4 4 4 4M18 9l4 4-4 4"/></svg><span>字符串转换</span></a>
+            <a href="/cron.html" class="side-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Crontab</span></a>
+            <a href="/base64.html" class="side-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="4" height="6" rx="2"/><rect x="6" y="4" width="4" height="6" rx="2"/><path d="M6 20h4"/><path d="M14 10h4"/><path d="M6 14h2v6"/><path d="M14 4h2v6"/></svg><span>Base64</span></a>
+            <a href="/json.html" class="side-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></svg><span>JSON 工具</span></a>
+        </nav>
+        <div class="side-foot"><span class="link-led"><span class="dot"></span>LINK</span></div>
+    </aside>
+    <div class="content tool">
+
+    <main class="main">
+        <div class="container">
+            <header class="tool-head">
+                <span class="eyebrow">CH · JSON — format &amp; query</span>
+                <h1>JSON 工具</h1>
+                <p>两个功能，用上方开关切换：① 格式化 —— 美化 / 压缩，可排序键、转义非 ASCII，出错时给出行列定位；② 字段搜索 —— 按键名、值或 JSONPath 路径定位节点，返回完整路径。原始键顺序与数字字面量均原样保留。</p>
+            </header>
+
+            <div class="workspace io">
+            <!-- 输入 + 功能区 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" id="cardTitle">格式化 JSON</h2>
+                </div>
+                <div class="json-body">
+                    <div class="func-switch" role="tablist">
+                        <button class="fsw active" id="fswFmt" onclick="switchMode('format')">格式化</button>
+                        <button class="fsw" id="fswSearch" onclick="switchMode('search')">字段搜索</button>
+                    </div>
+
+                    <div class="form-group fill">
+                        <label class="form-label">JSON 内容</label>
+                        <textarea id="jsonIn" class="form-textarea" spellcheck="false" placeholder="粘贴 JSON ..."></textarea>
+                    </div>
+
+                    <!-- 功能一：格式化 -->
+                    <div id="panelFormat" class="fpanel active">
+                        <div class="opt-grid">
+                            <div class="form-group">
+                                <label class="form-label">缩进</label>
+                                <select id="indent" class="form-select">
+                                    <option value="2" selected>2 个空格</option>
+                                    <option value="4">4 个空格</option>
+                                    <option value="tab">Tab</option>
+                                </select>
+                            </div>
+                            <div class="checkbox-group" style="align-self: end; padding-bottom: 8px;">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="sortKeys">
+                                    <label for="sortKeys">排序键</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="escapeUnicode">
+                                    <label for="escapeUnicode">转义非 ASCII</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="doFormat('pretty')">格式化</button>
+                            <button class="btn btn-secondary" onclick="doFormat('minify')">压缩</button>
+                            <button class="btn btn-info" onclick="applyToInput()">结果回填输入</button>
+                            <button class="btn btn-outline" onclick="clearAll()">清空</button>
+                        </div>
+                    </div>
+
+                    <!-- 功能二：字段搜索 -->
+                    <div id="panelSearch" class="fpanel">
+                        <div class="form-group">
+                            <label class="form-label">查询</label>
+                            <input type="text" id="query" class="form-input mono-input" value="price" placeholder="键名 / 值 / JSONPath">
+                            <small class="hint" id="queryHint">按键名做包含匹配。切到「JSONPath 路径」模式可用 <code>$.store.book[*].title</code>、<code>$..price</code> 等写法。</small>
+                        </div>
+                        <div class="opt-grid">
+                            <div class="form-group">
+                                <label class="form-label">匹配对象</label>
+                                <select id="searchMode" class="form-select" onchange="onSearchModeChange()">
+                                    <option value="key">键名</option>
+                                    <option value="value">值</option>
+                                    <option value="any" selected>键名或值</option>
+                                    <option value="path">JSONPath 路径</option>
+                                </select>
+                            </div>
+                            <div class="checkbox-group" id="matchOpts" style="align-self: end; padding-bottom: 8px;">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="caseSensitive">
+                                    <label for="caseSensitive">区分大小写</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="exact">
+                                    <label for="exact">精确匹配</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="doSearch()">搜索</button>
+                            <button class="btn btn-outline" onclick="clearAll()">清空</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输出 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" id="outTitle">结果</h2>
+                </div>
+                <div class="json-body">
+                    <div class="form-group fill">
+                        <label class="form-label" id="outLabel">格式化结果</label>
+                        <div id="output" class="result-container">等待操作...</div>
+                    </div>
+                    <div id="meta" class="meta-row"></div>
+                    <div class="btn-group">
+                        <button class="copy-btn" id="copyBtn" onclick="copyOut()" style="display: none;">复制结果</button>
+                    </div>
+                </div>
+            </div>
+            </div><!-- /workspace -->
+
+            <details class="help"><summary>说明与示例</summary><div class="help-body">
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">JSONPath 简版速查</h2></div>
+                <div class="grid">
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">支持的语法</h3>
+                        <ul style="line-height: 1.8; color: var(--text-secondary);">
+                            <li><code>$</code> 根节点（可省略）</li>
+                            <li><code>.name</code> / <code>["na me"]</code> 取字段（含特殊字符用中括号）</li>
+                            <li><code>[0]</code> 取下标，<code>[-1]</code> 取最后一个</li>
+                            <li><code>.*</code> / <code>[*]</code> 通配当前层全部成员</li>
+                            <li><code>..name</code> 递归下降找所有同名字段，<code>..*</code> 取所有后代</li>
+                            <li>暂不支持过滤表达式 <code>[?(...)]</code> 与切片 <code>[a:b]</code></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">示例</h3>
+                        <ul style="line-height: 1.8; color: var(--text-secondary);">
+                            <li><code>$.store.book[0].title</code> 第一本书的标题</li>
+                            <li><code>$.store.book[*].title</code> 所有书的标题</li>
+                            <li><code>$..price</code> 文档中所有 price</li>
+                            <li>格式化保留原始键顺序；勾选「排序键」才递归按字典序排列</li>
+                            <li>大整数与长小数原样保留，不会被浮点精度截断</li>
+                        </ul>
+                        <div class="btn-group" style="margin-top: 12px;">
+                            <button class="btn btn-small btn-outline" onclick="loadSample()">加载示例 JSON</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div></details>
+        </div>
+    </main></div></div>
+
+    <script>
+        const el = id => document.getElementById(id);
+        const val = id => el(id).value;
+        const esc = s => String(s).replace(/[&<>"']/g, c =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        // 写成字面量而非 JSON.stringify(对象)：JS 的 number 存不下末尾那个大整数
+        const SAMPLE = [
+            '{',
+            '  "store": {',
+            '    "book": [',
+            '      { "title": "Rust 编程", "author": "Steve", "price": 59.9, "tags": ["sys", "rust"] },',
+            '      { "title": "Go 编程", "author": "Alan", "price": 45, "tags": ["sys", "go"] }',
+            '    ],',
+            '    "bicycle": { "color": "red", "price": 199 }',
+            '  },',
+            '  "expensive": 10,',
+            '  "id": 9223372036854775808',
+            '}'
+        ].join('\n');
+
+        let mode = 'format';
+        let lastResult = '';   // 供「复制结果」/「结果回填输入」使用
+
+        function switchMode(m) {
+            mode = m;
+            const fmt = m === 'format';
+            el('fswFmt').classList.toggle('active', fmt);
+            el('fswSearch').classList.toggle('active', !fmt);
+            el('panelFormat').classList.toggle('active', fmt);
+            el('panelSearch').classList.toggle('active', !fmt);
+            el('cardTitle').textContent = fmt ? '格式化 JSON' : '在 JSON 中搜索字段';
+            el('outLabel').textContent = fmt ? '格式化结果' : '命中的节点';
+            el('copyBtn').style.display = 'none';
+            if (!fmt) onSearchModeChange();
+        }
+
+        function onSearchModeChange() {
+            const m = val('searchMode');
+            const isPath = m === 'path';
+            // 路径模式没有「包含 / 大小写」之说，隐藏这两个开关
+            el('matchOpts').style.display = isPath ? 'none' : '';
+            el('queryHint').innerHTML = isPath
+                ? '按 JSONPath 定位，例如 <code>$.store.book[*].title</code>、<code>$..price</code>、<code>$.store.book[-1]</code>。'
+                : '默认做包含匹配，不区分大小写；勾选右侧开关可改为精确 / 区分大小写。';
+            el('query').placeholder = isPath ? '$.store.book[*].title' : '键名 / 值';
+        }
+
+        function showText(text, status) {
+            const o = el('output');
+            o.textContent = text;
+            o.className = 'result-container' + (status ? ' result-' + status : '');
+        }
+
+        function setMeta(items) {
+            el('meta').innerHTML = items.map(t => '<span>' + t + '</span>').join('');
+        }
+
+        function fail(msg) {
+            showText(msg, 'error');
+            setMeta([]);
+            el('copyBtn').style.display = 'none';
+            lastResult = '';
+        }
+
+        async function post(url, body) {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await resp.json();
+            return { ok: resp.ok && data.success, data: data.data, error: data.error || ('HTTP ' + resp.status) };
+        }
+
+        // ---- 功能一：格式化 / 压缩 ----
+        async function doFormat(fmtMode) {
+            const input = el('jsonIn').value;
+            if (!input.trim()) { fail('请输入 JSON 内容'); return; }
+            showText('处理中 ...', 'info');
+
+            const indentSel = val('indent');
+            const body = {
+                input,
+                mode: fmtMode,
+                indent: indentSel === 'tab' ? 2 : parseInt(indentSel, 10),
+                use_tabs: indentSel === 'tab',
+                sort_keys: el('sortKeys').checked,
+                escape_unicode: el('escapeUnicode').checked
+            };
+
+            try {
+                const r = await post('/api/json/format', body);
+                if (!r.ok) { fail('格式化失败: ' + r.error); return; }
+                const d = r.data;
+                lastResult = d.result;
+                const o = el('output');
+                o.textContent = d.result;
+                o.className = 'result-container result-success code';
+                const s = d.stats;
+                setMeta([
+                    '大小 <b>' + d.original_size + '</b> → <b>' + d.result_size + '</b> 字节',
+                    '节点 <b>' + s.nodes + '</b>',
+                    '对象 <b>' + s.objects + '</b>',
+                    '数组 <b>' + s.arrays + '</b>',
+                    '键 <b>' + s.keys + '</b>',
+                    '最大深度 <b>' + s.max_depth + '</b>'
+                ]);
+                el('copyBtn').style.display = '';
+            } catch (e) {
+                fail('请求失败: ' + e.message);
+            }
+        }
+
+        // ---- 功能二：字段搜索 ----
+        async function doSearch() {
+            const input = el('jsonIn').value;
+            if (!input.trim()) { fail('请输入 JSON 内容'); return; }
+            showText('搜索中 ...', 'info');
+
+            const body = {
+                input,
+                query: val('query'),
+                mode: val('searchMode'),
+                case_sensitive: el('caseSensitive').checked,
+                exact: el('exact').checked,
+                limit: 200
+            };
+
+            try {
+                const r = await post('/api/json/search', body);
+                if (!r.ok) { fail('搜索失败: ' + r.error); return; }
+                renderHits(r.data);
+            } catch (e) {
+                fail('请求失败: ' + e.message);
+            }
+        }
+
+        function renderHits(d) {
+            lastResult = d.matches.map(m => m.path).join('\n');
+            const o = el('output');
+
+            if (d.total === 0) {
+                showText('没有命中任何节点。', 'info');
+                setMeta(['命中 <b>0</b> 处']);
+                el('copyBtn').style.display = 'none';
+                return;
+            }
+
+            o.className = 'result-container result-success';
+            // 不再单列键名：路径末段已经带上了它，且 .hit-meta 的 uppercase
+            // 会把大小写敏感的键名显示成全大写，容易误导
+            o.innerHTML = d.matches.map(m =>
+                '<div class="hit">'
+                + '<div class="hit-path" title="点击复制路径" onclick="copyPath(this)">' + esc(m.path) + '</div>'
+                + '<div class="hit-meta"><span class="tag">' + esc(m.value_type) + '</span>'
+                + '<span>命中 ' + esc(m.matched_on) + '</span></div>'
+                + '<div class="hit-val">' + esc(m.value) + '</div>'
+                + '</div>'
+            ).join('');
+
+            const meta = ['命中 <b>' + d.total + '</b> 处'];
+            if (d.truncated) meta.push('仅显示前 <b>' + d.returned + '</b> 条');
+            setMeta(meta);
+            el('copyBtn').style.display = '';
+        }
+
+        function copyPath(node) {
+            navigator.clipboard.writeText(node.textContent).then(() => {
+                const old = node.textContent;
+                node.textContent = old + '  ✓ 已复制';
+                setTimeout(() => { node.textContent = old; }, 1000);
+            }).catch(() => {});
+        }
+
+        // 把格式化结果写回输入框，便于接着搜索
+        function applyToInput() {
+            if (!lastResult) { fail('还没有可回填的结果'); return; }
+            el('jsonIn').value = lastResult;
+            showText('结果已回填到左侧输入框。', 'info');
+            setMeta([]);
+            el('copyBtn').style.display = 'none';
+        }
+
+        function clearAll() {
+            el('jsonIn').value = '';
+            showText('等待操作...');
+            setMeta([]);
+            el('copyBtn').style.display = 'none';
+            lastResult = '';
+        }
+
+        async function copyOut() {
+            if (!lastResult) return;
+            try {
+                await navigator.clipboard.writeText(lastResult);
+                const btn = el('copyBtn');
+                btn.textContent = '已复制';
+                setTimeout(() => { btn.textContent = '复制结果'; }, 1200);
+            } catch (e) {
+                alert('复制失败: ' + e.message);
+            }
+        }
+
+        function loadSample() {
+            el('jsonIn').value = SAMPLE;
+            if (mode === 'format') doFormat('pretty'); else doSearch();
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                if (mode === 'format') doFormat('pretty'); else doSearch();
+            }
+        });
+
+        // 初始：填入示例并执行，页面一打开就是可用状态；URL 带 #search 时直达搜索
+        el('jsonIn').value = SAMPLE;
+        const initMode = (location.hash === '#search') ? 'search' : 'format';
+        switchMode(initMode);
+        if (initMode === 'search') doSearch(); else doFormat('pretty');
+    </script>
+</body>
+</html>
