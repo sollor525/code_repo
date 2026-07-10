@@ -182,9 +182,17 @@
         <footer class="home-foot">
             <span class="foot-note">10 个本地工具 · 数据全程不出网</span>
             <span class="foot-spacer"></span>
-            <span class="foot-meta">v0.1.0 · 127.0.0.1</span>
+            <span class="foot-meta" id="footMeta">v0.1.0 · 127.0.0.1</span>
         </footer>
     </main>
 </div>
+<script>
+    // 展示软件有效期（自编译日起一年）。取不到就保持默认文案。
+    fetch('/api/license').then(r => r.ok ? r.json() : null).then(d => {
+        if (!d || d.expired) return;
+        document.getElementById('footMeta').textContent =
+            'v0.1.0 · 有效期至 ' + d.expiry_date + '（剩 ' + d.days_left + ' 天）';
+    }).catch(() => {});
+</script>
 </body>
 </html>

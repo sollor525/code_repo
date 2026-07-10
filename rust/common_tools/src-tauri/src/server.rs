@@ -4,14 +4,16 @@
 //! 无需随附 static/ 目录即可运行。
 
 use axum::{
-    extract::Path,
+    extract::{Path, Request},
     http::{header, StatusCode},
+    middleware::{self, Next},
     response::{Html, IntoResponse, Response},
     routing::get,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
 
+use crate::license;
 use crate::web_api;
 
 // ---- 编译期嵌入的前端资源（路径相对本文件：src-tauri/src/）----
@@ -63,6 +65,21 @@ pub fn create_router() -> Router {
         .route("/pcapedit.html", get(|| async { Html(PCAPEDIT_HTML) }))
         .route("/", get(|| async { Html(INDEX_HTML) }))
         .fallback(|| async { (StatusCode::NOT_FOUND, "页面未找到") })
+        // 有效期拦截：过期后所有请求（页面 / 静态资源 / API）统一返回停用页
+        .layer(middleware::from_fn(license_guard))
+}
+
+/// 软件有效期中间件：过期即对全部路由返回「已停用」页面。
+async fn license_guard(req: Request, next: Next) -> Response {
+    if license::is_expired() {
+        return (
+            StatusCode::FORBIDDEN,
+            [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+            license::expired_html(),
+        )
+            .into_response();
+    }
+    next.run(req).await
 }
 
 fn api_routes() -> Router {
@@ -77,6 +94,19 @@ fn api_routes() -> Router {
         .nest("/base64", web_api::create_base64_routes())
         .nest("/json", web_api::create_json_routes())
         .nest("/pcapedit", web_api::create_pcapedit_routes())
+        .route("/license", get(license_info))
+}
+
+/// 授权状态（供前端展示有效期）。过期时本路由已被 license_guard 拦截。
+async fn license_info() -> impl IntoResponse {
+    let s = license::status();
+    Json(serde_json::json!({
+        "build_date": s.build_ymd(),
+        "expiry_date": s.expiry_ymd(),
+        "days_left": s.days_left,
+        "expired": s.expired,
+        "contact": license::CONTACT_EMAIL,
+    }))
 }
 
 async fn health_check() -> impl IntoResponse {
@@ -102,7 +132,8 @@ async fn api_info() -> impl IntoResponse {
             "cron": "/api/cron",
             "base64": "/api/base64",
             "json": "/api/json",
-            "pcapedit": "/api/pcapedit"
+            "pcapedit": "/api/pcapedit",
+            "license": "/api/license"
         }),
         description: "A collection of common utility tools for developers".to_string(),
     })

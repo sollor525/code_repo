@@ -14,6 +14,7 @@ mod string_converter;
 mod cron_utils;
 mod base64_utils;
 mod json_utils;
+mod license;
 mod web_api;
 mod server;
 
@@ -51,6 +52,19 @@ fn main() {
             }
         });
     });
+
+    // 有效期提示（过期后窗口会加载「已停用」页面）
+    let ls = license::status();
+    eprintln!(
+        "授权：编译于 {}，有效期至 {}（{}）",
+        ls.build_ymd(),
+        ls.expiry_ymd(),
+        if ls.expired {
+            "已过期，软件已停用".to_string()
+        } else {
+            format!("剩 {} 天", ls.days_left)
+        }
+    );
 
     // 等待服务选定端口后再加载窗口
     let port = port_rx.recv().expect("未能获取内嵌服务端口");
@@ -98,6 +112,23 @@ async fn main() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", port)).await?;
     let bound = listener.local_addr()?;
     tracing::info!("开发辅助工具（服务模式）已启动: http://{}", bound);
+
+    let ls = license::status();
+    if ls.expired {
+        tracing::warn!(
+            "授权已过期（编译于 {}，有效期至 {}），软件已停用；如需新版本请联系 {}",
+            ls.build_ymd(),
+            ls.expiry_ymd(),
+            license::CONTACT_EMAIL
+        );
+    } else {
+        tracing::info!(
+            "授权：编译于 {}，有效期至 {}（剩 {} 天）",
+            ls.build_ymd(),
+            ls.expiry_ymd(),
+            ls.days_left
+        );
+    }
 
     axum::serve(listener, server::create_router()).await?;
     Ok(())
