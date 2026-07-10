@@ -10,10 +10,6 @@
         .edit-head { margin-bottom: 10px; }
         .edit-head p { font-size: 0.82rem; max-width: 78ch; }
         .workspace .card-header { padding-bottom: 8px; margin-bottom: 10px; }
-        .func-switch { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--inset); flex: none; margin-bottom: 10px; }
-        .func-switch .fsw { flex: 1; padding: 9px; background: transparent; border: none; color: var(--ink-dim); font-family: var(--font-display); font-weight: 600; font-size: 0.86rem; cursor: pointer; transition: background .15s, color .15s; }
-        .func-switch .fsw + .fsw { border-left: 1px solid var(--line); }
-        .func-switch .fsw.active { background: rgba(240, 178, 62, 0.16); color: var(--signal); }
         .edit-fields { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; padding-right: 4px; }
         .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 12px; }
         .edit-fields .form-group { margin-bottom: 0; }
@@ -21,7 +17,6 @@
         .edit-sub { border-top: 1px solid var(--line); padding-top: 8px; }
         .edit-sub-title { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.11em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: baseline; }
         .hint { display: block; font-size: 0.72rem; color: var(--ink-faint); margin-top: 4px; line-height: 1.5; }
-        .modify-only { display: none; }
         .file-pick { border: 1px dashed var(--line-strong); border-radius: var(--r); padding: 10px 12px; }
         .file-pick .file-info { margin-top: 6px; }
         /* 结果 */
@@ -49,6 +44,8 @@
         .sample .after::before { content: "→ "; color: var(--ok); }
         .sample .unchanged { color: var(--ink-faint); font-size: 0.68rem; }
         .btn-group { flex: none; }
+        .edit-actions { flex: none; border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+        .edit-actions .hint { margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -92,14 +89,9 @@
             <!-- 输入区 -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title" id="cardTitle">预览匹配与改写</h2>
+                    <h2 class="card-title">按五元组改写地址</h2>
                 </div>
                 <div class="edit-fields">
-                    <div class="func-switch" role="tablist">
-                        <button class="fsw active" id="fswPreview" onclick="switchMode('preview')">预览</button>
-                        <button class="fsw" id="fswModify" onclick="switchMode('modify')">修改并保存</button>
-                    </div>
-
                     <!-- 文件 -->
                     <div class="form-group file-pick">
                         <label class="form-label">源 PCAP 文件（传统 .pcap）</label>
@@ -166,9 +158,9 @@
                         <small class="hint">新源 = 客户端的新地址，新目的 = 服务端的新地址。stoc 报文里客户端出现在目的字段，工具会自动把「新源」写到其目的、「新目的」写到其源。</small>
                     </div>
 
-                    <!-- 保存参数（仅修改模式） -->
-                    <div class="edit-sub modify-only" id="saveOpts">
-                        <div class="edit-sub-title"><span>保存</span></div>
+                    <!-- 保存参数（仅「修改并保存」用到） -->
+                    <div class="edit-sub" id="saveOpts">
+                        <div class="edit-sub-title"><span>保存（仅「修改并保存」用到）</span></div>
                         <div class="form-group">
                             <label class="form-label">输出目录（留空 = 程序当前目录）</label>
                             <input type="text" id="outDir" class="form-input" placeholder="留空或填写目录路径">
@@ -178,11 +170,16 @@
                             <input type="text" id="fname" class="form-input" placeholder="留空 = modified_时间戳.pcap">
                         </div>
                     </div>
+                </div>
 
+                <!-- 动作区固定在卡片底部：上面的表单再长，两个按钮也始终可见 -->
+                <div class="edit-actions">
                     <div class="btn-group">
-                        <button class="btn btn-primary" id="runBtn" onclick="run()">预览</button>
+                        <button class="btn btn-primary" onclick="run('preview')">预览</button>
+                        <button class="btn btn-success" onclick="run('modify')">修改并保存</button>
                         <button class="btn btn-secondary" onclick="resetAll()">重置</button>
                     </div>
+                    <small class="hint">「预览」只统计命中与改写前后样例，不写文件；确认无误后再「修改并保存」。</small>
                 </div>
             </div>
 
@@ -231,18 +228,6 @@
         const val = id => el(id).value;
         const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
         let selectedFile = null;
-        let mode = 'preview';
-
-        function switchMode(m) {
-            mode = m;
-            const prev = m === 'preview';
-            el('fswPreview').classList.toggle('active', prev);
-            el('fswModify').classList.toggle('active', !prev);
-            el('cardTitle').textContent = prev ? '预览匹配与改写' : '修改并保存到目录';
-            el('runBtn').textContent = prev ? '预览' : '修改并保存';
-            el('runBtn').className = 'btn ' + (prev ? 'btn-primary' : 'btn-success');
-            el('saveOpts').style.display = prev ? 'none' : 'block';
-        }
 
         function onFile() {
             const f = el('fileInput').files[0];
@@ -289,7 +274,8 @@
             return p.toString();
         }
 
-        async function run() {
+        // mode: 'preview'（只统计，不落盘）| 'modify'（改写并保存）
+        async function run(mode) {
             if (!selectedFile) { fail('请先选择 pcap 文件'); return; }
             const forModify = mode === 'modify';
             showText(forModify ? '正在改写并保存 ...' : '正在解析并匹配 ...', 'info');
@@ -370,11 +356,10 @@
             showText('选择 pcap 文件并设置条件后点击「预览」。');
         }
 
+        // Ctrl+Enter 走「预览」——不落盘的那个，免得一次误触就写出文件
         document.addEventListener('keydown', e => {
-            if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); run(); }
+            if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); run('preview'); }
         });
-
-        switchMode('preview');
     </script>
 </body>
 </html>
