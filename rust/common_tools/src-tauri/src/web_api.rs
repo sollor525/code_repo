@@ -68,6 +68,16 @@ struct PacketAnalyzeRequest {
     hex_data: String,
 }
 
+// 报文导出（保存到目录）请求：Hex + 可选输出目录 / 文件名
+#[derive(Deserialize)]
+struct PacketExportRequest {
+    hex_data: String,
+    #[serde(default)]
+    output_dir: Option<String>,
+    #[serde(default)]
+    filename: Option<String>,
+}
+
 #[derive(Serialize)]
 struct PacketAnalyzeResponse {
     hex_data: String,
@@ -204,21 +214,37 @@ async fn packet_analyze(
     Json(ApiResponse::success(response))
 }
 
+/// 导出报文为 PCAP 并保存到目录（output_dir 为空则写入进程当前目录），
+/// 文件名缺省用 `packet_<时间戳>.pcap`。与「PCAP 生成 / 修改」的保存行为一致。
 async fn packet_export(
-    Json(request): Json<PacketAnalyzeRequest>
+    Json(request): Json<PacketExportRequest>
 ) -> impl IntoResponse {
     let mut analyzer = PacketAnalyzer::new();
     analyzer.set_hex_input(&request.hex_data);
 
-    match analyzer.export_pcap("packet.pcap") {
-        Ok(_) => {
-            Json(ApiResponse::success(serde_json::json!({
-                "message": "PCAP 文件导出成功",
-                "filename": "packet.pcap"
-            })))
-        }
+    let bytes = match analyzer.export_pcap_bytes() {
+        Ok(b) => b,
         Err(e) => {
-            Json(ApiResponse::<serde_json::Value>::error(e.to_string()))
+            let err = ApiResponse::<serde_json::Value>::error(e.to_string());
+            return (StatusCode::BAD_REQUEST, Json(err)).into_response();
+        }
+    };
+
+    match crate::pcap_generator::write_pcap_to_dir(
+        &bytes,
+        request.output_dir.as_deref(),
+        request.filename.as_deref(),
+        "packet",
+    ) {
+        Ok((filename, path, size)) => Json(ApiResponse::success(serde_json::json!({
+            "filename": filename,
+            "path": path,
+            "size": size,
+        })))
+        .into_response(),
+        Err(e) => {
+            let err = ApiResponse::<serde_json::Value>::error(e);
+            (StatusCode::BAD_REQUEST, Json(err)).into_response()
         }
     }
 }

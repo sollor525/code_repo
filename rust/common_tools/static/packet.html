@@ -6,6 +6,12 @@
     <title>报文分析工具 - 开发辅助工具</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
+    <style>
+        .save-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; flex: none; margin-bottom: 12px; }
+        .save-fields .form-group { margin-bottom: 0; }
+        .save-fields .form-input { padding: 8px 11px; }
+        @media (max-width: 720px) { .save-fields { grid-template-columns: 1fr; } }
+    </style>
 </head>
 <body>
 <div class="app">
@@ -54,22 +60,29 @@
                     <label class="form-label">输入 Hex 数据</label>
                     <textarea id="hexInput" class="form-textarea" rows="6"
                               placeholder="请输入十六进制数据，例如：
-08002712345608002712345608000450000283c7c4000400643c2c0a80101c0a801c8
+080027123456080027abcdef0800450000280001400040060000c0a80101c0a801c83039005000000001000000005002200000000000
 
 支持的格式：
 - 连续的十六进制字符
 - 带空格的格式 (08 00 27 12 34 56)
 - 带换行的格式"></textarea>
                 </div>
+                <div class="save-fields">
+                    <div class="form-group">
+                        <label class="form-label">输出目录（留空 = 程序当前目录）</label>
+                        <input type="text" id="outDir" class="form-input" placeholder="留空或填写目录路径">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">文件名（留空 = packet_时间戳.pcap）</label>
+                        <input type="text" id="fileName" class="form-input" placeholder="留空 = packet_时间戳.pcap">
+                    </div>
+                </div>
                 <div class="btn-group">
                     <button class="btn btn-primary" onclick="analyzePacket()">
                         分析数据包
                     </button>
-                    <button class="btn btn-success" onclick="downloadPCAP()">
-                        下载 PCAP 文件
-                    </button>
-                    <button class="btn btn-outline" onclick="exportPCAP()">
-                        导出 PCAP 到服务器
+                    <button class="btn btn-success" onclick="exportPCAP()">
+                        导出 PCAP 到目录
                     </button>
                     <button class="btn btn-outline" onclick="clearInput()">
                         清空输入
@@ -157,7 +170,7 @@
                     <div>
                         <h4>TCP数据包示例：</h4>
                         <div class="result-container" style="background: var(--bg); color: var(--cyan); font-family: var(--font-mono);">
-08002712345608002712345608000450000283c7c4000400643c2c0a80101c0a801c8
+080027123456080027abcdef0800450000280001400040060000c0a80101c0a801c83039005000000001000000005002200000000000
                         </div>
                     </div>
                     <div>
@@ -175,11 +188,12 @@
     </main></div></div>
 
     <script>
-        // 示例数据
+        // 示例数据（以太网 14 + IPv4 20 + TCP/UDP/ICMP，偶数长度、可正常解析）
+        // 均为 192.168.1.1 → 192.168.1.200
         const examples = {
-            tcp: '08002712345608002712345608000450000283c7c4000400643c2c0a80101c0a801c8',
-            udp: '080027123456080027123456080004500001c3c7d4000400643c8c0a80101c0a801c8',
-            icmp: '080027123456080027123456080004500003c3c7e4000400643c01c0a80101c0a801c8'
+            tcp: '080027123456080027abcdef0800450000280001400040060000c0a80101c0a801c83039005000000001000000005002200000000000',
+            udp: '080027123456080027abcdef08004500001c0001400040110000c0a80101c0a801c83039003500080000',
+            icmp: '080027123456080027abcdef08004500001c0001400040010000c0a80101c0a801c80800000000010001'
         };
 
         // 页面加载动画
@@ -262,51 +276,7 @@ ${data.data.analysis}
             }
         }
 
-        // 下载PCAP文件
-        async function downloadPCAP() {
-            const hexInput = document.getElementById('hexInput').value.trim();
-
-            if (!hexInput) {
-                showResult('请输入要下载的Hex数据', 'error');
-                return;
-            }
-
-            showLoading('正在准备下载PCAP文件...');
-
-            try {
-                const response = await fetch('/api/packet/download', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        hex_data: hexInput
-                    })
-                });
-
-                if (response.ok) {
-                    // 创建Blob并下载文件
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `packet_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pcap`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-
-                    showResult('✅ PCAP文件下载成功！\n\n文件已保存到您的下载文件夹，可以使用Wireshark等工具打开进行详细分析。', 'success');
-                } else {
-                    const errorData = await response.json();
-                    showResult('下载失败: ' + (errorData.error || '未知错误'), 'error');
-                }
-            } catch (error) {
-                showResult('网络请求失败: ' + error.message, 'error');
-            }
-        }
-
-        // 导出PCAP文件到服务器
+        // 导出 PCAP 到目录：可指定输出目录与文件名，留空则用默认目录与时间戳文件名
         async function exportPCAP() {
             const hexInput = document.getElementById('hexInput').value.trim();
 
@@ -315,7 +285,13 @@ ${data.data.analysis}
                 return;
             }
 
-            showLoading('正在导出PCAP文件到服务器...');
+            showLoading('正在导出 PCAP 到目录...');
+
+            const body = { hex_data: hexInput };
+            const outDir = document.getElementById('outDir').value.trim();
+            const fileName = document.getElementById('fileName').value.trim();
+            if (outDir) body.output_dir = outDir;
+            if (fileName) body.filename = fileName;
 
             try {
                 const response = await fetch('/api/packet/export', {
@@ -323,17 +299,23 @@ ${data.data.analysis}
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        hex_data: hexInput
-                    })
+                    body: JSON.stringify(body)
                 });
 
                 const data = await response.json();
 
-                if (data.success) {
-                    showResult('✅ PCAP文件导出成功！\n\n文件已保存到服务器，文件名: packet.pcap\n\n💡 提示: 您可以使用Wireshark等工具打开PCAP文件进行详细分析。', 'success');
+                if (response.ok && data.success) {
+                    const d = data.data;
+                    showResult(
+                        '✅ 已导出 PCAP 文件\n\n' +
+                        '文件名: ' + d.filename + '\n' +
+                        '路径: ' + d.path + '\n' +
+                        '大小: ' + d.size + ' 字节\n\n' +
+                        '💡 可使用 Wireshark 等工具打开分析。',
+                        'success'
+                    );
                 } else {
-                    showResult('导出失败: ' + (data.error || '未知错误'), 'error');
+                    showResult('导出失败: ' + (data.error || ('HTTP ' + response.status)), 'error');
                 }
             } catch (error) {
                 showResult('网络请求失败: ' + error.message, 'error');
@@ -344,6 +326,8 @@ ${data.data.analysis}
         function clearInput() {
             document.getElementById('hexInput').value = '';
             document.getElementById('hexInput').style.height = 'auto';
+            document.getElementById('outDir').value = '';
+            document.getElementById('fileName').value = '';
             showResult('等待分析...', 'info');
         }
 
@@ -370,12 +354,7 @@ ${data.data.analysis}
             if (e.ctrlKey && e.key === 'Enter') {
                 analyzePacket();
             }
-            // Ctrl+D 下载PCAP文件
-            if (e.ctrlKey && e.key === 'd') {
-                e.preventDefault();
-                downloadPCAP();
-            }
-            // Ctrl+S 导出PCAP到服务器
+            // Ctrl+S 导出PCAP到目录
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
                 exportPCAP();

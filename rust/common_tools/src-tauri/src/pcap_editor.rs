@@ -16,7 +16,7 @@ use pcap_file::pcap::{PcapPacket, PcapReader, PcapWriter};
 use pcap_file::DataLink;
 use serde::Serialize;
 
-use crate::pcap_generator::strip_extended_prefix;
+use crate::pcap_generator::write_pcap_to_dir;
 
 /// 样例最多展示的匹配报文数
 const SAMPLE_LIMIT: usize = 20;
@@ -663,39 +663,10 @@ pub struct SavedEdit {
     pub size: usize,
 }
 
-fn default_filename() -> String {
-    let ts = chrono::Local::now().format("%Y%m%d_%H%M%S");
-    format!("modified_{ts}.pcap")
-}
-
 /// 把改写后的 pcap 字节写入目录（空 → 进程当前目录），返回文件名与绝对路径。
 pub fn save(bytes: &[u8], output_dir: Option<&str>, filename: Option<&str>) -> Result<SavedEdit, String> {
-    use std::path::{Path, PathBuf};
-
-    let dir: PathBuf = match output_dir.map(str::trim).filter(|s| !s.is_empty()) {
-        Some(d) => PathBuf::from(d),
-        None => std::env::current_dir().map_err(|e| format!("无法获取当前目录：{e}"))?,
-    };
-    std::fs::create_dir_all(&dir).map_err(|e| format!("创建输出目录失败：{e}"))?;
-
-    let mut name = filename
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .and_then(|s| Path::new(s).file_name().map(|n| n.to_string_lossy().into_owned()))
-        .unwrap_or_else(default_filename);
-    if !name.to_ascii_lowercase().ends_with(".pcap") {
-        name.push_str(".pcap");
-    }
-
-    let full = dir.join(&name);
-    std::fs::write(&full, bytes).map_err(|e| format!("写入文件失败：{e}"))?;
-
-    let shown = std::fs::canonicalize(&full).unwrap_or(full);
-    Ok(SavedEdit {
-        filename: name,
-        path: strip_extended_prefix(&shown.to_string_lossy()),
-        size: bytes.len(),
-    })
+    let (filename, path, size) = write_pcap_to_dir(bytes, output_dir, filename, "modified")?;
+    Ok(SavedEdit { filename, path, size })
 }
 
 // =============================  测试  =============================

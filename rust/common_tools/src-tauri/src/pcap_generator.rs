@@ -209,11 +209,6 @@ pub struct SavedPcap {
     pub size: usize,
 }
 
-fn default_filename() -> String {
-    let ts = chrono::Local::now().format("%Y%m%d_%H%M%S");
-    format!("generated_{ts}.pcap")
-}
-
 /// 去除 Windows `canonicalize()` 产生的扩展长度前缀 `\\?\`
 /// （UNC 形式 `\\?\UNC\server\share` 还原为 `\\server\share`）。其他平台原样返回。
 pub(crate) fn strip_extended_prefix(p: &str) -> String {
@@ -226,6 +221,44 @@ pub(crate) fn strip_extended_prefix(p: &str) -> String {
     }
 }
 
+/// 把 PCAP 字节写入目录，返回 (最终文件名, 绝对路径, 字节数)。三处保存（生成 / 修改 /
+/// 报文导出）共用同一策略：
+/// - `output_dir` 为空 → 进程当前工作目录；目录不存在则创建；
+/// - `filename` 仅取末段（防目录穿越），缺省用 `<prefix>_<时间戳>.pcap`，并确保 `.pcap` 后缀；
+/// - 返回路径去除 Windows 扩展长度前缀 `\\?\`。
+pub(crate) fn write_pcap_to_dir(
+    bytes: &[u8],
+    output_dir: Option<&str>,
+    filename: Option<&str>,
+    default_prefix: &str,
+) -> Result<(String, String, usize), String> {
+    use std::path::{Path, PathBuf};
+
+    let dir: PathBuf = match output_dir.map(str::trim).filter(|s| !s.is_empty()) {
+        Some(d) => PathBuf::from(d),
+        None => std::env::current_dir().map_err(|e| format!("无法获取当前目录: {e}"))?,
+    };
+    std::fs::create_dir_all(&dir).map_err(|e| format!("创建输出目录失败: {e}"))?;
+
+    let mut name = filename
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .and_then(|s| Path::new(s).file_name().map(|n| n.to_string_lossy().into_owned()))
+        .unwrap_or_else(|| {
+            let ts = chrono::Local::now().format("%Y%m%d_%H%M%S");
+            format!("{default_prefix}_{ts}.pcap")
+        });
+    if !name.to_ascii_lowercase().ends_with(".pcap") {
+        name.push_str(".pcap");
+    }
+
+    let full = dir.join(&name);
+    std::fs::write(&full, bytes).map_err(|e| format!("写入文件失败: {e}"))?;
+
+    let shown = std::fs::canonicalize(&full).unwrap_or(full);
+    Ok((name, strip_extended_prefix(&shown.to_string_lossy()), bytes.len()))
+}
+
 /// 生成 PCAP 并写入磁盘目录。
 ///
 /// `output_dir` 为空时使用进程当前工作目录（即 exe 启动所在目录）；目录不存在则创建。
@@ -235,40 +268,15 @@ pub fn save_pcap(
     output_dir: Option<&str>,
     filename: Option<&str>,
 ) -> Result<SavedPcap, String> {
-    use std::path::{Path, PathBuf};
-
     let result = generate_pcap(params)?;
-
-    // 输出目录：空 → 当前工作目录
-    let dir: PathBuf = match output_dir.map(str::trim).filter(|s| !s.is_empty()) {
-        Some(d) => PathBuf::from(d),
-        None => std::env::current_dir().map_err(|e| format!("无法获取当前目录: {e}"))?,
-    };
-    std::fs::create_dir_all(&dir).map_err(|e| format!("创建输出目录失败: {e}"))?;
-
-    // 文件名：仅取末段，确保 .pcap 后缀
-    let mut name = filename
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .and_then(|s| Path::new(s).file_name().map(|n| n.to_string_lossy().into_owned()))
-        .unwrap_or_else(default_filename);
-    if !name.to_ascii_lowercase().ends_with(".pcap") {
-        name.push_str(".pcap");
-    }
-
-    let full = dir.join(&name);
-    std::fs::write(&full, &result.pcap).map_err(|e| format!("写入文件失败: {e}"))?;
-
-    // 展示绝对路径（canonicalize 失败则退回拼接路径），并去除 Windows 扩展长度前缀 \\?\
-    let shown = std::fs::canonicalize(&full).unwrap_or(full);
-    let path = strip_extended_prefix(&shown.to_string_lossy());
+    let (name, path, size) = write_pcap_to_dir(&result.pcap, output_dir, filename, "generated")?;
     Ok(SavedPcap {
         filename: name,
         path,
         session_count: result.session_count,
         packet_count: result.packet_count,
         flow: result.flow,
-        size: result.pcap.len(),
+        size,
     })
 }
 

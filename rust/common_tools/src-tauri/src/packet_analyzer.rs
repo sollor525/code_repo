@@ -1,7 +1,6 @@
 use hex;
 use pcap_file::pcap::PcapWriter;
 use std::borrow::Cow;
-use std::fs::File;
 
 pub struct PacketAnalyzer {
     hex_input: String,
@@ -91,65 +90,6 @@ impl PacketAnalyzer {
             Err(_) => {
                 self.packet_length = 0;
                 String::from("错误: 无法解码十六进制数据")
-            }
-        }
-    }
-
-    pub fn export_pcap(&self, filename: &str) -> Result<String, Box<dyn std::error::Error>> {
-        // 移除所有空格和换行符
-        let cleaned_hex = self.hex_input.replace(|c: char| c.is_whitespace(), "");
-
-        // 检查是否为有效的十六进制字符串
-        if !cleaned_hex.chars().all(|c| c.is_digit(16)) {
-            return Err("输入包含无效的十六进制字符，无法导出PCAP".into());
-        }
-
-        // 检查长度是否为偶数
-        if cleaned_hex.len() % 2 != 0 {
-            return Err("十六进制字符串长度必须为偶数，无法导出PCAP".into());
-        }
-
-        // 尝试解码十六进制
-        match hex::decode(&cleaned_hex) {
-            Ok(bytes) => {
-                // 创建PCAP文件
-                match File::create(filename) {
-                    Ok(file) => {
-                        let mut writer = PcapWriter::new(file).unwrap();
-
-                        // 写入数据包
-                        let now = std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap();
-
-                        let seconds = now.as_secs() as u32;
-                        let micros = now.subsec_micros();
-
-                        use pcap_file::pcap::PcapPacket;
-                        use std::time::Duration;
-
-                        let packet = PcapPacket {
-                            timestamp: Duration::from_secs(seconds as u64) + Duration::from_micros(micros as u64),
-                            data: Cow::Borrowed(&bytes),
-                            orig_len: bytes.len() as u32,
-                        };
-
-                        match writer.write_packet(&packet) {
-                            Ok(_) => {
-                                Ok(format!("PCAP文件已成功导出到: {}", filename))
-                            },
-                            Err(e) => {
-                                Err(format!("写入PCAP文件时出错: {}", e).into())
-                            }
-                        }
-                    },
-                    Err(e) => {
-                        Err(format!("创建PCAP文件时出错: {}", e).into())
-                    }
-                }
-            },
-            Err(_) => {
-                Err("无法解码十六进制数据，无法导出PCAP".into())
             }
         }
     }
